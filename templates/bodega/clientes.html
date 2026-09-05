@@ -8,25 +8,45 @@
     </a>
 </div>
 
-<!-- Buscador Rápido de Clientes -->
+<!-- Filtros por Estado y Zona -->
 <div class="card card-custom p-3 mb-4 border-0 shadow-sm bg-white">
-    <div class="row align-items-center">
-        <div class="col-md-8 col-lg-6 position-relative">
-            <div class="input-group input-group-lg shadow-sm rounded-pill border">
-                <span class="input-group-text bg-white border-0 ps-4"><i class="fa-solid fa-magnifying-glass text-muted"></i></span>
-                <input type="text" id="clientesSearch" class="form-control border-0 bg-white shadow-none ps-2" placeholder="Busca por Nombre o Documento..." autocomplete="off" style="border-radius: 0 50px 50px 0;">
+    <div class="row g-3 align-items-center">
+        <!-- Buscador -->
+        <div class="col-md-5 position-relative">
+            <div class="input-group shadow-sm rounded-pill border">
+                <span class="input-group-text bg-white border-0 ps-3"><i class="fa-solid fa-magnifying-glass text-muted"></i></span>
+                <input type="text" id="clientesSearch" class="form-control border-0 bg-white shadow-none ps-2" placeholder="Buscar por Nombre, NIT o Zona..." autocomplete="off">
                 <button class="btn btn-light border-0 px-3 text-muted" type="button" id="clearSearch" title="Limpiar búsqueda" style="border-radius: 0 50px 50px 0;">
                     <i class="fa-solid fa-xmark"></i>
                 </button>
             </div>
-            <!-- Contenedor para resultados desplegables -->
-            <div id="searchDropdown" class="dropdown-menu shadow-lg border-0 w-100 p-0 mt-2 d-none" style="max-height: 400px; overflow-y: auto;">
-            </div>
+            <div id="searchDropdown" class="dropdown-menu shadow-lg border-0 w-100 p-0 mt-2 d-none" style="max-height: 400px; overflow-y: auto;"></div>
         </div>
-        <div class="col-md-4 col-lg-6 text-md-end mt-3 mt-md-0">
-            <small class="text-muted fw-bold text-uppercase" style="font-size: 0.75rem;">
-                Mostrando <span id="visibleCount" class="text-brand-pink">{{ clientes|length }}</span>
-                de <strong>{{ clientes|length }}</strong> clientes
+
+        <!-- Filtros por Chips de Estado y Zona -->
+        <div class="col-md-7 d-flex flex-wrap gap-2 align-items-center justify-content-md-end">
+            <div class="btn-group btn-group-sm rounded-pill shadow-sm" role="group">
+                <a href="{{ url_for('bodega_bp.clientes', zona=zona_sel) }}" class="btn {{ 'btn-dark' if not estado_sel else 'btn-outline-secondary' }}">Todos</a>
+                <a href="{{ url_for('bodega_bp.clientes', estado='deuda', zona=zona_sel) }}" class="btn {{ 'btn-danger' if estado_sel == 'deuda' else 'btn-outline-danger' }}"><i class="fa-solid fa-circle-exclamation me-1"></i>Con Deuda</a>
+                <a href="{{ url_for('bodega_bp.clientes', estado='al_dia', zona=zona_sel) }}" class="btn {{ 'btn-success' if estado_sel == 'al_dia' else 'btn-outline-success' }}"><i class="fa-solid fa-check me-1"></i>Al Día</a>
+            </div>
+
+            <!-- Selector de Zona -->
+            <div class="dropdown">
+                <button class="btn btn-sm btn-outline-secondary rounded-pill dropdown-toggle px-3" type="button" data-bs-toggle="dropdown">
+                    <i class="fa-solid fa-location-dot text-primary me-1"></i> {{ zona_sel if zona_sel else 'Todas las Zonas' }}
+                </button>
+                <ul class="dropdown-menu dropdown-menu-end shadow-sm border-0 rounded-3 p-2" style="max-height: 250px; overflow-y: auto;">
+                    <li><a class="dropdown-item small rounded-2 {{ 'active' if not zona_sel else '' }}" href="{{ url_for('bodega_bp.clientes', estado=estado_sel) }}">Todas las Zonas</a></li>
+                    <li><hr class="dropdown-divider"></li>
+                    {% for z in zonas_disponibles %}
+                    <li><a class="dropdown-item small rounded-2 {{ 'active' if zona_sel == z else '' }}" href="{{ url_for('bodega_bp.clientes', zona=z, estado=estado_sel) }}">{{ z }}</a></li>
+                    {% endfor %}
+                </ul>
+            </div>
+            
+            <small class="text-muted fw-bold ms-2" style="font-size: 0.75rem;">
+                <span id="visibleCount" class="text-brand-pink">{{ clientes|length }}</span> clientes
             </small>
         </div>
     </div>
@@ -39,6 +59,7 @@
                 <tr>
                     <th class="ps-4">RAZÓN SOCIAL / NOMBRE</th>
                     <th>DOCUMENTO</th>
+                    <th>ZONA</th>
                     <th class="text-center">DEUDA TOTAL</th>
                     <th class="text-center">ESTADO</th>
                     <th class="text-center">ACCIONES</th>
@@ -46,9 +67,14 @@
             </thead>
             <tbody>
                 {% for c in clientes %}
-                <tr class="cliente-row">
+                <tr class="cliente-row" data-zona="{{ (c.zona or '')|lower }}">
                     <td class="ps-4 fw-bold text-brand-black">{{ c.nombre_o_razon_social }}</td>
                     <td class="text-muted">{{ c.documento_o_nit }}</td>
+                    <td>
+                        <span class="badge bg-light text-dark border px-2 py-1">
+                            <i class="fa-solid fa-location-dot text-primary me-1"></i>{{ c.zona or 'Sin Zona' }}
+                        </span>
+                    </td>
                     <td class="text-center fw-bolder {% if c.deuda_total > 0 %}text-danger{% else %}text-success{% endif %}">
                         ${{ (c.deuda_total)|cop }}
                     </td>
@@ -61,15 +87,15 @@
                     </td>
                     <td class="text-center">
                         <div class="d-flex gap-2 justify-content-center">
-                            <a href="{{ url_for('bodega_bp.editar_cliente', id=c.id) }}" class="btn btn-sm btn-outline-primary rounded-pill px-3">
+                            <a href="{{ url_for('bodega_bp.editar_cliente', id=c.id) }}" class="btn btn-sm btn-outline-primary rounded-pill px-3" title="Editar">
                                 <i class="fa-solid fa-pen me-1"></i> Editar
                             </a>
-                            <a href="{{ url_for('bodega_bp.cliente_detalle', id=c.id) }}" class="btn btn-sm btn-outline-dark rounded-pill px-3">
+                            <a href="{{ url_for('bodega_bp.cliente_detalle', id=c.id) }}" class="btn btn-sm btn-outline-dark rounded-pill px-3" title="Ver Estado de Cuenta">
                                 <i class="fa-solid fa-eye me-1"></i> Ver Cuenta
                             </a>
-                            {% if current_user.rol != 'vendedor_bodega' %}
+                            {% if current_user.rol == 'admin' %}
                                 {% if c.deuda_total <= 0 %}
-                                <button type="button" class="btn btn-sm btn-outline-danger rounded-pill px-3" data-bs-toggle="modal" data-bs-target="#modalEliminarCliente{{ c.id }}">
+                                <button type="button" class="btn btn-sm btn-outline-danger rounded-pill px-3" data-bs-toggle="modal" data-bs-target="#modalEliminarCliente{{ c.id }}" title="Eliminar Cliente">
                                     <i class="fa-solid fa-trash-can"></i>
                                 </button>
                                 {% else %}

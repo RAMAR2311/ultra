@@ -1,19 +1,49 @@
 {% extends "base.html" %}
 
 {% block content %}
-<div class="d-flex justify-content-between align-items-center mb-4">
-    <h2 class="fw-bold text-brand-black m-0"><i class="fa-solid fa-money-bill-transfer text-brand-blue me-2"></i> Registro Rápido de Abonos</h2>
+<div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 mb-4">
+    <div>
+        <div class="d-flex align-items-center gap-2">
+            <h2 class="fw-bold text-brand-black m-0">Centro de Cobranzas y Cartera</h2>
+            <span class="badge bg-success bg-opacity-10 text-success border border-success-subtle rounded-pill px-3 py-1 fw-bold">
+                <i class="fa-solid fa-hand-holding-dollar me-1"></i> Recuperación B2B
+            </span>
+        </div>
+        <p class="text-muted small mb-0 mt-1">Registra abonos globales, consulta facturas por cobrar y salda deudas en tiempo real.</p>
+    </div>
+    <div class="d-flex align-items-center gap-2">
+        <a href="{{ url_for('bodega_bp.dashboard') }}" class="btn btn-outline-secondary rounded-pill px-4 shadow-sm">
+            <i class="fa-solid fa-arrow-left me-1"></i> Dashboard Bodega
+        </a>
+    </div>
 </div>
 
-<div class="row justify-content-center">
-    <div class="col-md-8 col-lg-6">
+<div class="row g-4">
+    <!-- Columna Izquierda: Formulario de Registro Rápido de Abono -->
+    <div class="col-lg-5">
+        <!-- KPI Cartera -->
+        <div class="card card-custom border-0 shadow-sm p-4 mb-3" style="border-left: 5px solid #dc2626 !important;">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+                <span class="text-muted small fw-bold text-uppercase">Cartera Total por Cobrar</span>
+                <span class="badge bg-danger bg-opacity-10 text-danger rounded-pill p-2">
+                    <i class="fa-solid fa-wallet fs-6"></i>
+                </span>
+            </div>
+            <h2 class="fw-bolder text-danger m-0">${{ cartera_total|cop }}</h2>
+            <div class="d-flex justify-content-between align-items-center mt-2">
+                <small class="text-muted"><strong class="text-dark">{{ clientes_con_deuda|length }}</strong> clientes con saldo</small>
+                <small class="text-muted"><strong class="text-dark">{{ facturas_pendientes|length }}</strong> facturas pendientes</small>
+            </div>
+        </div>
+
+        <!-- Formulario -->
         <div class="card card-custom border-0 shadow-sm p-4">
-            <h5 class="fw-bold mb-4 text-muted small text-uppercase"><i class="fa-solid fa-search me-1"></i> 1. Buscar Cliente</h5>
+            <h5 class="fw-bold mb-3 text-brand-black"><i class="fa-solid fa-search text-brand-blue me-2"></i>1. Buscar Cliente Mayorista</h5>
             
-            <div class="position-relative mb-4">
-                <div class="input-group input-group-lg shadow-sm rounded-pill border">
-                    <span class="input-group-text bg-white border-0 ps-4"><i class="fa-solid fa-user text-muted"></i></span>
-                    <input type="text" id="clientesSearch" class="form-control border-0 bg-white shadow-none ps-2" placeholder="Busca por Nombre o Documento..." autocomplete="off" style="border-radius: 0 50px 50px 0;">
+            <div class="position-relative mb-3">
+                <div class="input-group shadow-sm rounded-pill border">
+                    <span class="input-group-text bg-white border-0 ps-3"><i class="fa-solid fa-user text-muted"></i></span>
+                    <input type="text" id="clientesSearch" class="form-control border-0 bg-white shadow-none ps-2" placeholder="Busca por Nombre, NIT o Zona..." autocomplete="off">
                 </div>
                 <!-- Desplegable de resultados -->
                 <div id="searchDropdown" class="dropdown-menu shadow-lg border-0 w-100 p-0 mt-2 d-none" style="max-height: 300px; overflow-y: auto;">
@@ -21,17 +51,15 @@
             </div>
 
             <div id="abonoFormContainer" class="d-none">
-                <hr class="my-4">
-                <h5 class="fw-bold mb-4 text-muted small text-uppercase"><i class="fa-solid fa-pen-to-square me-1"></i> 2. Datos del Abono</h5>
-                
-                <div class="alert bg-light border-0 rounded-4 p-3 mb-4 d-flex align-items-center">
-                    <div class="bg-brand-blue rounded-circle p-3 me-3">
-                        <i class="fa-solid fa-user text-dark"></i>
+                <div class="alert bg-light border-0 rounded-4 p-3 mb-3 d-flex align-items-center">
+                    <div class="bg-brand-blue rounded-circle p-3 me-3 text-white">
+                        <i class="fa-solid fa-user fs-5"></i>
                     </div>
                     <div>
-                        <p class="mb-0 text-muted small fw-bold">CLIENTE SELECCIONADO</p>
-                        <h5 id="selectedClientName" class="mb-0 fw-bold text-brand-black">---</h5>
-                        <small id="selectedClientDoc" class="text-muted">NIT/Doc: ---</small>
+                        <p class="mb-0 text-muted small fw-bold text-uppercase">Cliente Seleccionado</p>
+                        <h6 id="selectedClientName" class="mb-0 fw-bold text-brand-black">---</h6>
+                        <small id="selectedClientDoc" class="text-muted">NIT/Doc: ---</small> | 
+                        <span id="selectedClientDeuda" class="badge bg-danger bg-opacity-10 text-danger fw-bold">Deuda: $0</span>
                     </div>
                 </div>
 
@@ -39,39 +67,163 @@
                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                     
                     <div class="mb-3">
-                        <label class="form-label fw-bold small text-muted">MONTO DEL ABONO</label>
+                        <label class="form-label fw-bold small text-muted text-uppercase">Monto del Abono ($ COP)</label>
                         <div class="input-group input-group-lg shadow-sm rounded-pill border overflow-hidden">
-                            <span class="input-group-text bg-white border-0 ps-4 fw-bold text-success">$</span>
-                            <input type="text" name="monto_abono" class="form-control border-0 bg-white shadow-none ps-2 fw-bold" placeholder="0" oninput="formatInputCOP(this)" required>
+                            <span class="input-group-text bg-white border-0 ps-4 fw-bolder text-success">$</span>
+                            <input type="number" step="1" min="1" name="monto_abono" id="inputMontoAbono" class="form-control border-0 bg-white shadow-none ps-2 fw-bolder text-success fs-4 text-end pe-4" placeholder="0" required>
                         </div>
                     </div>
 
-                    <div class="row g-3 mb-3">
+                    <div class="row g-2 mb-3">
                         <div class="col-6">
-                            <label class="form-label fw-bold small text-muted">FECHA</label>
-                            <input type="date" name="fecha" class="form-control form-control-lg rounded-pill border shadow-sm" required>
+                            <label class="form-label fw-bold small text-muted text-uppercase">Fecha</label>
+                            <input type="date" name="fecha" id="inputFechaAbono" class="form-control form-control-sm rounded-pill border shadow-sm fw-semibold" required>
                         </div>
                         <div class="col-6">
-                            <label class="form-label fw-bold small text-muted">MEDIO DE PAGO</label>
-                            <select name="metodo_pago" class="form-select form-select-lg rounded-pill border shadow-sm" required>
-                                <option value="efectivo">Efectivo</option>
+                            <label class="form-label fw-bold small text-muted text-uppercase">Medio de Pago</label>
+                            <select name="metodo_pago" class="form-select form-select-sm rounded-pill border shadow-sm fw-semibold" required>
+                                <option value="efectivo" selected>Efectivo (Caja)</option>
                                 <option value="nequi">Nequi</option>
                                 <option value="bancolombia">Bancolombia</option>
                                 <option value="daviplata">Daviplata</option>
-                                <option value="tarjeta">Tarjeta</option>
                             </select>
                         </div>
                     </div>
 
-                    <div class="mb-4">
-                        <label class="form-label fw-bold small text-muted">OBSERVACIÓN (OPCIONAL)</label>
-                        <textarea name="observacion" class="form-control rounded-4 border shadow-sm" rows="2" placeholder="Ej: Pago de cuota semanal..."></textarea>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold small text-muted text-uppercase">Observación / Detalle</label>
+                        <textarea name="observacion" class="form-control rounded-4 border shadow-sm" rows="2" placeholder="Ej: Abono en efectivo cuota semanal..."></textarea>
                     </div>
 
-                    <button type="submit" class="btn btn-blue w-100 rounded-pill py-3 fw-bold shadow">
-                        <i class="fa-solid fa-check-circle me-2"></i> Registrar Abono a la Cuenta
+                    <button type="submit" class="btn btn-blue w-100 rounded-pill py-3 fw-bold shadow-sm">
+                        <i class="fa-solid fa-check-circle me-2"></i> Procesar Abono en Cascada
                     </button>
+                    <small class="text-muted d-block text-center mt-2" style="font-size: 0.72rem;">
+                        El pago se aplica automáticamente a las facturas de la más antigua a la más reciente.
+                    </small>
                 </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Columna Derecha: Tablas de Cuentas por Cobrar y Facturas Pendientes -->
+    <div class="col-lg-7">
+        <div class="card card-custom border-0 shadow-sm p-0 overflow-hidden">
+            <!-- Nav Tabs -->
+            <ul class="nav nav-tabs nav-fill bg-light border-bottom p-2 gap-2" id="abonosTabs" role="tablist">
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link active rounded-pill fw-bold py-2" id="tab-facturas" data-bs-toggle="tab" data-bs-target="#panel-facturas" type="button" role="tab">
+                        <i class="fa-solid fa-file-invoice-dollar me-1"></i> Facturas por Cobrar ({{ facturas_pendientes|length }})
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link rounded-pill fw-bold py-2" id="tab-clientes" data-bs-toggle="tab" data-bs-target="#panel-clientes" type="button" role="tab">
+                        <i class="fa-solid fa-users me-1"></i> Clientes con Saldo ({{ clientes_con_deuda|length }})
+                    </button>
+                </li>
+            </ul>
+
+            <div class="tab-content p-0" id="abonosTabsContent">
+                <!-- Panel 1: Facturas Pendientes -->
+                <div class="tab-pane fade show active p-0" id="panel-facturas" role="tabpanel">
+                    <div class="table-responsive" style="max-height: 520px; overflow-y: auto;">
+                        <table class="table table-hover table-custom mb-0 align-middle">
+                            <thead class="bg-light sticky-top">
+                                <tr>
+                                    <th class="ps-4">FACTURA</th>
+                                    <th>CLIENTE</th>
+                                    <th>FECHA</th>
+                                    <th class="text-end">SALDO DEUDA</th>
+                                    <th class="text-center">ACCIÓN</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for f in facturas_pendientes %}
+                                <tr>
+                                    <td class="ps-4 fw-bold text-brand-black">#{{ f.numero_factura }}</td>
+                                    <td>
+                                        <a href="{{ url_for('bodega_bp.cliente_detalle', id=f.cliente.id) }}" class="text-decoration-none fw-bold text-dark">
+                                            {{ f.cliente.nombre_o_razon_social }}
+                                        </a>
+                                        <small class="text-muted d-block" style="font-size: 0.72rem;">{{ f.cliente.zona or 'Sin Zona' }}</small>
+                                    </td>
+                                    <td class="text-muted small">{{ f.fecha_subida.strftime('%d/%m/%Y') }}</td>
+                                    <td class="text-end fw-bolder text-danger">${{ f.saldo_pendiente|cop }}</td>
+                                    <td class="text-center">
+                                        <button type="button" 
+                                                class="btn btn-sm btn-outline-success rounded-pill px-3 fw-bold btn-seleccionar-cliente-cobro"
+                                                data-id="{{ f.cliente.id }}"
+                                                data-nombre="{{ f.cliente.nombre_o_razon_social }}"
+                                                data-doc="{{ f.cliente.documento_o_nit }}"
+                                                data-deuda="{{ f.saldo_pendiente }}"
+                                                data-factura="{{ f.id }}">
+                                            <i class="fa-solid fa-money-bill-wave me-1"></i> Cobrar
+                                        </button>
+                                    </td>
+                                </tr>
+                                {% else %}
+                                <tr>
+                                    <td colspan="5" class="text-center py-5 text-muted">
+                                        <i class="fa-solid fa-circle-check fs-1 text-success opacity-50 mb-2 d-block"></i>
+                                        <p class="mb-0 fw-semibold">¡Excelente! No hay facturas de crédito pendientes de cobro.</p>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Panel 2: Clientes con Deuda -->
+                <div class="tab-pane fade p-0" id="panel-clientes" role="tabpanel">
+                    <div class="table-responsive" style="max-height: 520px; overflow-y: auto;">
+                        <table class="table table-hover table-custom mb-0 align-middle">
+                            <thead class="bg-light sticky-top">
+                                <tr>
+                                    <th class="ps-4">CLIENTE</th>
+                                    <th>NIT / DOCUMENTO</th>
+                                    <th>ZONA</th>
+                                    <th class="text-end">DEUDA TOTAL</th>
+                                    <th class="text-center">ACCIÓN</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for c in clientes_con_deuda %}
+                                <tr>
+                                    <td class="ps-4 fw-bold text-brand-black">{{ c.nombre_o_razon_social }}</td>
+                                    <td class="text-muted small">{{ c.documento_o_nit }}</td>
+                                    <td>
+                                        <span class="badge bg-light text-dark border px-2 py-1">
+                                            <i class="fa-solid fa-location-dot text-primary me-1"></i>{{ c.zona or 'Sin Zona' }}
+                                        </span>
+                                    </td>
+                                    <td class="text-end fw-bolder text-danger">${{ c.deuda_total|cop }}</td>
+                                    <td class="text-center">
+                                        <button type="button" 
+                                                class="btn btn-sm btn-outline-primary rounded-pill px-3 fw-bold btn-seleccionar-cliente-cobro"
+                                                data-id="{{ c.id }}"
+                                                data-nombre="{{ c.nombre_o_razon_social }}"
+                                                data-doc="{{ c.documento_o_nit }}"
+                                                data-deuda="{{ c.deuda_total }}">
+                                            <i class="fa-solid fa-hand-holding-dollar me-1"></i> Abonar
+                                        </button>
+                                        <a href="{{ url_for('bodega_bp.cliente_detalle', id=c.id) }}" class="btn btn-sm btn-light rounded-circle text-muted" title="Ver cuenta">
+                                            <i class="fa-solid fa-eye"></i>
+                                        </a>
+                                    </td>
+                                </tr>
+                                {% else %}
+                                <tr>
+                                    <td colspan="5" class="text-center py-5 text-muted">
+                                        <i class="fa-solid fa-circle-check fs-1 text-success opacity-50 mb-2 d-block"></i>
+                                        <p class="mb-0 fw-semibold">No hay clientes con deuda pendiente.</p>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
@@ -84,15 +236,36 @@ document.addEventListener('DOMContentLoaded', function() {
     const formContainer = document.getElementById('abonoFormContainer');
     const clientName = document.getElementById('selectedClientName');
     const clientDoc = document.getElementById('selectedClientDoc');
+    const clientDeuda = document.getElementById('selectedClientDeuda');
     const abonoForm = document.getElementById('quickAbonoForm');
+    const inputMontoAbono = document.getElementById('inputMontoAbono');
     
-    // Establecer fecha de hoy por defecto
-    const dateInput = document.querySelector('input[name="fecha"]');
+    // Establecer fecha de hoy
+    const dateInput = document.getElementById('inputFechaAbono');
     const today = new Date().toISOString().split('T')[0];
     dateInput.value = today;
 
-    let debounceTimer;
+    function formatCOP(valor) {
+        return '$' + Math.round(Number(valor) || 0).toLocaleString('es-CO');
+    }
 
+    function seleccionarCliente(cliente) {
+        clientName.textContent = cliente.nombre;
+        clientDoc.textContent = `NIT/Doc: ${cliente.documento} | Zona: ${cliente.zona || 'Sin Zona'}`;
+        clientDeuda.textContent = `Deuda: ${formatCOP(cliente.deuda)}`;
+        abonoForm.action = `/bodega/clientes/${cliente.id}/abono_global`;
+        
+        if (cliente.deuda && Number(cliente.deuda) > 0) {
+            inputMontoAbono.value = Math.round(Number(cliente.deuda));
+        }
+
+        formContainer.classList.remove('d-none');
+        dropdown.classList.add('d-none');
+        searchInput.value = cliente.nombre;
+        inputMontoAbono.focus();
+    }
+
+    let debounceTimer;
     searchInput.addEventListener('input', function() {
         const query = searchInput.value.trim();
         clearTimeout(debounceTimer);
@@ -116,38 +289,45 @@ document.addEventListener('DOMContentLoaded', function() {
                             btn.innerHTML = `
                                 <div>
                                     <div class="fw-bold text-dark">${item.nombre}</div>
-                                    <small class="text-muted">NIT/Doc: ${item.documento}</small>
+                                    <small class="text-muted">NIT: ${item.documento} | ${item.zona}</small>
                                 </div>
-                                <span class="badge bg-light ${item.deuda > 0 ? 'text-danger' : 'text-success'} border rounded-pill">
-                                    Deuda: $${Math.round(item.deuda).toLocaleString('es-CO')}
-                                </span>
+                                <div class="text-end">
+                                    <span class="badge ${item.deuda > 0 ? 'bg-danger' : 'bg-success'} rounded-pill">
+                                        Deuda: ${formatCOP(item.deuda)}
+                                    </span>
+                                </div>
                             `;
-                            btn.onclick = () => selectClient(item);
+                            btn.addEventListener('click', () => seleccionarCliente(item));
                             dropdown.appendChild(btn);
                         });
                         dropdown.classList.remove('d-none');
                         dropdown.classList.add('show');
                     } else {
-                        dropdown.classList.add('d-none');
-                        dropdown.classList.remove('show');
+                        dropdown.innerHTML = '<div class="p-3 text-muted small text-center">No se encontraron clientes</div>';
+                        dropdown.classList.remove('d-none');
+                        dropdown.classList.add('show');
                     }
                 });
-        }, 300);
+        }, 250);
     });
 
-    function selectClient(client) {
-        clientName.textContent = client.nombre;
-        clientDoc.textContent = `NIT/Doc: ${client.documento}`;
-        abonoForm.action = `/bodega/clientes/${client.id}/abono_global`;
-        
-        formContainer.classList.remove('d-none');
-        dropdown.classList.add('d-none');
-        dropdown.classList.remove('show');
-        searchInput.value = client.nombre;
-    }
+    // Delegación para botones "Cobrar" / "Abonar" de las tablas
+    document.addEventListener('click', function(e) {
+        const btn = e.target.closest('.btn-seleccionar-cliente-cobro');
+        if (btn) {
+            const cliente = {
+                id: btn.getAttribute('data-id'),
+                nombre: btn.getAttribute('data-nombre'),
+                documento: btn.getAttribute('data-doc'),
+                deuda: btn.getAttribute('data-deuda'),
+                zona: ''
+            };
+            seleccionarCliente(cliente);
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+    });
 
-    // Ocultar dropdown al hacer click fuera
-    document.addEventListener('click', (e) => {
+    document.addEventListener('click', function(e) {
         if (!searchInput.contains(e.target) && !dropdown.contains(e.target)) {
             dropdown.classList.add('d-none');
             dropdown.classList.remove('show');

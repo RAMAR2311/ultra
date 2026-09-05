@@ -2,52 +2,124 @@
 
 {% block content %}
 <style>
-    /* Fondo limpio que mantiene la legibilidad (Estilo Original Claro) */
     body {
         background-color: #F8F9FA !important;
-        background-image: linear-gradient(135deg, #F8F9FA 0%, #eef3f5 100%) !important;
+        background-image: radial-gradient(circle at 85% 15%, rgba(255, 0, 127, 0.07) 0%, transparent 50%),
+                          radial-gradient(circle at 15% 85%, rgba(15, 23, 42, 0.04) 0%, transparent 50%) !important;
     }
 
-    /* Opcional: Ocultar la barra solo en login */
     .navbar-custom {
         display: none !important;
     }
+
+    .login-card {
+        background-color: #FFFFFF;
+        border: 1px solid #E2E8F0;
+        border-top: 5px solid #FF007F !important;
+        box-shadow: 0 20px 45px rgba(0, 0, 0, 0.06), 0 0 25px rgba(255, 0, 127, 0.05);
+        border-radius: 24px;
+    }
+
+    .login-card .form-control {
+        background-color: #F8FAFC !important;
+        border: 1px solid #CBD5E1 !important;
+        color: #0F172A !important;
+        font-family: var(--font-body);
+        transition: all 0.2s ease;
+    }
+
+    .login-card .form-control:focus {
+        border-color: #FF007F !important;
+        box-shadow: 0 0 0 4px rgba(255, 0, 127, 0.15) !important;
+        background-color: #FFFFFF !important;
+    }
+
+    .login-brand-display {
+        font-family: var(--font-heading);
+        font-weight: 900;
+        font-style: italic;
+        letter-spacing: 2px;
+    }
+
+    .brand-hero-card {
+        background-color: #FFFFFF;
+        border: 1px solid #E2E8F0;
+        border-radius: 24px;
+        box-shadow: 0 20px 45px rgba(0, 0, 0, 0.06);
+        transition: transform 0.3s ease, box-shadow 0.3s ease;
+    }
+    
+    .brand-hero-card:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 25px 55px rgba(0, 0, 0, 0.09);
+    }
 </style>
 
-<div class="row align-items-center justify-content-evenly" style="min-height: 85vh;">
-    <!-- Columna Izquierda: Cuadro de Acceso Segregado -->
+<div class="row align-items-center justify-content-evenly" style="min-height: 88vh;">
+    <!-- Columna Izquierda: Formulario de Acceso -->
     <div class="col-md-6 col-lg-5 mb-4">
-        <div class="card p-5 border-0 shadow-lg rounded-4" style="background-color: #FFFFFF; border-top: 5px solid var(--brand-red) !important;">
-            <div class="text-center mb-5">
-                <h3 class="fw-bold" style="color: #000000;">Acceso al Panel</h3>
-                <p class="text-muted">Introduce tus credenciales operativas</p>
+        <div class="card login-card p-4 p-md-5">
+            <div class="text-center mb-4">
+                <!-- Imagen / Logo de ULTRA TECH -->
+                <div class="mb-3 d-inline-block">
+                    <img src="{{ url_for('static', filename='img/ultratech.jpg') }}" 
+                         alt="ULTRA TECH Logo" 
+                         class="img-fluid rounded-4 shadow-sm" 
+                         style="width: 84px; height: 84px; object-fit: cover; border: 2px solid #F1F5F9;">
+                </div>
+                <div class="d-flex justify-content-center align-items-center mb-1">
+                    <span class="fs-2 fw-bold font-orbitron" style="color: #0F172A; letter-spacing: 1px; font-style: italic;">ULTRA</span>
+                    <span class="fs-2 fw-bold font-orbitron ms-2" style="color: #FF007F; letter-spacing: 1px; font-style: italic; text-shadow: 0 0 10px rgba(255,0,127,0.25);">TECH</span>
+                </div>
+                <p class="text-secondary small mb-0 fw-semibold">Sistema Operativo POS & Gestión Comercial</p>
             </div>
             
             <form method="POST" action="/auth/login">
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                <div class="mb-3">
+                    <label class="form-label fw-bold text-dark small text-uppercase" style="letter-spacing: 0.5px;">Correo Electrónico</label>
+                    <div class="input-group shadow-sm rounded-3 overflow-hidden">
+                        <span class="input-group-text bg-white border-end-0 text-secondary"><i class="fa-solid fa-envelope" style="color: #FF007F;"></i></span>
+                        <input type="email" class="form-control form-control-lg border-start-0" name="email" required placeholder="usuario@ultratech.com">
+                    </div>
+                </div>
+                
                 <div class="mb-4">
-                    <label class="form-label fw-bold" style="color: #000000;">Correo Electrónico</label>
-                    <input type="email" class="form-control form-control-lg border-0 shadow-sm" style="background-color: #f8f9fa; color: #000000;" name="email" required placeholder="tu@koba.com">
+                    <label class="form-label fw-bold text-dark small text-uppercase" style="letter-spacing: 0.5px;">Contraseña</label>
+                    <div class="input-group shadow-sm rounded-3 overflow-hidden">
+                        <span class="input-group-text bg-white border-end-0 text-secondary"><i class="fa-solid fa-lock" style="color: #FF007F;"></i></span>
+                        <input type="password" class="form-control form-control-lg border-start-0" name="password" required placeholder="••••••••">
+                    </div>
                 </div>
                 
-                <div class="mb-5">
-                    <label class="form-label fw-bold" style="color: #000000;">Contraseña</label>
-                    <input type="password" class="form-control form-control-lg border-0 shadow-sm" style="background-color: #f8f9fa; color: #000000;" name="password" required placeholder="••••••••">
-                </div>
-                
-                <div class="d-grid">
-                    <button type="submit" class="btn btn-lg rounded-pill shadow-sm fw-bold" style="background-color: #000000; color: #FFFFFF;">
-                        Ingresar <i class="fa-solid fa-arrow-right ms-2"></i>
+                <div class="d-grid mt-4">
+                    <button type="submit" class="btn btn-pink btn-lg rounded-pill fw-bold text-uppercase py-3 shadow" style="letter-spacing: 1px;">
+                        Iniciar Sesión <i class="fa-solid fa-arrow-right ms-2"></i>
                     </button>
                 </div>
             </form>
         </div>
     </div>
 
-    <!-- Columna Derecha: Logo Central y Limpio -->
-    <div class="col-md-6 col-lg-6 d-none d-md-flex justify-content-center align-items-center text-center">
-        <!-- Logo a la altura del usuario sin solapamiento -->
-        <img src="{{ url_for('static', filename='img/KOBA.png') }}" alt="Identidad Visual KOBA" class="img-fluid" style="max-height: 380px; filter: drop-shadow(0 20px 30px rgba(0,0,0,0.2));">
+    <!-- Columna Derecha: Branding Tech Visual con ultratech.jpg -->
+    <div class="col-md-6 col-lg-5 d-none d-md-flex flex-column justify-content-center align-items-center text-center p-4">
+        <div class="p-4 p-lg-5 brand-hero-card text-center" style="max-width: 440px; width: 100%;">
+            <div class="mb-4">
+                <img src="{{ url_for('static', filename='img/ultratech.jpg') }}" 
+                     alt="ULTRA TECH" 
+                     class="img-fluid rounded-4 shadow-sm" 
+                     style="max-width: 260px; width: 100%; height: auto; aspect-ratio: 1/1; object-fit: cover; border: 1px solid #E2E8F0;">
+            </div>
+            <div class="display-5 login-brand-display mb-2">
+                <span style="color: #0F172A;">ULTRA</span><span style="color: #FF007F;">TECH</span>
+            </div>
+            <div class="badge rounded-pill px-3 py-2 fw-semibold mb-3" style="background-color: rgba(255,0,127,0.08); color: #FF007F; border: 1px solid rgba(255,0,127,0.3); font-size: 0.82rem; letter-spacing: 1px;">
+                ACCESORIOS DE TELÉFONO & POS ERP
+            </div>
+            <p class="text-secondary mb-0 fw-medium" style="line-height: 1.6; font-size: 0.92rem;">
+                Plataforma de alta velocidad para control de inventario, facturación central y gestión de cartera mayorista.
+            </p>
+        </div>
     </div>
 </div>
 {% endblock %}

@@ -197,7 +197,7 @@ class ArqueoCaja(db.Model):
     
     id = db.Column(db.Integer, primary_key=True)
     vendedor_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
-    fecha_arqueo = db.Column(db.Date, nullable=False)
+    fecha_arqueo = db.Column(db.Date, nullable=False, unique=True, index=True)
 
     base_inicial = db.Column(db.Numeric(10, 2), nullable=False, default=0.0)
     gastos_del_dia = db.Column(db.Numeric(10, 2), nullable=False, default=0.0)
@@ -205,12 +205,46 @@ class ArqueoCaja(db.Model):
     total_efectivo_sistema = db.Column(db.Numeric(10, 2), nullable=False, default=0.0)
     total_transferencia_sistema = db.Column(db.Numeric(10, 2), nullable=False, default=0.0)
     efectivo_fisico_contado = db.Column(db.Numeric(10, 2), nullable=True)
-    observaciones_diferencia = db.Column(db.Text, nullable=True)
+    diferencia = db.Column(db.Numeric(10, 2), nullable=True)
+    observaciones = db.Column(db.Text, nullable=True)
+    observaciones_diferencia = db.Column(db.Text, nullable=True) # Retrocompatibilidad
 
-    fecha_creacion = db.Column(db.DateTime, default=obtener_hora_bogota)
+    fecha_cierre = db.Column(db.DateTime, default=obtener_hora_bogota)
+    fecha_creacion = db.Column(db.DateTime, default=obtener_hora_bogota) # Retrocompatibilidad
 
     def __init__(self, **kwargs):
+        # Mapear cajero_id a vendedor_id si se pasa como cajero_id
+        if 'cajero_id' in kwargs and 'vendedor_id' not in kwargs:
+            kwargs['vendedor_id'] = kwargs.pop('cajero_id')
+        if 'observaciones' in kwargs and 'observaciones_diferencia' not in kwargs:
+            kwargs['observaciones_diferencia'] = kwargs['observaciones']
         super(ArqueoCaja, self).__init__(**kwargs)
+
+    @property
+    def cajero_id(self):
+        return self.vendedor_id
+
+    @cajero_id.setter
+    def cajero_id(self, val):
+        self.vendedor_id = val
+
+    @property
+    def efectivo_esperado(self):
+        base = float(self.base_inicial or 0)
+        efectivo_sys = float(self.total_efectivo_sistema or 0)
+        gastos = float(self.gastos_del_dia or 0)
+        return (base + efectivo_sys) - gastos
+
+    @property
+    def total_recaudado_neto(self):
+        efectivo_sys = float(self.total_efectivo_sistema or 0)
+        digital_sys = float(self.total_transferencia_sistema or 0)
+        gastos = float(self.gastos_del_dia or 0)
+        return (efectivo_sys + digital_sys) - gastos
+
+    @property
+    def total_venta_bruta(self):
+        return float(self.total_efectivo_sistema or 0) + float(self.total_transferencia_sistema or 0)
 
 class Maneo(db.Model):
     __tablename__ = 'maneos'
@@ -279,6 +313,7 @@ class Cliente(db.Model):
     local_numero = db.Column(db.String(50), nullable=True) # Número o identificación del local
     email = db.Column(db.String(120), nullable=True)
     direccion = db.Column(db.String(255), nullable=True)
+    zona = db.Column(db.String(100), nullable=True) # Zona geográfica: Centro, Norte, San José, etc.
     notas = db.Column(db.Text, nullable=True)
     creado_por_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True) # ID del vendedor/admin que lo creó
     fecha_registro = db.Column(db.DateTime, default=obtener_hora_bogota)

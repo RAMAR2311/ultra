@@ -1,9 +1,20 @@
 {% extends "base.html" %}
 
 {% block content %}
+<!-- Toast Container para Notificaciones Rápidas y No Bloqueantes -->
+<div id="pos_toast_container" class="position-fixed top-0 end-0 p-3" style="z-index: 2050;"></div>
+
 <!-- Título de Pantalla Renombrado (Requerimento) -->
-<div class="d-flex align-items-center mb-4">
+<div class="d-flex align-items-center justify-content-between mb-4">
     <h2 class="fw-bold text-brand-black m-0"><i class="fa-solid fa-cash-register me-2" style="color: var(--brand-pink);"></i>Caja Central</h2>
+    <div class="d-none d-md-flex align-items-center gap-2">
+        <span class="badge bg-white text-muted border shadow-sm px-3 py-2 rounded-pill small">
+            <kbd class="bg-light text-dark border px-1">F2</kbd> Buscador &nbsp;|&nbsp; 
+            <kbd class="bg-light text-dark border px-1">↑</kbd><kbd class="bg-light text-dark border px-1">↓</kbd> Navegar &nbsp;|&nbsp; 
+            <kbd class="bg-light text-dark border px-1">Enter</kbd> Agregar &nbsp;|&nbsp; 
+            <kbd class="bg-light text-dark border px-1">F4</kbd> Cobro
+        </span>
+    </div>
 </div>
 
 <div class="row">
@@ -12,44 +23,46 @@
         
         <!-- Panel de Escaneo -->
         <div class="card card-custom p-4 mb-4">
-            <label class="form-label fw-bold text-brand-black">Buscar o Escanear Código</label>
+            <div class="d-flex justify-content-between align-items-center mb-2">
+                <label class="form-label fw-bold text-brand-black mb-0">Buscar o Escanear Código</label>
+                <small class="text-muted d-md-none"><kbd class="bg-light text-secondary border px-1">F2</kbd> Buscar</small>
+            </div>
             <div class="d-flex gap-2 position-relative">
                 <div class="input-group input-group-lg shadow-sm border-0 rounded-3 overflow-hidden flex-grow-1">
                     <span class="input-group-text bg-white border-0"><i class="fa-solid fa-barcode text-muted"></i></span>
-                    <input type="text" class="form-control border-0" id="sku_input" placeholder="Buscar por nombre o SKU..." autocomplete="off" autofocus>
+                    <input type="text" class="form-control border-0" id="sku_input" placeholder="Buscar por nombre, SKU o subcategoría..." autocomplete="off" autofocus>
                     <!-- Botón Secundario Rosa Pastel -->
                     <button class="btn btn-pink px-4" type="button" id="btn_add_product">
                         <i class="fa-solid fa-check ms-1"></i> Agregar
                     </button>
                 </div>
-                <button class="btn btn-outline-primary rounded-3 px-3 shadow-sm" type="button" data-bs-toggle="modal" data-bs-target="#modalProductoManual" title="Agregar producto de otro local">
+                <button class="btn btn-outline-primary rounded-3 px-3 shadow-sm" type="button" data-bs-toggle="modal" data-bs-target="#modalProductoManual" title="Agregar producto de otro local (externo)">
                     <i class="fa-solid fa-plus me-1"></i><i class="fa-solid fa-handshake"></i>
                 </button>
                 
-                <!-- Resultados del autocompletado -->
-                <div id="autocomplete_results" class="list-group position-absolute shadow rounded-3 border-0" style="top: 100%; left: 0; right: 60px; z-index: 1050; display: none; max-height: 300px; overflow-y: auto;">
+                <!-- Resultados del autocompletado dinámico -->
+                <div id="autocomplete_results" class="list-group position-absolute shadow-lg rounded-3 border bg-white" style="top: 100%; left: 0; right: 55px; z-index: 1050; display: none; max-height: 380px; overflow-y: auto;">
                 </div>
             </div>
         </div>
 
         <!-- Tabla Carrito de Compras -->
-        <div class="card card-custom p-0 overflow-hidden">
+        <div class="card card-custom p-0 overflow-hidden shadow-sm">
             <div class="table-responsive">
                 <table class="table table-custom mb-0 align-middle">
                     <thead class="bg-light">
                         <tr>
                             <th>Producto Seleccionado</th>
-                            <th class="text-center" width="130">Cantidad</th>
-                            <th class="text-end" width="160">Precio U.</th>
-                            <th class="text-end" width="120">Subtotal</th>
-                            <th class="text-center" width="70"></th>
+                            <th class="text-center" width="150">Cantidad</th>
+                            <th class="text-end" width="170">Precio U.</th>
+                            <th class="text-end" width="130">Subtotal</th>
+                            <th class="text-center" width="80"></th>
                         </tr>
                     </thead>
                     <tbody id="cart_body">
                         <!-- ESPACIO RESERVADO PARA INYECCIÓN JS DINÁMICA -->
                         <tr>
                             <td colspan="5" class="text-center py-5 text-muted" id="empty_cart_msg">
-                                <!-- Icono Rosa Pastel -->
                                 <i class="fa-solid fa-cart-arrow-down fs-2 mb-2 d-block text-brand-pink opacity-50"></i>
                                 La venta está vacía actualmente.
                             </td>
@@ -63,7 +76,7 @@
 
     <!-- Panel Vertical Cobro Total -->
     <div class="col-lg-4">
-        <div class="card card-custom p-4 position-sticky" style="top: 100px;">
+        <div class="card card-custom p-4 position-sticky shadow-sm" style="top: 100px;">
             <h4 class="fw-bold text-brand-black mb-4 pb-3 border-bottom">Balance</h4>
             
             <div class="d-flex justify-content-between mb-3">
@@ -115,6 +128,30 @@
                     <option value="bancolombia">🏦 Bancolombia</option>
                     <option value="daviplata">📱 Daviplata</option>
                 </select>
+
+                <!-- Calculadora de Cambio / Vueltas Rápida para Efectivo -->
+                <div id="calculadora_cambio" class="p-3 bg-light rounded-3 mb-3 border border-dashed">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <label class="form-label fw-bold small text-muted mb-0"><i class="fa-solid fa-money-bill-wave text-success me-1"></i>Efectivo Recibido</label>
+                        <button type="button" class="btn btn-sm btn-link text-decoration-none p-0 small fw-bold text-brand-blue" onclick="ponerMontoExacto()">Exacto</button>
+                    </div>
+                    <div class="input-group input-group-sm mb-2">
+                        <span class="input-group-text bg-white border-0 fw-bold">$</span>
+                        <input type="number" id="efectivo_recibido" class="form-control border-0 shadow-sm text-end fw-bold fs-6" placeholder="0" step="100" min="0">
+                    </div>
+                    <!-- Botones rápidos de billetes (COP) -->
+                    <div class="d-flex gap-1 mb-2">
+                        <button type="button" class="btn btn-sm btn-outline-secondary flex-fill py-1 rounded-pill" style="font-size: 0.75rem;" onclick="sumarBillete(10000)">+10k</button>
+                        <button type="button" class="btn btn-sm btn-outline-secondary flex-fill py-1 rounded-pill" style="font-size: 0.75rem;" onclick="sumarBillete(20000)">+20k</button>
+                        <button type="button" class="btn btn-sm btn-outline-secondary flex-fill py-1 rounded-pill" style="font-size: 0.75rem;" onclick="sumarBillete(50000)">+50k</button>
+                        <button type="button" class="btn btn-sm btn-outline-secondary flex-fill py-1 rounded-pill" style="font-size: 0.75rem;" onclick="sumarBillete(100000)">+100k</button>
+                    </div>
+                    <!-- Display de Vueltas -->
+                    <div id="vueltas_display" class="d-flex justify-content-between align-items-center pt-2 border-top">
+                        <span class="small fw-bold text-muted">Vueltas / Cambio:</span>
+                        <span class="fw-bolder fs-5 text-success" id="monto_vueltas">$0</span>
+                    </div>
+                </div>
             </div>
 
             <!-- Modo 2: Pago Dividido/Mixto (oculto por defecto) -->
@@ -143,10 +180,10 @@
 
             <!-- Botón de Cobro Masivo Azul Turquesa -->
             <div class="d-grid gap-2 mt-4">
-                <button type="button" class="btn btn-blue btn-lg rounded-3 py-3 shadow-sm text-uppercase" id="btn_process_sale">
-                    <i class="fa-solid fa-credit-card me-2"></i> Procesar Cobro
+                <button type="button" class="btn btn-blue btn-lg rounded-3 py-3 shadow-sm text-uppercase fw-bold" id="btn_process_sale">
+                    <i class="fa-solid fa-credit-card me-2"></i> Procesar Cobro <small class="opacity-75" style="font-size: 0.75rem;">(F4)</small>
                 </button>
-                <button type="button" class="btn btn-light mt-2 fw-bold text-muted" id="btn_clear_cart">
+                <button type="button" class="btn btn-light mt-2 fw-bold text-muted rounded-pill" id="btn_clear_cart">
                     Limpiar Venta
                 </button>
             </div>
@@ -154,8 +191,44 @@
     </div>
 </div>
 
-<!-- Estilos para animaciones del pago mixto -->
+<!-- Estilos para animación de tabla, autocompletado y toasts -->
 <style>
+    /* Destello suave cuando un producto entra o suma en el carrito */
+    @keyframes flashHighlight {
+        0% { background-color: rgba(0, 139, 139, 0.22); }
+        100% { background-color: transparent; }
+    }
+    .flash-item {
+        animation: flashHighlight 0.7s ease-out;
+    }
+
+    /* Autocompletado mejorado */
+    #autocomplete_results {
+        box-shadow: 0 12px 28px rgba(0,0,0,0.15) !important;
+        border: 1px solid #dee2e6 !important;
+    }
+    .autocomplete-item {
+        cursor: pointer;
+        transition: background-color 0.12s ease;
+        padding: 10px 14px;
+        border-bottom: 1px solid #f1f3f5;
+    }
+    .autocomplete-item:last-child {
+        border-bottom: none;
+    }
+    .autocomplete-item:hover,
+    .autocomplete-item.active {
+        background-color: #f0fdfd !important;
+    }
+    .highlight-match {
+        background-color: #fff3cd;
+        font-weight: 700;
+        border-radius: 2px;
+        padding: 0 2px;
+        color: #212529;
+    }
+
+    /* Animaciones para pago mixto */
     #pago_mixto_section .pago-item {
         animation: slideDown 0.25s ease-out;
     }
@@ -172,6 +245,24 @@
     }
     #saldo_restante_alert.saldo-excedido {
         background: linear-gradient(135deg, #f8d7da 0%, #f5c6cb 100%) !important;
+    }
+
+    /* Botones de control de cantidad en la tabla */
+    .btn-qty {
+        width: 28px;
+        height: 28px;
+        padding: 0;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 50%;
+        font-weight: bold;
+        transition: all 0.15s ease;
+    }
+    .btn-qty:hover {
+        background-color: var(--brand-blue) !important;
+        color: white !important;
+        border-color: var(--brand-blue) !important;
     }
 </style>
 
@@ -225,16 +316,55 @@
     </div>
 </div>
 
-<!-- Motor Javascript Vanilla para procesar Cajas Dinámicas sin recargar -->
+<!-- Motor Javascript Vanilla Ultrarápido y Dinámico -->
 <script>
     let carrito = [];
     let pagosMixtos = []; // Array de {metodo_pago, monto}
     const csrf_token = "{{ csrf_token() }}";
 
+    // Formato de moneda COP
+    const formatoCOP = (num) => "$" + Math.round(num || 0).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+
+    // --- Toast flotante ligero no bloqueante ---
+    function posToast(mensaje, tipo = 'info') {
+        const container = document.getElementById('pos_toast_container');
+        if (!container) return;
+        
+        const toast = document.createElement('div');
+        const bgClass = tipo === 'success' ? 'bg-success text-white' :
+                        tipo === 'warning' ? 'bg-warning text-dark' :
+                        tipo === 'danger' ? 'bg-danger text-white' : 'bg-dark text-white';
+        
+        const icon = tipo === 'success' ? 'fa-circle-check' :
+                     tipo === 'warning' ? 'fa-triangle-exclamation' :
+                     tipo === 'danger' ? 'fa-circle-xmark' : 'fa-circle-info';
+                     
+        toast.className = `toast align-items-center ${bgClass} border-0 shadow-lg show mb-2 rounded-3`;
+        toast.setAttribute('role', 'alert');
+        toast.style.minWidth = '260px';
+        toast.innerHTML = `
+            <div class="d-flex p-2">
+                <div class="toast-body d-flex align-items-center py-1">
+                    <i class="fa-solid ${icon} me-2 fs-5"></i>
+                    <span class="fw-semibold small">${mensaje}</span>
+                </div>
+                <button type="button" class="btn-close ${tipo !== 'warning' ? 'btn-close-white' : ''} me-2 m-auto" onclick="this.closest('.toast').remove()"></button>
+            </div>
+        `;
+        
+        container.appendChild(toast);
+        setTimeout(() => {
+            toast.style.transition = 'opacity 0.25s ease, transform 0.25s ease';
+            toast.style.opacity = '0';
+            toast.style.transform = 'translateX(25px)';
+            setTimeout(() => toast.remove(), 250);
+        }, 2600);
+    }
+
     // Inicializar fecha de venta con la fecha de hoy (Solo Admin)
     (function() {
         const fechaInput = document.getElementById('fecha_venta_input');
-        if (!fechaInput) return; // Si no es admin, no existe en el DOM
+        if (!fechaInput) return;
         
         const hoy = new Date();
         const yyyy = hoy.getFullYear();
@@ -242,7 +372,7 @@
         const dd = String(hoy.getDate()).padStart(2, '0');
         
         fechaInput.value = `${yyyy}-${mm}-${dd}`;
-        fechaInput.max = `${yyyy}-${mm}-${dd}`; // No permitir fechas futuras
+        fechaInput.max = `${yyyy}-${mm}-${dd}`;
         fechaInput.addEventListener('change', actualizarLabelFecha);
     })();
 
@@ -274,6 +404,7 @@
             label.className = 'badge bg-warning bg-opacity-25 text-dark border border-warning rounded-pill px-3 py-1';
         }
     }
+
     const METODOS_DISPONIBLES = [
         { value: 'efectivo', label: '💵 Efectivo' },
         { value: 'nequi', label: '📱 Nequi' },
@@ -281,32 +412,348 @@
         { value: 'daviplata', label: '📱 Daviplata' }
     ];
 
-    // Capturar el ESCANER ("Enter" en el teclado sin enviar un formulario)
-    document.getElementById('sku_input').addEventListener('keypress', function(e) {
-        if (e.key === 'Enter') {
+    // ==========================================
+    // --- LÓGICA DE BÚSQUEDA Y AUTOCOMPLETADO ---
+    // ==========================================
+    const skuInputEl = document.getElementById('sku_input');
+    const autocompleteResultsEl = document.getElementById('autocomplete_results');
+    let autocompleteTimeout = null;
+    let currentAutocompleteItems = [];
+    let activeAutocompleteIndex = -1;
+
+    function normalizarTexto(str) {
+        if (!str) return '';
+        return str.toString().normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+    }
+
+    function highlightQuery(originalText, query) {
+        if (!query || !originalText) return originalText || '';
+        const tokens = query.trim().split(/\s+/).filter(t => t.length > 0);
+        if (tokens.length === 0) return originalText;
+
+        const normText = normalizarTexto(originalText);
+        
+        let ranges = [];
+        tokens.forEach(tok => {
+            const normTok = normalizarTexto(tok);
+            if (!normTok) return;
+            let startIdx = 0;
+            while ((startIdx = normText.indexOf(normTok, startIdx)) !== -1) {
+                ranges.push([startIdx, startIdx + normTok.length]);
+                startIdx += normTok.length;
+            }
+        });
+
+        if (ranges.length === 0) return originalText;
+
+        // Ordenar y fusionar rangos superpuestos
+        ranges.sort((a, b) => a[0] - b[0]);
+        let merged = [ranges[0]];
+        for (let i = 1; i < ranges.length; i++) {
+            let prev = merged[merged.length - 1];
+            let curr = ranges[i];
+            if (curr[0] <= prev[1]) {
+                prev[1] = Math.max(prev[1], curr[1]);
+            } else {
+                merged.push(curr);
+            }
+        }
+
+        let result = '';
+        let lastIdx = 0;
+        merged.forEach(([start, end]) => {
+            result += originalText.slice(lastIdx, start);
+            result += `<mark class="highlight-match">${originalText.slice(start, end)}</mark>`;
+            lastIdx = end;
+        });
+        result += originalText.slice(lastIdx);
+        return result;
+    }
+
+    skuInputEl.addEventListener('input', function() {
+        clearTimeout(autocompleteTimeout);
+        const query = this.value.trim();
+        
+        if (query.length < 1) {
+            autocompleteResultsEl.style.display = 'none';
+            currentAutocompleteItems = [];
+            activeAutocompleteIndex = -1;
+            return;
+        }
+
+        // Debounce optimizado a 120ms para respuesta instantánea
+        autocompleteTimeout = setTimeout(() => {
+            fetch(`/sales/api/search_products?q=${encodeURIComponent(query)}`)
+                .then(res => res.json())
+                .then(data => {
+                    autocompleteResultsEl.innerHTML = '';
+                    currentAutocompleteItems = data;
+                    activeAutocompleteIndex = -1;
+
+                    if (data.length === 0) {
+                        autocompleteResultsEl.innerHTML = `
+                            <div class="p-3 text-center text-muted small">
+                                <i class="fa-solid fa-magnifying-glass me-1 opacity-50"></i> No se encontraron productos coincidentes.
+                            </div>`;
+                        autocompleteResultsEl.style.display = 'block';
+                        return;
+                    }
+
+                    data.forEach((p, idx) => {
+                        const itemDiv = document.createElement('div');
+                        itemDiv.className = 'autocomplete-item d-flex justify-content-between align-items-center';
+                        itemDiv.dataset.index = idx;
+
+                        // Stock badge
+                        let stockBadge = '';
+                        if (p.cantidad_stock > 5) {
+                            stockBadge = `<span class="badge bg-success bg-opacity-10 text-success rounded-pill fw-bold" style="font-size: 0.72rem;"><i class="fa-solid fa-check me-1"></i>${p.cantidad_stock} en stock</span>`;
+                        } else if (p.cantidad_stock > 0) {
+                            stockBadge = `<span class="badge bg-warning bg-opacity-25 text-dark rounded-pill fw-bold" style="font-size: 0.72rem;"><i class="fa-solid fa-triangle-exclamation me-1"></i>¡Últimas ${p.cantidad_stock}!</span>`;
+                        } else {
+                            stockBadge = `<span class="badge bg-danger bg-opacity-10 text-danger rounded-pill fw-bold" style="font-size: 0.72rem;">Sin stock</span>`;
+                        }
+
+                        // Mini chips de variantes si tiene
+                        let variantesHtml = '';
+                        if (p.variantes && p.variantes.length > 0) {
+                            const chips = p.variantes.slice(0, 3).map(v => 
+                                `<span class="badge bg-light text-secondary border me-1">${highlightQuery(v.nombre, query)}</span>`
+                            ).join('');
+                            const mas = p.variantes.length > 3 ? `<span class="badge bg-light text-muted">+${p.variantes.length - 3}</span>` : '';
+                            variantesHtml = `<div class="mt-1 small">${chips}${mas}</div>`;
+                        }
+
+                        itemDiv.innerHTML = `
+                            <div style="flex: 1; min-width: 0;" class="me-3">
+                                <div class="fw-bold text-brand-black text-truncate">${highlightQuery(p.nombre, query)}</div>
+                                <div class="small text-muted d-flex align-items-center gap-2 mt-1">
+                                    <span><i class="fa-solid fa-barcode me-1"></i>${highlightQuery(p.sku, query)}</span>
+                                    ${stockBadge}
+                                </div>
+                                ${variantesHtml}
+                            </div>
+                            <div class="text-end">
+                                <div class="fw-bold fs-6" style="color: var(--brand-blue);">${formatoCOP(p.precio_sugerido)}</div>
+                                <small class="text-muted" style="font-size: 0.7rem;">Enter o Click</small>
+                            </div>
+                        `;
+
+                        itemDiv.addEventListener('click', () => {
+                            // Agregar directamente en memoria SIN segundo fetch de red
+                            agregarProductoAlCarrito(p);
+                        });
+
+                        autocompleteResultsEl.appendChild(itemDiv);
+                    });
+
+                    // Barra inferior de ayuda con atajos
+                    const footerHelp = document.createElement('div');
+                    footerHelp.className = 'p-2 bg-light border-top text-muted small d-flex justify-content-between align-items-center px-3';
+                    footerHelp.style.fontSize = '0.75rem';
+                    footerHelp.innerHTML = `
+                        <span><kbd class="bg-white border text-dark">↑</kbd><kbd class="bg-white border text-dark">↓</kbd> Navegar</span>
+                        <span><kbd class="bg-white border text-dark">Enter</kbd> Agregar al Carrito</span>
+                        <span><kbd class="bg-white border text-dark">Esc</kbd> Cerrar</span>
+                    `;
+                    autocompleteResultsEl.appendChild(footerHelp);
+
+                    autocompleteResultsEl.style.display = 'block';
+                })
+                .catch(err => console.error("Error en autocompletado:", err));
+        }, 120);
+    });
+
+    // Control de navegación con flechas y tecla Enter en el input de búsqueda
+    skuInputEl.addEventListener('keydown', function(e) {
+        const items = autocompleteResultsEl.querySelectorAll('.autocomplete-item');
+        
+        if (e.key === 'ArrowDown') {
             e.preventDefault();
+            if (items.length === 0) return;
+            activeAutocompleteIndex = (activeAutocompleteIndex + 1) % items.length;
+            resaltarItemAutocompletado(items);
+        } else if (e.key === 'ArrowUp') {
+            e.preventDefault();
+            if (items.length === 0) return;
+            activeAutocompleteIndex = (activeAutocompleteIndex - 1 + items.length) % items.length;
+            resaltarItemAutocompletado(items);
+        } else if (e.key === 'Enter') {
+            e.preventDefault();
+            // Si el autocompletado está visible y hay resultados
+            if (autocompleteResultsEl.style.display !== 'none' && items.length > 0) {
+                if (activeAutocompleteIndex >= 0 && activeAutocompleteIndex < currentAutocompleteItems.length) {
+                    agregarProductoAlCarrito(currentAutocompleteItems[activeAutocompleteIndex]);
+                    return;
+                }
+                // Si no navegó con flechas, tomar el primer resultado directo
+                if (currentAutocompleteItems.length > 0) {
+                    agregarProductoAlCarrito(currentAutocompleteItems[0]);
+                    return;
+                }
+            }
+            // Si no hay lista o fue un escaneo exacto, buscar en backend
             buscarYAgregarProducto();
+        } else if (e.key === 'Escape') {
+            autocompleteResultsEl.style.display = 'none';
+            activeAutocompleteIndex = -1;
         }
     });
 
+    function resaltarItemAutocompletado(items) {
+        items.forEach((item, idx) => {
+            if (idx === activeAutocompleteIndex) {
+                item.classList.add('active');
+                item.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+            } else {
+                item.classList.remove('active');
+            }
+        });
+    }
+
+    // Ocultar resultados al hacer clic fuera
+    document.addEventListener('click', function(e) {
+        if (!skuInputEl.contains(e.target) && !autocompleteResultsEl.contains(e.target)) {
+            autocompleteResultsEl.style.display = 'none';
+            activeAutocompleteIndex = -1;
+        }
+    });
+
+    // ===============================================
+    // --- AGREGAR PRODUCTO AL CARRITO (EN MEMORIA) ---
+    // ===============================================
+    function agregarProductoAlCarrito(producto, forcedVariantId = null) {
+        let variantId = forcedVariantId;
+        let initialPrecio = producto.precio_sugerido;
+        let initialLimite = producto.precio_limite;
+        let initialMinimo = producto.precio_minimo;
+        let maxStock = producto.cantidad_stock;
+
+        // Si tiene variantes
+        if (producto.variantes && producto.variantes.length > 0) {
+            let selectedVar = null;
+            if (forcedVariantId) {
+                selectedVar = producto.variantes.find(v => v.id == forcedVariantId);
+            } else if (producto.matched_variant_id) {
+                selectedVar = producto.variantes.find(v => v.id == producto.matched_variant_id);
+            } else {
+                selectedVar = producto.variantes[0];
+            }
+            if (selectedVar) {
+                variantId = selectedVar.id;
+                initialPrecio = selectedVar.precio_sugerido;
+                initialLimite = selectedVar.precio_limite;
+                initialMinimo = selectedVar.precio_minimo;
+                maxStock = selectedVar.stock;
+            }
+        }
+
+        // Buscar si ya existe en el carrito la misma referencia y variante
+        const existente = carrito.find(item => 
+            item.id === producto.id && 
+            item.variant_id === variantId && 
+            !item.es_manual
+        );
+
+        if (existente) {
+            if (existente.cantidad + 1 > maxStock) {
+                posToast(`¡Stock insuficiente! Solo quedan ${maxStock} unidades de ${producto.nombre}.`, 'warning');
+                return;
+            }
+            existente.cantidad++;
+            posToast(`+1 ${producto.nombre} (${existente.cantidad} en venta)`, 'info');
+            renderizarCarrito(existente.id, variantId);
+        } else {
+            if (maxStock <= 0) {
+                posToast(`¡Sin Stock Físico! ${producto.nombre} no tiene unidades disponibles.`, 'warning');
+                return;
+            }
+
+            carrito.push({
+                id: producto.id,
+                sku: producto.sku,
+                nombre: producto.nombre,
+                tipo_inventario: producto.tipo_inventario,
+                cantidad: 1,
+                precio_final: initialPrecio, 
+                precio_limite: initialLimite,
+                precio_minimo: initialMinimo,
+                precio_sugerido: initialPrecio,
+                cantidad_stock: maxStock,
+                variantes: producto.variantes || [],
+                variant_id: variantId,
+                es_obsequio: false,
+                es_manual: false
+            });
+            posToast(`Agregado: ${producto.nombre}`, 'success');
+            renderizarCarrito(producto.id, variantId);
+        }
+
+        // Limpiar cajón y re-enfocar para el siguiente escaneo
+        skuInputEl.value = '';
+        autocompleteResultsEl.style.display = 'none';
+        activeAutocompleteIndex = -1;
+        skuInputEl.focus();
+    }
+
+    // Búsqueda de respaldo para escaneo directo por código o botón
+    async function buscarYAgregarProducto() {
+        const sku = skuInputEl.value.trim();
+        if (!sku) return;
+
+        autocompleteResultsEl.style.display = 'none';
+
+        try {
+            // Intentar primero por SKU exacto
+            const response = await fetch(`/sales/api/producto/${encodeURIComponent(sku)}`);
+            if (response.ok) {
+                const producto = await response.json();
+                agregarProductoAlCarrito(producto);
+                return;
+            }
+
+            // Si no fue SKU exacto, intentar búsqueda por texto para no alertar error
+            const searchResp = await fetch(`/sales/api/search_products?q=${encodeURIComponent(sku)}`);
+            const searchData = await searchResp.json();
+            if (searchData.length > 0) {
+                agregarProductoAlCarrito(searchData[0]);
+                return;
+            }
+
+            posToast(`No se encontró ningún producto con el código o nombre '${sku}'`, 'warning');
+            skuInputEl.select();
+            
+        } catch (error) {
+            console.error('Error Catcher:', error);
+            posToast('Error de comunicación con el servidor', 'danger');
+        }
+    }
+
     document.getElementById('btn_add_product').addEventListener('click', buscarYAgregarProducto);
     document.getElementById('btn_clear_cart').addEventListener('click', () => {
+        if (carrito.length > 0 && !confirm('¿Deseas vaciar toda la venta actual?')) return;
         carrito = [];
         renderizarCarrito();
         resetPagosMixtos();
+        const inputRecibido = document.getElementById('efectivo_recibido');
+        if (inputRecibido) inputRecibido.value = '';
+        actualizarCalculadoraCambio();
+        skuInputEl.focus();
+        posToast('Venta vaciada', 'info');
     });
 
-
-    // Botón para agregar producto manual (prestado de otro local)
+    // ==========================================
+    // --- PRODUCTO MANUAL (PRESTADO VECINO) ---
+    // ==========================================
     document.getElementById('btn_agregar_manual').addEventListener('click', function() {
         const nombre = document.getElementById('manual_nombre').value.trim();
         const costo = parseFloat(document.getElementById('manual_costo').value) || 0;
         const precioVenta = parseFloat(document.getElementById('manual_precio_venta').value) || 0;
         const cantidad = parseInt(document.getElementById('manual_cantidad').value) || 1;
 
-        if (!nombre) return alert('Debes ingresar un nombre para el producto.');
-        if (precioVenta <= 0) return alert('El precio de venta debe ser mayor a $0.');
-        if (costo < 0) return alert('El costo no puede ser negativo.');
+        if (!nombre) return posToast('Debes ingresar un nombre para el producto.', 'warning');
+        if (precioVenta <= 0) return posToast('El precio de venta debe ser mayor a $0.', 'warning');
+        if (costo < 0) return posToast('El costo no puede ser negativo.', 'warning');
 
         carrito.push({
             id: null,
@@ -325,17 +772,20 @@
         });
 
         renderizarCarrito();
+        posToast(`Producto externo agregado: ${nombre}`, 'success');
 
-        // Cerrar modal y limpiar campos
         const modal = bootstrap.Modal.getInstance(document.getElementById('modalProductoManual'));
-        modal.hide();
+        if (modal) modal.hide();
         document.getElementById('manual_nombre').value = '';
         document.getElementById('manual_costo').value = '';
         document.getElementById('manual_precio_venta').value = '';
         document.getElementById('manual_cantidad').value = '1';
+        skuInputEl.focus();
     });
 
-    // Toggle entre Pago Único y Pago Mixto
+    // ==========================================
+    // --- MÉTODOS DE PAGO Y SALDOS ---
+    // ==========================================
     document.getElementById('toggle_pago_mixto').addEventListener('change', function() {
         const unicoSec = document.getElementById('pago_unico_section');
         const mixtoSec = document.getElementById('pago_mixto_section');
@@ -343,7 +793,6 @@
         if (this.checked) {
             unicoSec.style.display = 'none';
             mixtoSec.style.display = 'block';
-            // Inicializar con un primer pago parcial
             if (pagosMixtos.length === 0) {
                 agregarPagoParcial();
             }
@@ -351,6 +800,7 @@
         } else {
             unicoSec.style.display = 'block';
             mixtoSec.style.display = 'none';
+            actualizarCalculadoraCambio();
         }
     });
 
@@ -363,7 +813,7 @@
 
     function eliminarPagoParcial(index) {
         if (pagosMixtos.length <= 1) {
-            alert('Debe existir al menos un método de pago.');
+            posToast('Debe existir al menos un método de pago.', 'warning');
             return;
         }
         pagosMixtos.splice(index, 1);
@@ -393,8 +843,6 @@
     function obtenerGranTotal() {
         return carrito.reduce((sum, item) => sum + (item.cantidad * item.precio_final), 0);
     }
-    
-    const formatoCOP = (num) => "$" + Math.round(num).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".");
 
     function actualizarSaldoRestante() {
         const granTotal = obtenerGranTotal();
@@ -405,41 +853,41 @@
         const alertEl = document.getElementById('saldo_restante_alert');
         const barraEl = document.getElementById('barra_progreso_pago');
         
-        saldoEl.innerText = formatoCOP(Math.abs(saldo));
+        if (saldoEl) saldoEl.innerText = formatoCOP(Math.abs(saldo));
         
-        // Calcular progreso
         const porcentaje = granTotal > 0 ? Math.min((sumaPagos / granTotal) * 100, 100) : 0;
-        barraEl.style.width = porcentaje + '%';
+        if (barraEl) barraEl.style.width = porcentaje + '%';
         
-        // Estados visuales
-        alertEl.classList.remove('saldo-cubierto', 'saldo-excedido');
-        if (saldo === 0 && granTotal > 0) {
-            alertEl.classList.add('saldo-cubierto');
-            saldoEl.style.color = '#28a745';
-            barraEl.style.background = 'linear-gradient(90deg, #28a745, #34ce57)';
-            document.querySelector('#saldo_restante_alert small').innerHTML = '<i class="fa-solid fa-circle-check me-1"></i> ¡Pago completo!';
-        } else if (saldo < 0) {
-            alertEl.classList.add('saldo-excedido');
-            saldoEl.style.color = '#dc3545';
-            saldoEl.innerText = '+' + formatoCOP(Math.abs(saldo));
-            barraEl.style.background = 'linear-gradient(90deg, #dc3545, #e74c5c)';
-            document.querySelector('#saldo_restante_alert small').innerHTML = '<i class="fa-solid fa-triangle-exclamation me-1"></i> Excedente:';
-        } else {
-            saldoEl.style.color = 'var(--brand-blue)';
-            barraEl.style.background = 'linear-gradient(90deg, #A3D8DE, #7BC8D0)';
-            document.querySelector('#saldo_restante_alert small').innerHTML = '<i class="fa-solid fa-scale-balanced me-1"></i> Saldo por cubrir:';
+        if (alertEl) {
+            alertEl.classList.remove('saldo-cubierto', 'saldo-excedido');
+            if (saldo === 0 && granTotal > 0) {
+                alertEl.classList.add('saldo-cubierto');
+                saldoEl.style.color = '#28a745';
+                if (barraEl) barraEl.style.background = 'linear-gradient(90deg, #28a745, #34ce57)';
+                document.querySelector('#saldo_restante_alert small').innerHTML = '<i class="fa-solid fa-circle-check me-1"></i> ¡Pago completo!';
+            } else if (saldo < 0) {
+                alertEl.classList.add('saldo-excedido');
+                saldoEl.style.color = '#dc3545';
+                saldoEl.innerText = '+' + formatoCOP(Math.abs(saldo));
+                if (barraEl) barraEl.style.background = 'linear-gradient(90deg, #dc3545, #e74c5c)';
+                document.querySelector('#saldo_restante_alert small').innerHTML = '<i class="fa-solid fa-triangle-exclamation me-1"></i> Excedente:';
+            } else {
+                saldoEl.style.color = 'var(--brand-blue)';
+                if (barraEl) barraEl.style.background = 'linear-gradient(90deg, #A3D8DE, #7BC8D0)';
+                document.querySelector('#saldo_restante_alert small').innerHTML = '<i class="fa-solid fa-scale-balanced me-1"></i> Saldo por cubrir:';
+            }
         }
     }
 
     function renderizarPagosMixtos() {
         const container = document.getElementById('pagos_list');
+        if (!container) return;
         container.innerHTML = '';
 
         pagosMixtos.forEach((pago, index) => {
             const div = document.createElement('div');
             div.className = 'pago-item d-flex gap-2 align-items-center';
             
-            // Select del método
             let optionsHtml = METODOS_DISPONIBLES.map(m => 
                 `<option value="${m.value}" ${m.value === pago.metodo_pago ? 'selected' : ''}>${m.label}</option>`
             ).join('');
@@ -464,167 +912,102 @@
         actualizarSaldoRestante();
     }
 
-    // --- Lógica de Autocompletado ---
-    const skuInputEl = document.getElementById('sku_input');
-    const autocompleteResultsEl = document.getElementById('autocomplete_results');
-    let autocompleteTimeout = null;
-
-    skuInputEl.addEventListener('input', function() {
-        clearTimeout(autocompleteTimeout);
-        const query = this.value.trim();
+    // =======================================================
+    // --- CALCULADORA DE CAMBIO / VUELTAS (PAGO EFECTIVO) ---
+    // =======================================================
+    function actualizarCalculadoraCambio() {
+        const calcEl = document.getElementById('calculadora_cambio');
+        const metodoSel = document.getElementById('metodo-pago');
+        if (!calcEl || !metodoSel) return;
         
-        if (query.length < 2) {
-            autocompleteResultsEl.style.display = 'none';
+        const toggleMixto = document.getElementById('toggle_pago_mixto');
+        if (toggleMixto && toggleMixto.checked) {
+            calcEl.style.display = 'none';
             return;
         }
-
-        autocompleteTimeout = setTimeout(() => {
-            fetch(`/sales/api/search_products?q=${encodeURIComponent(query)}`)
-                .then(res => res.json())
-                .then(data => {
-                    autocompleteResultsEl.innerHTML = '';
-                    if (data.length === 0) {
-                        autocompleteResultsEl.innerHTML = '<div class="list-group-item text-muted">No se encontraron productos.</div>';
-                        autocompleteResultsEl.style.display = 'block';
-                        return;
-                    }
-
-                    data.forEach(p => {
-                        const btn = document.createElement('button');
-                        btn.type = 'button';
-                        btn.className = 'list-group-item list-group-item-action d-flex justify-content-between align-items-center';
-                        
-                        let stockBadge = p.cantidad_stock > 0 
-                            ? `<span class="badge bg-success rounded-pill">${p.cantidad_stock}</span>` 
-                            : `<span class="badge bg-danger rounded-pill">0</span>`;
-
-                        btn.innerHTML = `
-                            <div>
-                                <div class="fw-bold">${p.nombre}</div>
-                                <small class="text-muted">${p.sku}</small>
-                            </div>
-                            ${stockBadge}
-                        `;
-                        
-                        btn.addEventListener('click', () => {
-                            skuInputEl.value = p.sku;
-                            autocompleteResultsEl.style.display = 'none';
-                            buscarYAgregarProducto(); // Autodisparar la búsqueda exacta
-                        });
-                        
-                        autocompleteResultsEl.appendChild(btn);
-                    });
-                    
-                    autocompleteResultsEl.style.display = 'block';
-                })
-                .catch(err => console.error("Error en autocompletado:", err));
-        }, 300);
-    });
-
-    // Ocultar al hacer clic fuera
-    document.addEventListener('click', function(e) {
-        if (!skuInputEl.contains(e.target) && !autocompleteResultsEl.contains(e.target)) {
-            autocompleteResultsEl.style.display = 'none';
-        }
-    });
-    // ---------------------------------
-
-    async function buscarYAgregarProducto() {
-        const inputStr = document.getElementById('sku_input');
-        const sku = inputStr.value.trim();
-        if (!sku) return;
-
-        try {
-            // Mandar solicitud JSON rápida a nuestra ruta Flask
-            const response = await fetch(`/sales/api/producto/${encodeURIComponent(sku)}`);
-            if (!response.ok) {
-                alert(`Error: El SKU '${sku}' no existe en la base de datos.`);
-                inputStr.value = '';
-                return;
-            }
-
-            const producto = await response.json();
-
-            const existente = carrito.find(item => item.id === producto.id && (!item.variantes || item.variantes.length === 0));
-            if (existente) {
-                // Validación Estricta: Sobreventa (Stock) en productos planos
-                if (existente.cantidad + 1 > producto.cantidad_stock) {
-                    alert(`¡Stock insuficiente! Solo te quedan ${producto.cantidad_stock} unidades de ${producto.nombre}.`);
-                } else {
-                    existente.cantidad++;
-                }
-            } else {
-                if (producto.cantidad_stock <= 0) {
-                    alert(`¡Sin Stock Físico! No puedes vender o agregar ${producto.nombre}.`);
-                    return;
-                }
-                
-                // Si es nuevo, inicializar con el array. Permite encolar un renglón nuevo si tiene variantes.
-                let initial_variant_id = null;
-                let initial_precio = producto.precio_sugerido;
-                let initial_limite = producto.precio_limite;
-                let initial_minimo = producto.precio_minimo;
-                
-                if (producto.variantes && producto.variantes.length > 0) {
-                    let defaultVar = producto.variantes[0];
-                    if (producto.auto_select_variant) {
-                        const foundVar = producto.variantes.find(v => v.id === producto.auto_select_variant);
-                        if (foundVar) defaultVar = foundVar;
-                    }
-                    initial_variant_id = defaultVar.id;
-                    initial_precio = defaultVar.precio_sugerido;
-                    initial_limite = defaultVar.precio_limite;
-                    initial_minimo = defaultVar.precio_minimo;
-                }
-
-                carrito.push({
-                    id: producto.id,
-                    sku: producto.sku,
-                    nombre: producto.nombre,
-                    tipo_inventario: producto.tipo_inventario,
-                    cantidad: 1,
-                    precio_final: initial_precio, 
-                    precio_limite: initial_limite,
-                    precio_minimo: initial_minimo,
-                    cantidad_stock: producto.cantidad_stock,
-                    variantes: producto.variantes,
-                    variant_id: initial_variant_id,
-                    es_obsequio: false
-                });
-            }
-
-            inputStr.value = ''; // Limpiar cajón para el próximo escaneo
-            renderizarCarrito();
-            
-        } catch (error) {
-            console.error('Error Catcher:', error);
-            alert('Error comunicándose con el Backend (Flask). Verifica el servidor.');
+        
+        const esEfectivo = (metodoSel.value === 'efectivo');
+        calcEl.style.display = esEfectivo ? 'block' : 'none';
+        
+        const granTotal = obtenerGranTotal();
+        const recibidoInput = document.getElementById('efectivo_recibido');
+        const recibido = parseFloat(recibidoInput.value) || 0;
+        const vueltasEl = document.getElementById('monto_vueltas');
+        const labelEl = document.querySelector('#vueltas_display span:first-child');
+        
+        if (recibido <= 0) {
+            vueltasEl.innerText = '$0';
+            vueltasEl.className = 'fw-bolder fs-5 text-muted';
+            if (labelEl) labelEl.innerText = 'Vueltas / Cambio:';
+        } else if (recibido >= granTotal) {
+            const cambio = recibido - granTotal;
+            vueltasEl.innerText = formatoCOP(cambio);
+            vueltasEl.className = 'fw-bolder fs-5 text-success';
+            if (labelEl) labelEl.innerText = 'Vueltas a entregar:';
+        } else {
+            const falta = granTotal - recibido;
+            vueltasEl.innerText = '-' + formatoCOP(falta);
+            vueltasEl.className = 'fw-bolder fs-5 text-danger';
+            if (labelEl) labelEl.innerText = 'Faltan:';
         }
     }
 
-    // Detector interactivo de Casillas Precio/Cantidad editadas en Real-Time
+    function ponerMontoExacto() {
+        const granTotal = obtenerGranTotal();
+        const input = document.getElementById('efectivo_recibido');
+        if (input) {
+            input.value = Math.round(granTotal);
+            actualizarCalculadoraCambio();
+        }
+    }
+
+    function sumarBillete(monto) {
+        const input = document.getElementById('efectivo_recibido');
+        if (input) {
+            const actual = parseFloat(input.value) || 0;
+            input.value = Math.round(actual + monto);
+            actualizarCalculadoraCambio();
+        }
+    }
+
+    document.getElementById('efectivo_recibido')?.addEventListener('input', actualizarCalculadoraCambio);
+    document.getElementById('metodo-pago')?.addEventListener('change', actualizarCalculadoraCambio);
+
+    // ==========================================
+    // --- CONTROLES Y RENDERIZADO DE CARRITO ---
+    // ==========================================
+    function modificarCantidad(index, delta) {
+        const item = carrito[index];
+        if (!item) return;
+        const nuevaCantidad = item.cantidad + delta;
+        if (nuevaCantidad <= 0) {
+            eliminarItem(index);
+            return;
+        }
+        actualizarItem(index, 'cantidad', nuevaCantidad);
+    }
+
     function actualizarItem(index, campo, valor) {
         const item = carrito[index];
+        if (!item) return;
         
         if (campo === 'cantidad') {
             const nuevaCantidad = parseInt(valor);
-            if (nuevaCantidad <= 0) {
-                alert('La cantidad no debe reducirse en negativo, presiona el cesto de basura para borrar.'); 
+            if (isNaN(nuevaCantidad) || nuevaCantidad <= 0) {
+                posToast('La cantidad debe ser mayor a 0.', 'warning');
                 renderizarCarrito();
                 return;
             }
             
-            // Los productos manuales no tienen stock real que validar
             if (!item.es_manual) {
-                // Validar stock de la variante si existe, si no del producto base
                 let max_stock = item.cantidad_stock;
                 if (item.variantes && item.variantes.length > 0) {
                     const varSel = item.variantes.find(v => v.id == item.variant_id);
-                    if(varSel) max_stock = varSel.stock;
+                    if (varSel) max_stock = varSel.stock;
                 }
 
                 if (nuevaCantidad > max_stock) {
-                    alert(`La empresa no cuenta con Stock suficiente en esta variante/producto. Inventario Máximo: ${max_stock}`);
+                    posToast(`Stock insuficiente. Máximo disponible: ${max_stock}`, 'warning');
                     renderizarCarrito();
                     return;
                 }
@@ -634,14 +1017,12 @@
 
         if (campo === 'variant_id') {
             item.variant_id = parseInt(valor);
-            
             const varSel = item.variantes.find(v => v.id == item.variant_id);
             if (varSel) {
                 if (item.cantidad > varSel.stock) {
-                    alert(`Has seleccionado una variante con poco stock (${varSel.stock}). Se ajustará la cantidad.`);
+                    posToast(`Variante con stock limitado (${varSel.stock}). Ajustando cantidad.`, 'warning');
                     item.cantidad = varSel.stock > 0 ? varSel.stock : 1;
                 }
-                // Update specific variant bounds & price
                 item.precio_final = varSel.precio_sugerido;
                 item.precio_limite = varSel.precio_limite;
                 item.precio_minimo = varSel.precio_minimo;
@@ -650,38 +1031,46 @@
 
         if (campo === 'precio_final') {
             const nuevoPrecio = parseFloat(valor);
-            
-            // Regla de Negocio: Control de precio según Autoridad
+            if (isNaN(nuevoPrecio)) {
+                renderizarCarrito();
+                return;
+            }
             if (!item.es_obsequio && nuevoPrecio < item.precio_limite) {
-                alert(`¡OPERACIÓN BLOQUEADA! El precio pactado ($${nuevoPrecio}) es INFERIOR al Mínimo Autorizado para tu nivel de usuario ($${item.precio_limite}). No se puede vender a este precio para evitar pérdidas.`);
-                renderizarCarrito(); // Re-renderizar ignorando el valor digitado
+                posToast(`Precio inferior al mínimo autorizado (${formatoCOP(item.precio_limite)}).`, 'danger');
+                renderizarCarrito();
                 return;
             }
             item.precio_final = nuevoPrecio;
         }
         
-        renderizarCarrito(); // Redibujar siempre al procesar total
+        renderizarCarrito();
     }
 
     function eliminarItem(index) {
+        const item = carrito[index];
+        if (item) {
+            posToast(`Removido: ${item.nombre}`, 'info');
+        }
         carrito.splice(index, 1);
         renderizarCarrito();
     }
 
     function toggleObsequio(index) {
         let item = carrito[index];
+        if (!item) return;
         if (item.es_obsequio) {
             item.es_obsequio = false;
-            // Restaurar precio sugerido
             item.precio_final = item.precio_sugerido || 0;
+            posToast(`${item.nombre}: Restaurado precio regular`, 'info');
         } else {
             item.es_obsequio = true;
             item.precio_final = 0;
+            posToast(`${item.nombre}: Marcado como Obsequio ($0)`, 'success');
         }
         renderizarCarrito();
     }
 
-    function renderizarCarrito() {
+    function renderizarCarrito(highlightId = null, highlightVariant = null) {
         const tbody = document.getElementById('cart_body');
         const totalAmountEl = document.getElementById('total_amount');
         const totalItemsEl = document.getElementById('total_items');
@@ -699,14 +1088,13 @@
             </tr>`;
             totalAmountEl.innerText = '$0';
             totalItemsEl.innerText = '0';
-            // Actualizar saldo restante si estamos en modo mixto
             if (document.getElementById('toggle_pago_mixto').checked) {
                 actualizarSaldoRestante();
             }
+            actualizarCalculadoraCambio();
             return;
         }
 
-        // Iterar los productos virtuales agregados y dibujar cascarones DOM
         carrito.forEach((item, index) => {
             const subtotal = item.cantidad * item.precio_final;
             granTotal += subtotal;
@@ -717,7 +1105,6 @@
                 variantHtml = `<select class="form-select form-select-sm mt-1 text-secondary bg-light border-0 shadow-sm" onchange="actualizarItem(${index}, 'variant_id', this.value)">`;
                 item.variantes.forEach(v => {
                     let selected = (v.id == item.variant_id) ? "selected" : "";
-                    // Si tiene 0 despintar opción o alertarlo
                     let disableStr = v.stock <= 0 ? "(Sin stock)" : `(Stock: ${v.stock})`;
                     variantHtml += `<option value="${v.id}" ${selected}>${v.nombre} ${disableStr}</option>`;
                 });
@@ -725,27 +1112,47 @@
             }
 
             const tr = document.createElement('tr');
-            // Celdas DOM
+            
+            // Destello visual al agregar/actualizar
+            if (highlightId && item.id === highlightId && item.variant_id === highlightVariant) {
+                tr.className = 'flash-item';
+            }
+
             let skuLabel = '';
             if (item.es_manual) {
                 skuLabel = `<span class="badge bg-primary bg-opacity-10 text-primary border border-primary border-opacity-25 rounded-pill px-2" style="font-size: 0.7rem;"><i class="fa-solid fa-handshake me-1"></i>EXTERNO</span>`;
             } else {
-                skuLabel = `<small class="text-muted">${item.sku}</small>`;
+                skuLabel = `<small class="text-muted"><i class="fa-solid fa-barcode me-1"></i>${item.sku}</small>`;
             }
+
             let isObsequioClass = item.es_obsequio ? 'text-success' : 'text-muted';
             let precioInputState = item.es_obsequio ? 'disabled' : '';
+
+            // Stock disponible para mostrar
+            let stockDisp = item.es_manual ? '∞' : item.cantidad_stock;
+            if (item.variantes && item.variantes.length > 0) {
+                const varObj = item.variantes.find(v => v.id == item.variant_id);
+                if (varObj) stockDisp = varObj.stock;
+            }
 
             tr.innerHTML = `
                 <td>
                     <div class="fw-bold text-brand-black">${item.nombre}</div>
-                    ${skuLabel}
-                    ${item.es_obsequio ? '<span class="badge bg-success bg-opacity-10 text-success ms-2"><i class="fa-solid fa-gift me-1"></i>Obsequio</span>' : ''}
+                    <div class="d-flex align-items-center gap-2 mt-1">
+                        ${skuLabel}
+                        ${item.es_obsequio ? '<span class="badge bg-success bg-opacity-10 text-success ms-1"><i class="fa-solid fa-gift me-1"></i>Obsequio</span>' : ''}
+                    </div>
                     ${variantHtml}
                 </td>
-                <td width="130">
-                    <input type="number" class="form-control form-control-sm text-center" value="${item.cantidad}" onchange="actualizarItem(${index}, 'cantidad', this.value)">
+                <td width="150" class="text-center">
+                    <div class="d-flex align-items-center justify-content-center gap-1">
+                        <button type="button" class="btn btn-qty btn-light border shadow-sm" onclick="modificarCantidad(${index}, -1)" title="Restar">-</button>
+                        <input type="number" class="form-control form-control-sm text-center fw-bold px-1" style="width: 52px;" value="${item.cantidad}" min="1" onchange="actualizarItem(${index}, 'cantidad', this.value)">
+                        <button type="button" class="btn btn-qty btn-light border shadow-sm" onclick="modificarCantidad(${index}, 1)" title="Sumar">+</button>
+                    </div>
+                    <div class="text-muted small mt-1" style="font-size: 0.72rem;">Stock: <strong>${stockDisp}</strong></div>
                 </td>
-                <td width="180">
+                <td width="170">
                     ${item.es_manual ? `
                     <div class="input-group input-group-sm">
                         <span class="input-group-text bg-light border-end-0">$</span>
@@ -754,20 +1161,20 @@
                     ` : `
                     <div class="input-group input-group-sm">
                         <span class="input-group-text bg-light border-end-0">$</span>
-                        <input type="number" step="1" class="form-control text-end border-start-0 pe-2" value="${Math.round(item.precio_final)}" onchange="actualizarItem(${index}, 'precio_final', this.value)" ${precioInputState}>
+                        <input type="number" step="1" class="form-control text-end border-start-0 pe-2 fw-bold" value="${Math.round(item.precio_final)}" onchange="actualizarItem(${index}, 'precio_final', this.value)" ${precioInputState}>
                         <button class="btn btn-outline-secondary dropdown-toggle dropdown-toggle-split" type="button" data-bs-toggle="dropdown" aria-expanded="false" ${precioInputState}>
                             <span class="visually-hidden">Opciones</span>
                         </button>
                         <ul class="dropdown-menu dropdown-menu-end shadow border-0">
-                            <li><h6 class="dropdown-header">Precios Definidos</h6></li>
+                            <li><h6 class="dropdown-header">Precios Rápidos</h6></li>
                             <li><a class="dropdown-item py-2" href="#" onclick="event.preventDefault(); actualizarItem(${index}, 'precio_final', ${item.precio_minimo})">
-                                <div class="d-flex justify-content-between">
+                                <div class="d-flex justify-content-between align-items-center">
                                     <span>💸 Precio Mínimo</span>
                                     <span class="fw-bold ms-3">${formatoCOP(item.precio_minimo)}</span>
                                 </div>
                             </a></li>
                             <li><a class="dropdown-item py-2 text-primary" href="#" onclick="event.preventDefault(); actualizarItem(${index}, 'precio_final', ${item.precio_sugerido})">
-                                <div class="d-flex justify-content-between">
+                                <div class="d-flex justify-content-between align-items-center">
                                     <span>🏷️ Precio Sugerido</span>
                                     <span class="fw-bold ms-3">${formatoCOP(item.precio_sugerido)}</span>
                                 </div>
@@ -778,78 +1185,95 @@
                     </div>
                     `}
                 </td>
-                <td class="text-end fw-bold text-brand-black" width="120">
+                <td class="text-end fw-bold text-brand-black" width="130">
                     ${formatoCOP(subtotal)}
                 </td>
-                <td class="text-center" width="90">
+                <td class="text-center" width="80">
                     {% if current_user.rol == 'admin' %}
-                    <button class="btn btn-sm ${isObsequioClass} me-1" title="Marcar como Obsequio" onclick="toggleObsequio(${index})">
+                    <button class="btn btn-sm ${isObsequioClass} me-1" title="Marcar como Obsequio ($0)" onclick="toggleObsequio(${index})">
                         <i class="fa-solid fa-gift"></i>
                     </button>
                     {% endif %}
-                    <button class="btn btn-sm text-danger" onclick="eliminarItem(${index})"><i class="fa-solid fa-trash"></i></button>
+                    <button class="btn btn-sm text-danger hover-danger" title="Eliminar producto" onclick="eliminarItem(${index})"><i class="fa-solid fa-trash"></i></button>
                 </td>
             `;
             tbody.appendChild(tr);
         });
 
-        // Actualizar el DOM maestro Total
         totalAmountEl.innerText = formatoCOP(granTotal);
         totalItemsEl.innerText = totalItems;
 
-        // Actualizar saldo restante si estamos en modo mixto
         if (document.getElementById('toggle_pago_mixto').checked) {
             actualizarSaldoRestante();
         }
+        actualizarCalculadoraCambio();
     }
 
+    // ==========================================
+    // --- ATAJOS DE TECLADO GLOBALES DEL POS ---
+    // ==========================================
+    document.addEventListener('keydown', function(e) {
+        // F2 o tecla '/': Enfocar buscador instantáneo desde cualquier parte
+        if (e.key === 'F2' || (e.key === '/' && document.activeElement.tagName !== 'INPUT' && document.activeElement.tagName !== 'TEXTAREA')) {
+            e.preventDefault();
+            skuInputEl.focus();
+            skuInputEl.select();
+        }
+        
+        // F4 o Ctrl+Enter: Disparar cobro directamente
+        if (e.key === 'F4' || (e.ctrlKey && e.key === 'Enter')) {
+            e.preventDefault();
+            document.getElementById('btn_process_sale').click();
+        }
+    });
+
+    // ==========================================
+    // --- PROCESAR COBRO Y FINALIZAR VENTA ---
+    // ==========================================
     document.getElementById('btn_process_sale').addEventListener('click', function() {
         if (carrito.length === 0) {
-            return alert('Agregue un número de serie válido. El carrito está vacío.');
+            posToast('El carrito está vacío. Agrega productos para cobrar.', 'warning');
+            skuInputEl.focus();
+            return;
         }
-        // Procesar normal sin cliente
         procesarPago(null);
     });
 
-    // Evento Transaccional JSON de Salida
     async function procesarPago(datosCliente = null) {
-
+        const btnCobro = document.getElementById('btn_process_sale');
         const esMixto = document.getElementById('toggle_pago_mixto').checked;
-
-        // Construir el payload de pagos
         let pagosPayload = [];
 
         if (esMixto) {
-            // Validar pagos mixtos
             const granTotal = obtenerGranTotal();
             let sumaPagos = 0;
 
             for (let i = 0; i < pagosMixtos.length; i++) {
                 const p = pagosMixtos[i];
                 if (!p.monto || p.monto <= 0) {
-                    return alert(`El pago #${i + 1} (${p.metodo_pago}) tiene un monto inválido. Todos los pagos deben tener un monto mayor a $0.`);
+                    posToast(`El pago #${i + 1} (${p.metodo_pago}) debe tener un monto mayor a $0.`, 'warning');
+                    return;
                 }
                 sumaPagos += p.monto;
                 pagosPayload.push({
                     metodo_pago: p.metodo_pago,
-                    monto: Math.round(p.monto)
+                    monto: parseFloat(Number(p.monto).toFixed(2))
                 });
             }
 
-            // Validar que la suma sea correcta
-            if (Math.round(sumaPagos) !== Math.round(granTotal)) {
-                const diff = Math.round(granTotal) - Math.round(sumaPagos);
-                return alert(`⚠️ La suma de los pagos ($${formatoCOP(sumaPagos).replace('$','')}) no coincide con el total de la venta ($${formatoCOP(granTotal).replace('$','')}). Falta: $${formatoCOP(Math.abs(diff)).replace('$','')}`);
+            if (Math.abs(sumaPagos - granTotal) > 0.05) {
+                const diff = granTotal - sumaPagos;
+                posToast(`La suma de pagos no coincide con el total. Diferencia: ${formatoCOP(Math.abs(diff))}`, 'warning');
+                return;
             }
         } else {
             const metodoPago = document.getElementById('metodo-pago').value;
             pagosPayload.push({
                 metodo_pago: metodoPago,
-                monto: Math.round(obtenerGranTotal())
+                monto: parseFloat(Number(obtenerGranTotal()).toFixed(2))
             });
         }
 
-        // Estructura de Diccionario aceptada estrictamente por Backend 
         const payload = {
             items: carrito.map(item => {
                 const base = {
@@ -871,12 +1295,16 @@
             cliente: datosCliente
         };
 
+        // Bloqueo temporal para evitar doble click
+        btnCobro.disabled = true;
+        btnCobro.innerHTML = '<i class="fa-solid fa-spinner fa-spin me-2"></i> Procesando...';
+
         try {
             const response = await fetch('/sales/nueva', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'X-CSRFToken': csrf_token // Clave Maestra de Seguridad Requerida por Flask-WTF
+                    'X-CSRFToken': csrf_token
                 },
                 body: JSON.stringify(payload)
             });
@@ -884,33 +1312,35 @@
             const data = await response.json();
 
             if (response.ok) {
-                // FIX: Abre el Recibo PRIMERO antes de detener el código con la alerta. Así Chrome no lo detecta como Spam
+                // Abrir recibo térmico
                 let reciboWindow = window.open(`/sales/recibo/${data.sale_id}`, '_blank');
-                
-                // Si el navegador tiene un bloqueador de ventanas emergentes muy agresivo:
                 if (!reciboWindow) {
-                    alert('⚠️ Chrome bloqueó la pestaña emergente del recibo. Por favor, permite las ventanas emergentes (pop-ups) para koba.com en la barra superior.');
+                    posToast('Aviso: Permite las ventanas emergentes para abrir el ticket térmico automáticamente.', 'warning');
                 }
                 
-                // Alerta nativa solicitada para feedback directo (Mantiene pausada la pantalla de la Caja)
-                const tipoMsg = esMixto ? '(Pago Dividido)' : '';
-                alert(`✅ ¡Cobro en Caja Procesado ${tipoMsg}! El inventario ha sido descontado correctamente. ID: ${data.sale_id}`);
-                
-                // Purgar carrito para el próximo comprador
+                posToast(`✅ ¡Venta #${data.sale_id} procesada con éxito! Inventario actualizado.`, 'success');
+
+                // Purgar carrito para el siguiente cliente
                 carrito = [];
                 pagosMixtos = [];
+                const inputRecibido = document.getElementById('efectivo_recibido');
+                if (inputRecibido) inputRecibido.value = '';
                 
-                // Reinicia dinámicamente el CSS/Contador de caja visual a $0.00
                 renderizarCarrito(); 
                 resetPagosMixtos();
+                actualizarCalculadoraCambio();
+                skuInputEl.focus();
                 
             } else {
-                alert(`Error devuelto del sistema de validación Backend: ${data.error}`);
+                posToast(`Error: ${data.error}`, 'danger');
             }
 
         } catch (error) {
             console.error(error);
-            alert('Falló la validación final y la Transacción colapsó. Comprueba el Servidor.');
+            posToast('Error en la transacción. Verifica la conexión con el servidor.', 'danger');
+        } finally {
+            btnCobro.disabled = false;
+            btnCobro.innerHTML = '<i class="fa-solid fa-credit-card me-2"></i> Procesar Cobro <small class="opacity-75" style="font-size: 0.75rem;">(F4)</small>';
         }
     }
 </script>

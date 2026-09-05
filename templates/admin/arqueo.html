@@ -41,32 +41,36 @@
     }
     
     .total-highlight {
-        font-size: 2rem;
-        font-weight: 800;
-        color: var(--brand-red); /* Color de acento principal KOBA (Teal) */
+        font-family: 'Orbitron', monospace, sans-serif !important;
+        font-size: 2.1rem;
+        font-weight: 900;
+        color: #FF007F;
         text-align: center;
-        background: rgba(0, 139, 139, 0.05);
-        border-radius: 8px;
-        padding: 10px;
+        background: rgba(255, 0, 127, 0.08);
+        border: 1px solid rgba(255, 0, 127, 0.3);
+        border-radius: 10px;
+        padding: 12px;
+        letter-spacing: 0.5px;
+        text-shadow: 0 0 12px rgba(255, 0, 127, 0.4);
     }
 
     /* Caja de Diferencia Dinámica */
     .diff-box {
-        border-radius: 8px;
+        border-radius: 10px;
         padding: 15px;
         text-align: center;
         transition: all 0.3s ease;
         margin-top: 1rem;
         border: 2px solid transparent;
     }
-    .diff-title { font-size: 0.9rem; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; }
-    .diff-value { font-size: 1.8rem; font-weight: 900; }
+    .diff-title { font-size: 0.85rem; font-weight: 700; text-transform: uppercase; letter-spacing: 1.5px; font-family: 'Orbitron', sans-serif; }
+    .diff-value { font-size: 2rem; font-weight: 900; font-family: 'Orbitron', monospace, sans-serif !important; letter-spacing: 0.5px; }
     
     /* Estados de Diferencia */
-    .diff-neutral { background-color: #f8f9fa; color: #6c757d; border-color: #dee2e6; }
-    .diff-perfect { background-color: #d1e7dd; color: #0f5132; border-color: #badbcc; }
-    .diff-faltante { background-color: #f8d7da; color: #842029; border-color: #f5c2c7; }
-    .diff-sobrante { background-color: #fff3cd; color: #664d03; border-color: #ffecb5; }
+    .diff-neutral { background-color: #1a1a1a; color: #A0A0A0; border-color: #333333; }
+    .diff-perfect { background-color: rgba(0, 230, 118, 0.12); color: #00E676; border-color: #00E676; text-shadow: 0 0 10px rgba(0,230,118,0.4); }
+    .diff-faltante { background-color: rgba(255, 23, 68, 0.15); color: #FF1744; border-color: #FF1744; text-shadow: 0 0 10px rgba(255,23,68,0.4); }
+    .diff-sobrante { background-color: rgba(255, 214, 0, 0.15); color: #FFD600; border-color: #FFD600; text-shadow: 0 0 10px rgba(255,214,0,0.4); }
 
     .input-group-text.bg-light { font-weight: bold; color: #495057; }
     

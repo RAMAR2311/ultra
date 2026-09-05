@@ -1,11 +1,12 @@
 from flask import Blueprint, render_template, abort, request, redirect, url_for, flash
 from flask_login import login_required, current_user
-from models import db, Product, ProductVariant, Sale, User, Maneo, Cliente, SaleDetail, SalePayment, StockAdjustment, Expense, ArqueoCaja, obtener_hora_bogota
+from models import db, Product, ProductVariant, Sale, User, Maneo, Cliente, SaleDetail, SalePayment, StockAdjustment, Expense, ArqueoCaja, ProviderPayment, FacturaBodega, AbonoBodega, obtener_hora_bogota
 from sqlalchemy.sql import func
 from werkzeug.security import generate_password_hash
 from decorators import admin_required
 from decimal import Decimal
 from datetime import datetime, timedelta
+import calendar
 
 admin_bp = Blueprint('admin_bp', __name__)
 
@@ -20,8 +21,13 @@ def vendedores():
         password = request.form.get('password')
         rol = request.form.get('rol', 'vendedor')
         
-        # Se previene registrar vendedores con un mismo email para preservar la unicidad de las credenciales de acceso
-        if User.query.filter_by(email=email).first():
+        # Validar que el rol sea uno de los permitidos por el sistema
+        roles_permitidos = ['admin', 'vendedor', 'bodega', 'vendedor_bodega']
+        if rol not in roles_permitidos:
+            rol = 'vendedor'
+        
+        # Se previene registrar usuarios con un mismo email para preservar la unicidad de las credenciales de acceso
+        if User.query.filter_by(email=email.strip()).first():
             flash('Acción Denegada: Ese correo ya le pertenece a otro usuario.', 'danger')
         else:
             try:
@@ -35,7 +41,8 @@ def vendedores():
                 )
                 db.session.add(nuevo_usuario)
                 db.session.commit()
-                flash(f"¡Usuario '{nombre}' registrado con rol '{rol}' exitosamente!", "success")
+                rol_label = 'Administrador' if rol == 'admin' else ('Vendedor' if rol == 'vendedor' else ('Encargado de Bodega' if rol == 'bodega' else 'Vendedor de Bodega'))
+                flash(f"¡Usuario '{nombre}' registrado como '{rol_label}' exitosamente!", "success")
             except Exception as e:
                 db.session.rollback()
                 flash('Ocurrió un error en la base de datos al intentar registrar al usuario.', 'danger')
@@ -43,8 +50,8 @@ def vendedores():
         return redirect(url_for('admin_bp.vendedores'))
         
     # Se pasa la lista para poblar la tabla HTML de gestión de personal
-    # Mostramos todos los usuarios que no son admin ni eliminados para gestión centralizada
-    lista_vendedores = User.query.filter(~User.rol.in_(['admin', 'eliminado'])).order_by(User.nombre).all()
+    # Mostramos todos los usuarios activos del sistema (excluyendo solo registros eliminados)
+    lista_vendedores = User.query.filter(User.rol != 'eliminado').order_by(User.rol == 'admin', User.nombre).all()
     return render_template('admin/vendedores.html', vendedores=lista_vendedores)
 
 @admin_bp.route('/vendedores/<int:id>/eliminar', methods=['POST'])
@@ -52,8 +59,8 @@ def vendedores():
 @admin_required
 def eliminar_vendedor(id):
     usuario = User.query.get_or_404(id)
-    if usuario.rol == 'admin':
-        flash("No puedes eliminar al administrador.", "danger")
+    if usuario.id == current_user.id:
+        flash("Acción Denegada: No puedes eliminar tu propia cuenta de usuario.", "danger")
         return redirect(url_for('admin_bp.vendedores'))
         
     try:
@@ -72,49 +79,211 @@ def eliminar_vendedor(id):
 @login_required
 @admin_required
 def dashboard():
-    # Se obtienen métricas clave para que el administrador tenga un resumen rápido de las operaciones del negocio
-    total_productos = Product.query.count()
-    productos_bajo_stock = Product.query.filter(Product.cantidad_stock <= 10).count()
-    maneos_activos = Maneo.query.filter_by(estado='PENDIENTE').count()
-    
-    # Se filtran las ventas por el mes/año seleccionado o el actual por defecto
     hoy = obtener_hora_bogota()
-    
-    # Leer parámetros de la solicitud
-    try:
-        mes = int(request.args.get('mes', hoy.month))
-        anio = int(request.args.get('anio', hoy.year))
-    except ValueError:
-        mes = hoy.month
-        anio = hoy.year
-        
-    from datetime import datetime
-    import calendar
-    
-    # Definir el rango del mes
-    inicio_mes = datetime(anio, mes, 1, 0, 0, 0)
-    ultimo_dia = calendar.monthrange(anio, mes)[1]
-    fin_mes = datetime(anio, mes, ultimo_dia, 23, 59, 59)
-    
-    total_ventas = db.session.query(func.sum(Sale.monto_total)).filter(Sale.fecha_venta >= inicio_mes, Sale.fecha_venta <= fin_mes).scalar() or 0.0
-    conteo_ventas = Sale.query.filter(Sale.fecha_venta >= inicio_mes, Sale.fecha_venta <= fin_mes).count()
 
-    meses = {
+    meses_nombres = {
         1: 'Enero', 2: 'Febrero', 3: 'Marzo', 4: 'Abril',
         5: 'Mayo', 6: 'Junio', 7: 'Julio', 8: 'Agosto',
         9: 'Septiembre', 10: 'Octubre', 11: 'Noviembre', 12: 'Diciembre'
     }
-    nombre_mes = meses.get(mes, 'Mes Actual')
 
-    return render_template('admin/dashboard.html', 
-                           total_productos=total_productos,
-                           productos_bajo_stock=productos_bajo_stock,
-                           total_ventas=total_ventas,
-                           conteo_ventas=conteo_ventas,
-                           maneos_activos=maneos_activos,
+    # Determinar el tipo de filtro
+    filtro_tipo = request.args.get('filtro_tipo')
+    if not filtro_tipo:
+        if 'fecha_dia' in request.args:
+            filtro_tipo = 'dia'
+        elif 'fecha_semana' in request.args:
+            filtro_tipo = 'semana'
+        elif 'quincena_num' in request.args:
+            filtro_tipo = 'quincena'
+        else:
+            filtro_tipo = 'mes'
+
+    fecha_dia_str = request.args.get('fecha_dia', hoy.strftime('%Y-%m-%d'))
+    fecha_semana_str = request.args.get('fecha_semana', hoy.strftime('%Y-%m-%d'))
+
+    try:
+        mes = int(request.args.get('mes', hoy.month))
+        if not (1 <= mes <= 12):
+            mes = hoy.month
+    except (ValueError, TypeError):
+        mes = hoy.month
+
+    try:
+        anio = int(request.args.get('anio', hoy.year))
+        if anio < 2020 or anio > 2035:
+            anio = hoy.year
+    except (ValueError, TypeError):
+        anio = hoy.year
+
+    try:
+        quincena_num = int(request.args.get('quincena_num', 1 if hoy.day <= 15 else 2))
+        if quincena_num not in [1, 2]:
+            quincena_num = 1 if hoy.day <= 15 else 2
+    except (ValueError, TypeError):
+        quincena_num = 1 if hoy.day <= 15 else 2
+
+    # Cálculo de fechas según filtro
+    if filtro_tipo == 'dia':
+        try:
+            dt_dia = datetime.strptime(fecha_dia_str, '%Y-%m-%d')
+        except ValueError:
+            dt_dia = hoy
+            fecha_dia_str = hoy.strftime('%Y-%m-%d')
+        inicio_filtro = datetime(dt_dia.year, dt_dia.month, dt_dia.day, 0, 0, 0)
+        fin_filtro = datetime(dt_dia.year, dt_dia.month, dt_dia.day, 23, 59, 59, 999999)
+        es_hoy = (dt_dia.date() == hoy.date())
+        label_periodo = f"{'Hoy, ' if es_hoy else ''}{dt_dia.day} de {meses_nombres.get(dt_dia.month)} {dt_dia.year}"
+        badge_periodo = "Hoy" if es_hoy else dt_dia.strftime('%d/%m/%Y')
+        tipo_periodo_nombre = "Día"
+
+    elif filtro_tipo == 'semana':
+        try:
+            dt_sem = datetime.strptime(fecha_semana_str, '%Y-%m-%d')
+        except ValueError:
+            dt_sem = hoy
+            fecha_semana_str = hoy.strftime('%Y-%m-%d')
+        lunes = dt_sem.date() - timedelta(days=dt_sem.weekday())
+        domingo = lunes + timedelta(days=6)
+        inicio_filtro = datetime(lunes.year, lunes.month, lunes.day, 0, 0, 0)
+        fin_filtro = datetime(domingo.year, domingo.month, domingo.day, 23, 59, 59, 999999)
+        label_periodo = f"Semana del {lunes.day} {meses_nombres.get(lunes.month)[:3]} al {domingo.day} {meses_nombres.get(domingo.month)[:3]} {domingo.year}"
+        badge_periodo = f"{lunes.strftime('%d/%m')} - {domingo.strftime('%d/%m')}"
+        tipo_periodo_nombre = "Semana"
+
+    elif filtro_tipo == 'quincena':
+        ultimo_dia_mes = calendar.monthrange(anio, mes)[1]
+        if quincena_num == 1:
+            inicio_filtro = datetime(anio, mes, 1, 0, 0, 0)
+            fin_filtro = datetime(anio, mes, 15, 23, 59, 59, 999999)
+            label_periodo = f"1ª Quincena de {meses_nombres.get(mes)} {anio} (1 al 15)"
+            badge_periodo = f"1ª Q. {meses_nombres.get(mes)[:3]}"
+        else:
+            inicio_filtro = datetime(anio, mes, 16, 0, 0, 0)
+            fin_filtro = datetime(anio, mes, ultimo_dia_mes, 23, 59, 59, 999999)
+            label_periodo = f"2ª Quincena de {meses_nombres.get(mes)} {anio} (16 al {ultimo_dia_mes})"
+            badge_periodo = f"2ª Q. {meses_nombres.get(mes)[:3]}"
+        tipo_periodo_nombre = "Quincena"
+
+    else: # mes
+        filtro_tipo = 'mes'
+        ultimo_dia_mes = calendar.monthrange(anio, mes)[1]
+        inicio_filtro = datetime(anio, mes, 1, 0, 0, 0)
+        fin_filtro = datetime(anio, mes, ultimo_dia_mes, 23, 59, 59, 999999)
+        label_periodo = f"{meses_nombres.get(mes)} {anio}"
+        badge_periodo = f"{meses_nombres.get(mes)} {anio}"
+        tipo_periodo_nombre = "Mes"
+
+    # 1. Ventas e Ingresos del Periodo
+    ventas_en_rango = Sale.query.filter(Sale.fecha_venta >= inicio_filtro, Sale.fecha_venta <= fin_filtro).all()
+    total_ventas = sum((v.monto_total or 0) for v in ventas_en_rango)
+    conteo_ventas = len(ventas_en_rango)
+    ventas_efectivo = sum((v.monto_total or 0) for v in ventas_en_rango if v.metodo_pago == 'efectivo')
+    ventas_transferencia = sum((v.monto_total or 0) for v in ventas_en_rango if v.metodo_pago in ['transferencia', 'nequi', 'bancolombia', 'daviplata'])
+    ticket_promedio = (float(total_ventas) / conteo_ventas) if conteo_ventas > 0 else 0.0
+
+    # 2. Unidades y Mercancía Vendida en el Periodo
+    detalles_en_rango = SaleDetail.query.join(Sale).filter(
+        Sale.fecha_venta >= inicio_filtro,
+        Sale.fecha_venta <= fin_filtro
+    ).all()
+    unidades_vendidas = sum(d.cantidad_vendida for d in detalles_en_rango)
+    referencias_vendidas = len(set(d.product_id for d in detalles_en_rango if d.product_id))
+    total_productos = Product.query.count()
+
+    # 3. Gastos Operativos del Periodo
+    gastos_en_rango = Expense.query.filter(
+        Expense.fecha_gasto >= inicio_filtro,
+        Expense.fecha_gasto <= fin_filtro
+    ).all()
+    total_gastos = sum((g.monto or 0) for g in gastos_en_rango)
+    conteo_gastos = len(gastos_en_rango)
+    gastos_diarios = sum((g.monto or 0) for g in gastos_en_rango if g.tipo_gasto == 'Gasto Diario')
+    costos_indirectos = sum((g.monto or 0) for g in gastos_en_rango if g.tipo_gasto == 'Costo Indirecto')
+
+    # 4. Utilidad / Ganancia Estimada del Periodo (COGS)
+    costos_directos = Decimal('0.00')
+    for d in detalles_en_rango:
+        if d.nombre_manual:
+            costos_directos += Decimal(str(d.precio_costo_manual or 0)) * d.cantidad_vendida
+        elif d.variant_id:
+            v = d.variante
+            p = d.producto
+            if v and p:
+                costo_u = v.precio_costo if v.precio_costo is not None else (p.precio_costo or 0)
+                costos_directos += Decimal(str(costo_u)) * d.cantidad_vendida
+        elif d.product_id:
+            p = d.producto
+            if p:
+                costos_directos += Decimal(str(p.precio_costo or 0)) * d.cantidad_vendida
+    utilidad_neta = float(total_ventas) - float(costos_directos) - float(total_gastos)
+
+    # 5. Maneos (Préstamos) del Periodo y Estado Global
+    maneos_en_rango = Maneo.query.filter(
+        Maneo.fecha_prestamo >= inicio_filtro,
+        Maneo.fecha_prestamo <= fin_filtro
+    ).all()
+    maneos_periodo_count = len(maneos_en_rango)
+    maneos_periodo_monto = sum(m.subtotal_calculado for m in maneos_en_rango)
+    maneos_activos = Maneo.query.filter_by(estado='PENDIENTE').count()
+
+    # 6. Alertas de Stock y Ajustes del Periodo
+    productos_bajo_stock = Product.query.filter(Product.cantidad_stock <= 10).count()
+    ajustes_periodo = StockAdjustment.query.filter(
+        StockAdjustment.fecha_ajuste >= inicio_filtro,
+        StockAdjustment.fecha_ajuste <= fin_filtro
+    ).count()
+
+    # 7. Proveedores del Periodo
+    pagos_prov_en_rango = ProviderPayment.query.filter(
+        ProviderPayment.fecha_pago >= inicio_filtro,
+        ProviderPayment.fecha_pago <= fin_filtro
+    ).all()
+    pagos_proveedores_periodo = sum((p.monto_abonado or 0) for p in pagos_prov_en_rango)
+    conteo_pagos_prov = len(pagos_prov_en_rango)
+
+    return render_template('admin/dashboard.html',
+                           filtro_tipo=filtro_tipo,
+                           fecha_dia=fecha_dia_str,
+                           fecha_semana=fecha_semana_str,
+                           quincena_num=quincena_num,
                            mes=mes,
                            anio=anio,
-                           nombre_mes=nombre_mes)
+                           label_periodo=label_periodo,
+                           badge_periodo=badge_periodo,
+                           tipo_periodo_nombre=tipo_periodo_nombre,
+                           inicio_filtro=inicio_filtro,
+                           fin_filtro=fin_filtro,
+                           # Tarjeta 1: Ingresos
+                           total_ventas=total_ventas,
+                           conteo_ventas=conteo_ventas,
+                           ventas_efectivo=ventas_efectivo,
+                           ventas_transferencia=ventas_transferencia,
+                           ticket_promedio=ticket_promedio,
+                           # Tarjeta 2: Unidades vendidas y catálogo
+                           unidades_vendidas=unidades_vendidas,
+                           referencias_vendidas=referencias_vendidas,
+                           total_productos=total_productos,
+                           # Tarjeta 3: Gastos
+                           total_gastos=total_gastos,
+                           conteo_gastos=conteo_gastos,
+                           gastos_diarios=gastos_diarios,
+                           costos_indirectos=costos_indirectos,
+                           # Tarjeta 4: Utilidad
+                           utilidad_neta=utilidad_neta,
+                           costos_directos=float(costos_directos),
+                           # Tarjeta 5: Maneos
+                           maneos_periodo_count=maneos_periodo_count,
+                           maneos_periodo_monto=maneos_periodo_monto,
+                           maneos_activos=maneos_activos,
+                           # Tarjeta 6: Alertas de Stock
+                           productos_bajo_stock=productos_bajo_stock,
+                           ajustes_periodo=ajustes_periodo,
+                           # Tarjeta 7: Proveedores
+                           pagos_proveedores_periodo=pagos_proveedores_periodo,
+                           conteo_pagos_prov=conteo_pagos_prov,
+                           # Retrocompatibilidad
+                           nombre_mes=meses_nombres.get(mes, 'Mes Actual'))
 
 @admin_bp.route('/maneos')
 @login_required
@@ -560,6 +729,23 @@ def balance_financiero():
     total_salidas = float(costos_directos) + float(costos_indirectos) + float(gastos_operacionales)
     balance_neto = float(total_ingresos) - total_salidas
 
+    # 4. Desglose de Bodega y Cartera Mayorista (B2B)
+    facturas_bodega_periodo = FacturaBodega.query.filter(
+        FacturaBodega.fecha_subida >= inicio_dt,
+        FacturaBodega.fecha_subida < fin_dt_query
+    ).all()
+    bodega_contado = sum((f.monto_total for f in facturas_bodega_periodo if f.modalidad == 'contado'), Decimal('0'))
+    bodega_credito = sum((f.monto_total for f in facturas_bodega_periodo if f.modalidad == 'credito'), Decimal('0'))
+
+    abonos_bodega_periodo = AbonoBodega.query.filter(
+        AbonoBodega.fecha_abono >= inicio_dt,
+        AbonoBodega.fecha_abono < fin_dt_query
+    ).all()
+    bodega_abonos = sum((a.monto for a in abonos_bodega_periodo), Decimal('0'))
+
+    clientes_todos = Cliente.query.all()
+    bodega_cartera_pendiente = sum((c.deuda_total for c in clientes_todos if c.deuda_total > 0), Decimal('0'))
+
     datos_financieros = {
         'ventas_efectivo': float(ventas_efectivo),
         'ventas_transferencia': float(ventas_transferencia),
@@ -568,7 +754,11 @@ def balance_financiero():
         'costos_indirectos': float(costos_indirectos),
         'gastos_operacionales': float(gastos_operacionales),
         'total_salidas': total_salidas,
-        'balance_neto': balance_neto
+        'balance_neto': balance_neto,
+        'bodega_contado': float(bodega_contado),
+        'bodega_credito': float(bodega_credito),
+        'bodega_abonos': float(bodega_abonos),
+        'bodega_cartera_pendiente': float(bodega_cartera_pendiente)
     }
 
     return render_template(
@@ -583,42 +773,7 @@ def balance_financiero():
 @login_required
 @admin_required
 def arqueo_caja():
-    # Retrieve today's date in Bogota
-    hoy = obtener_hora_bogota().date()
-    
-    # Check if box is already closed today
-    arqueo_hoy = ArqueoCaja.query.filter(db.func.date(ArqueoCaja.fecha_arqueo) == hoy).first()
-    caja_cerrada = arqueo_hoy is not None
-
-    # Calculate today's sales
-    from datetime import datetime, timedelta
-    inicio_dia = datetime.combine(hoy, datetime.min.time())
-    fin_dia = inicio_dia + timedelta(days=1)
-    
-    ventas = Sale.query.filter(Sale.fecha_venta >= inicio_dia, Sale.fecha_venta < fin_dia).order_by(Sale.fecha_venta.desc()).all()
-    
-    total_efectivo = 0.0
-    total_digital = 0.0
-    for venta in ventas:
-        for pago in venta.pagos:
-            if pago.metodo_pago.lower() == 'efectivo':
-                total_efectivo += float(pago.monto)
-            else:
-                total_digital += float(pago.monto)
-                
-    # Calculate today's expenses
-    gastos = Expense.query.filter(Expense.fecha_gasto >= inicio_dia, Expense.fecha_gasto < fin_dia).all()
-    total_gastos = sum(float(g.monto) for g in gastos)
-    
-    return render_template(
-        'admin/arqueo.html',
-        ventas=ventas,
-        total_efectivo=total_efectivo,
-        total_digital=total_digital,
-        total_gastos=total_gastos,
-        caja_cerrada=caja_cerrada,
-        arqueo=arqueo_hoy
-    )
+    return redirect(url_for('arqueo_bp.nuevo'))
 
 @admin_bp.route('/arqueo/cerrar', methods=['POST'])
 @login_required

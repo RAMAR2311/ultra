@@ -1,11 +1,11 @@
 {
-    "name": "KOBA",
-    "short_name": "KOBA",
-    "description": "Sistema de gestión y punto de venta web KOBA",
+    "name": "ULTRA TECH",
+    "short_name": "UltraTech",
+    "description": "Sistema de gestión y punto de venta web ULTRA TECH",
     "start_url": "/",
     "display": "standalone",
-    "background_color": "#121212",
-    "theme_color": "#008B8B",
+    "background_color": "#000000",
+    "theme_color": "#FF007F",
     "icons": [
         {
             "src": "/static/img/icons/icon-192x192.png",

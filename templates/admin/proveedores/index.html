@@ -1,54 +1,210 @@
 {% extends "base.html" %}
 
 {% block content %}
-<div class="d-flex justify-content-between align-items-center mb-4">
-    <h2 class="fw-bold text-brand-black m-0"><i class="fa-solid fa-truck-field me-2 text-brand-blue"></i>Gestión de Proveedores</h2>
-    <button class="btn btn-blue rounded-pill px-4" data-bs-toggle="modal" data-bs-target="#nuevoProveedorModal">
+<style>
+    .kpi-card-prov {
+        border-radius: 16px;
+        transition: transform 0.15s ease, box-shadow 0.15s ease;
+    }
+    .kpi-card-prov:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 10px 20px rgba(0,0,0,0.06) !important;
+    }
+    .table-providers tbody tr {
+        transition: background-color 0.15s ease;
+    }
+</style>
+
+<!-- Encabezado -->
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4">
+    <div>
+        <h2 class="fw-bold text-brand-black m-0">
+            <i class="fa-solid fa-truck-field me-2 text-brand-blue"></i>Gestión de Proveedores
+        </h2>
+        <small class="text-muted">Control de compras, facturas de cuentas por pagar y abonos a proveedores</small>
+    </div>
+    <button class="btn btn-blue rounded-pill px-4 py-2 shadow-sm fw-semibold" data-bs-toggle="modal" data-bs-target="#nuevoProveedorModal">
         <i class="fa-solid fa-plus me-1"></i> Nuevo Proveedor
     </button>
 </div>
 
-<div class="card card-custom p-0 overflow-hidden">
+<!-- KPIs Globales -->
+<div class="row g-3 mb-4">
+    <div class="col-md-4">
+        <div class="card card-custom kpi-card-prov p-3 border-0 shadow-sm bg-white" style="border-left: 5px solid #7BC8D0 !important;">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <span class="text-muted small fw-bold text-uppercase d-block mb-1">Proveedores Registrados</span>
+                    <h3 class="fw-bolder text-brand-black m-0" id="kpiTotalProvs">{{ total_proveedores }}</h3>
+                </div>
+                <div class="rounded-circle bg-light p-3 text-brand-blue fs-4">
+                    <i class="fa-solid fa-truck-ramp-box"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-4">
+        <div class="card card-custom kpi-card-prov p-3 border-0 shadow-sm bg-white" style="border-left: 5px solid #dc3545 !important;">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <span class="text-muted small fw-bold text-uppercase d-block mb-1">Deuda Total Pendiente</span>
+                    <h3 class="fw-bolder text-danger m-0">${{ total_deuda_global|cop }}</h3>
+                </div>
+                <div class="rounded-circle bg-danger bg-opacity-10 p-3 text-danger fs-4">
+                    <i class="fa-solid fa-scale-unbalanced"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-4">
+        <div class="card card-custom kpi-card-prov p-3 border-0 shadow-sm bg-white" style="border-left: 5px solid #ffc107 !important;">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <span class="text-muted small fw-bold text-uppercase d-block mb-1">Proveedores con Saldo</span>
+                    <h3 class="fw-bolder text-dark m-0">{{ proveedores_con_deuda }} <small class="fs-6 text-muted fw-normal">cuentas abiertas</small></h3>
+                </div>
+                <div class="rounded-circle bg-warning bg-opacity-10 p-3 text-warning-emphasis fs-4">
+                    <i class="fa-solid fa-file-invoice-dollar"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Barra de búsqueda dinámica -->
+<div class="card card-custom p-3 border-0 shadow-sm mb-4">
+    <div class="row align-items-center g-2">
+        <div class="col-md-8 col-lg-9">
+            <div class="input-group">
+                <span class="input-group-text bg-white border-end-0 text-muted ps-3">
+                    <i class="fa-solid fa-magnifying-glass"></i>
+                </span>
+                <input type="text" 
+                       id="searchProviderInput" 
+                       class="form-control border-start-0 shadow-none ps-2" 
+                       placeholder="Buscar proveedor por nombre, empresa o teléfono..." 
+                       autocomplete="off">
+                <button class="btn btn-white border border-start-0 text-muted d-none" type="button" id="btnClearSearch" onclick="limpiarBusqueda()">
+                    <i class="fa-solid fa-circle-xmark"></i>
+                </button>
+            </div>
+        </div>
+        <div class="col-md-4 col-lg-3 text-md-end">
+            <span class="badge bg-light text-muted border px-3 py-2 rounded-pill fw-normal" id="matchCounter">
+                <i class="fa-solid fa-filter me-1"></i> {{ proveedores_data|length }} proveedores
+            </span>
+        </div>
+    </div>
+</div>
+
+<!-- Tabla de Proveedores -->
+<div class="card card-custom p-0 overflow-hidden border-0 shadow-sm">
     <div class="table-responsive">
-        <table class="table table-hover table-custom mb-0 align-middle">
+        <table class="table table-hover table-providers mb-0 align-middle">
             <thead class="bg-light">
-                <tr>
-                    <th class="ps-4">NOMBRE / REPRESENTANTE</th>
-                    <th>EMPRESA</th>
-                    <th>TELÉFONO</th>
-                    <th class="text-end">SALDO PENDIENTE</th>
-                    <th class="text-center pe-4">ACCIONES</th>
+                <tr class="text-secondary small fw-bold text-uppercase">
+                    <th class="ps-4 py-3">Nombre / Representante</th>
+                    <th>Empresa</th>
+                    <th>Teléfono</th>
+                    <th class="text-end">Total Facturado</th>
+                    <th class="text-end">Total Abonado</th>
+                    <th class="text-end">Saldo Pendiente</th>
+                    <th class="text-center pe-4" style="min-width: 170px;">Acciones</th>
                 </tr>
             </thead>
-            <tbody>
+            <tbody id="providersTableBody">
                 {% for p_data in proveedores_data %}
-                <tr>
-                    <td class="ps-4 fw-bold text-brand-black">
-                        {{ p_data.proveedor.nombre }}
-                    </td>
-                    <td class="text-muted">
-                        {{ p_data.proveedor.empresa if p_data.proveedor.empresa else '-' }}
+                <tr class="provider-row" 
+                    data-nombre="{{ p_data.proveedor.nombre }}" 
+                    data-empresa="{{ p_data.proveedor.empresa or '' }}" 
+                    data-telefono="{{ p_data.proveedor.telefono or '' }}">
+                    <td class="ps-4">
+                        <div class="fw-bold text-brand-black fs-6">{{ p_data.proveedor.nombre }}</div>
+                        <small class="text-muted">ID: #{{ p_data.proveedor.id }}</small>
                     </td>
                     <td>
-                        {{ p_data.proveedor.telefono if p_data.proveedor.telefono else '-' }}
+                        {% if p_data.proveedor.empresa %}
+                            <span class="fw-semibold text-dark"><i class="fa-regular fa-building me-1 text-muted"></i>{{ p_data.proveedor.empresa }}</span>
+                        {% else %}
+                            <span class="text-muted small italic">Sin empresa</span>
+                        {% endif %}
                     </td>
-                    <td class="text-end fw-bold {% if p_data.saldo > 0 %}text-danger{% elif p_data.saldo < 0 %}text-success{% else %}text-muted{% endif %}">
-                        ${{ p_data.saldo|cop }}
+                    <td>
+                        {% if p_data.proveedor.telefono %}
+                            <span class="badge bg-light text-dark border fw-normal">
+                                <i class="fa-solid fa-phone me-1 text-success small"></i>{{ p_data.proveedor.telefono }}
+                            </span>
+                        {% else %}
+                            <span class="text-muted small">-</span>
+                        {% endif %}
+                    </td>
+                    <td class="text-end fw-semibold text-muted">
+                        ${{ p_data.total_facturado|cop }}
+                    </td>
+                    <td class="text-end fw-semibold text-success">
+                        ${{ p_data.total_abonado|cop }}
+                    </td>
+                    <td class="text-end">
+                        {% if p_data.saldo > 0 %}
+                            <span class="badge bg-danger bg-opacity-10 text-danger border border-danger-subtle px-2 py-1 fs-6 fw-bold">
+                                ${{ p_data.saldo|cop }}
+                            </span>
+                        {% elif p_data.saldo < 0 %}
+                            <span class="badge bg-info bg-opacity-10 text-info border border-info-subtle px-2 py-1 fs-6 fw-bold">
+                                +${{ (p_data.saldo|abs)|cop }}
+                            </span>
+                        {% else %}
+                            <span class="badge bg-success bg-opacity-10 text-success border border-success-subtle px-2 py-1 small">
+                                <i class="fa-solid fa-check me-1"></i>Al día
+                            </span>
+                        {% endif %}
                     </td>
                     <td class="text-center pe-4">
-                        <a href="{{ url_for('providers_bp.detalle', id=p_data.proveedor.id) }}" class="btn btn-sm btn-outline-primary rounded-pill px-3">
-                            <i class="fa-solid fa-eye me-1"></i> Ver Cuenta
-                        </a>
+                        <div class="btn-group btn-group-sm shadow-2xs">
+                            <a href="{{ url_for('providers_bp.detalle', id=p_data.proveedor.id) }}" 
+                               class="btn btn-outline-primary fw-semibold px-2" 
+                               title="Ver cuenta de compras y abonos">
+                                <i class="fa-solid fa-eye me-1"></i> Cuenta
+                            </a>
+                            <button type="button" 
+                                    class="btn btn-outline-secondary px-2" 
+                                    title="Editar datos del proveedor"
+                                    onclick="abrirModalEditarProveedor({{ p_data.proveedor.id }}, '{{ p_data.proveedor.nombre|replace('\'', '\\\'') }}', '{{ (p_data.proveedor.empresa or '')|replace('\'', '\\\'') }}', '{{ (p_data.proveedor.telefono or '')|replace('\'', '\\\'') }}')">
+                                <i class="fa-solid fa-pen-to-square"></i>
+                            </button>
+                            <button type="button" 
+                                    class="btn btn-outline-danger px-2" 
+                                    title="Eliminar proveedor"
+                                    onclick="confirmarEliminarProveedor({{ p_data.proveedor.id }}, '{{ p_data.proveedor.nombre|replace('\'', '\\\'') }}')">
+                                <i class="fa-solid fa-trash"></i>
+                            </button>
+                        </div>
                     </td>
                 </tr>
                 {% else %}
-                <tr>
-                    <td colspan="5" class="text-center text-muted py-5">
-                        <i class="fa-solid fa-folder-open fs-1 d-block mb-3 opacity-50"></i>
-                        No hay proveedores registrados aún.
+                <tr id="emptyProvidersRow">
+                    <td colspan="7" class="text-center text-muted py-5">
+                        <i class="fa-solid fa-truck-ramp-box fs-1 d-block mb-3 opacity-50"></i>
+                        No hay proveedores registrados aún.<br>
+                        <button class="btn btn-sm btn-blue rounded-pill px-3 mt-2" data-bs-toggle="modal" data-bs-target="#nuevoProveedorModal">
+                            <i class="fa-solid fa-plus me-1"></i> Registrar Primer Proveedor
+                        </button>
                     </td>
                 </tr>
                 {% endfor %}
+
+                <!-- Fila de no coincidencias en la búsqueda -->
+                <tr id="noMatchesRow" class="d-none">
+                    <td colspan="7" class="text-center text-muted py-5">
+                        <i class="fa-solid fa-filter-circle-xmark fs-2 d-block mb-2 opacity-50"></i>
+                        No se encontraron proveedores que coincidan con "<span id="searchTermSpan" class="fw-bold"></span>".<br>
+                        <button class="btn btn-sm btn-outline-secondary rounded-pill px-3 mt-2" onclick="limpiarBusqueda()">
+                            <i class="fa-solid fa-rotate-left me-1"></i> Mostrar todos los proveedores
+                        </button>
+                    </td>
+                </tr>
             </tbody>
         </table>
     </div>
@@ -59,7 +215,9 @@
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content border-0 shadow-lg rounded-4">
             <div class="modal-header border-bottom-0 bg-light rounded-top-4">
-                <h5 class="modal-title fw-bold text-brand-black"><i class="fa-solid fa-truck-field me-2 text-brand-blue"></i>Registrar Nuevo Proveedor</h5>
+                <h5 class="modal-title fw-bold text-brand-black">
+                    <i class="fa-solid fa-truck-field me-2 text-brand-blue"></i>Registrar Nuevo Proveedor
+                </h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <form action="{{ url_for('providers_bp.crear') }}" method="POST">
@@ -67,23 +225,150 @@
                 <div class="modal-body p-4">
                     <div class="mb-3">
                         <label class="form-label fw-bold">Nombre del Representante o Proveedor <span class="text-danger">*</span></label>
-                        <input type="text" name="nombre" class="form-control bg-light border-0" required autofocus>
+                        <input type="text" name="nombre" class="form-control bg-light border-0 py-2" placeholder="Ej: Juan Pérez o Distribuidora Eléctrica" required autofocus>
                     </div>
                     <div class="mb-3">
-                        <label class="form-label fw-bold">Empresa (Opcional)</label>
-                        <input type="text" name="empresa" class="form-control bg-light border-0">
+                        <label class="form-label fw-bold">Empresa o Razón Social (Opcional)</label>
+                        <input type="text" name="empresa" class="form-control bg-light border-0 py-2" placeholder="Ej: Tech Mayoristas S.A.S.">
                     </div>
                     <div class="mb-3">
-                        <label class="form-label fw-bold">Teléfono de Contacto (Opcional)</label>
-                        <input type="text" name="telefono" class="form-control bg-light border-0">
+                        <label class="form-label fw-bold">Teléfono o WhatsApp de Contacto (Opcional)</label>
+                        <input type="text" name="telefono" class="form-control bg-light border-0 py-2" placeholder="Ej: +57 312 345 6789">
                     </div>
                 </div>
                 <div class="modal-footer border-top-0 bg-light rounded-bottom-4">
                     <button type="button" class="btn btn-outline-secondary rounded-pill px-4" data-bs-dismiss="modal">Cancelar</button>
-                    <button type="submit" class="btn btn-blue rounded-pill px-4">Guardar Proveedor</button>
+                    <button type="submit" class="btn btn-blue rounded-pill px-4 fw-semibold">Guardar Proveedor</button>
                 </div>
             </form>
         </div>
     </div>
 </div>
+
+<!-- Modal Editar Proveedor -->
+<div class="modal fade" id="modalEditarProveedor" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg rounded-4">
+            <div class="modal-header border-bottom-0 bg-light rounded-top-4">
+                <h5 class="modal-title fw-bold text-brand-black">
+                    <i class="fa-solid fa-pen-to-square me-2 text-brand-blue"></i>Editar Datos del Proveedor
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form id="formEditarProveedor" method="POST">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <div class="modal-body p-4">
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Nombre del Representante o Proveedor <span class="text-danger">*</span></label>
+                        <input type="text" name="nombre" id="edit_prov_nombre" class="form-control bg-light border-0 py-2" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Empresa o Razón Social</label>
+                        <input type="text" name="empresa" id="edit_prov_empresa" class="form-control bg-light border-0 py-2">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Teléfono o WhatsApp</label>
+                        <input type="text" name="telefono" id="edit_prov_telefono" class="form-control bg-light border-0 py-2">
+                    </div>
+                </div>
+                <div class="modal-footer border-top-0 bg-light rounded-bottom-4">
+                    <button type="button" class="btn btn-outline-secondary rounded-pill px-4" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary rounded-pill px-4 fw-semibold">Guardar Cambios</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Formulario Oculto para Eliminar Proveedor -->
+<form id="formEliminarProveedor" method="POST" style="display: none;">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+</form>
+
+<script>
+    // Normalización de texto (ignora tildes, mayúsculas y diacríticos)
+    function normalizarTexto(str) {
+        if (!str) return '';
+        return str.toString()
+            .normalize("NFD")
+            .replace(/[\u0300-\u036f]/g, "")
+            .toLowerCase()
+            .trim();
+    }
+
+    const searchInput = document.getElementById('searchProviderInput');
+    const btnClear = document.getElementById('btnClearSearch');
+    const matchCounter = document.getElementById('matchCounter');
+    const noMatchesRow = document.getElementById('noMatchesRow');
+    const searchTermSpan = document.getElementById('searchTermSpan');
+    const rows = Array.from(document.querySelectorAll('.provider-row'));
+
+    // Pre-computar índice de búsqueda
+    rows.forEach(row => {
+        const nom = row.dataset.nombre || '';
+        const emp = row.dataset.empresa || '';
+        const tel = row.dataset.telefono || '';
+        row._searchIndex = normalizarTexto(`${nom} ${emp} ${tel}`);
+    });
+
+    function filtrarProveedores() {
+        const queryRaw = searchInput.value;
+        const queryNorm = normalizarTexto(queryRaw);
+        const tokens = queryNorm.split(/\s+/).filter(Boolean);
+
+        if (queryRaw.trim().length > 0) {
+            btnClear.classList.remove('d-none');
+        } else {
+            btnClear.classList.add('d-none');
+        }
+
+        let visibles = 0;
+        rows.forEach(row => {
+            let match = true;
+            if (tokens.length > 0) {
+                match = tokens.every(token => row._searchIndex.includes(token));
+            }
+            if (match) {
+                row.style.display = '';
+                visibles++;
+            } else {
+                row.style.display = 'none';
+            }
+        });
+
+        matchCounter.innerHTML = `<i class="fa-solid fa-filter me-1"></i> ${visibles} encontrados`;
+
+        if (visibles === 0 && rows.length > 0) {
+            searchTermSpan.textContent = queryRaw;
+            noMatchesRow.classList.remove('d-none');
+        } else {
+            noMatchesRow.classList.add('d-none');
+        }
+    }
+
+    searchInput.addEventListener('input', filtrarProveedores);
+
+    function limpiarBusqueda() {
+        searchInput.value = '';
+        filtrarProveedores();
+        searchInput.focus();
+    }
+
+    function abrirModalEditarProveedor(id, nombre, empresa, telefono) {
+        const form = document.getElementById('formEditarProveedor');
+        form.action = `/proveedores/${id}/editar`;
+        document.getElementById('edit_prov_nombre').value = nombre;
+        document.getElementById('edit_prov_empresa').value = empresa;
+        document.getElementById('edit_prov_telefono').value = telefono;
+        new bootstrap.Modal(document.getElementById('modalEditarProveedor')).show();
+    }
+
+    function confirmarEliminarProveedor(id, nombre) {
+        if (confirm(`¿Estás seguro de que deseas eliminar al proveedor "${nombre}"?\n\n⚠️ Toda su historia de facturas, abonos y archivos adjuntos será eliminada permanentemente.`)) {
+            const form = document.getElementById('formEliminarProveedor');
+            form.action = `/proveedores/eliminar/${id}`;
+            form.submit();
+        }
+    }
+</script>
 {% endblock %}

@@ -1,4 +1,4 @@
-const CACHE_NAME = 'koba-app-v1';
+const CACHE_NAME = 'ultratech-app-v2';
 const ASSETS_TO_CACHE = [
     '/',
     '/static/manifest.json',

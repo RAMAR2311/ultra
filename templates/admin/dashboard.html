@@ -1,37 +1,103 @@
 {% extends "base.html" %}
 
 {% block content %}
-<div class="d-flex justify-content-between align-items-center mb-5">
+<!-- Cabecera y Barra de Filtros -->
+<div class="d-flex flex-wrap justify-content-between align-items-center mb-4 gap-3">
     <div>
-        <h2 class="fw-bold text-brand-black mb-0">Dashboard Operativo</h2>
-        <p class="text-muted">¡Bienvenido al panel central, {{ current_user.nombre }}!</p>
+        <h2 class="fw-bold text-brand-black mb-1">Dashboard Operativo</h2>
+        <p class="text-muted mb-2">¡Bienvenido al panel central, {{ current_user.nombre }}!</p>
+        <div class="d-flex align-items-center gap-2">
+            <span class="badge bg-white text-secondary border shadow-sm px-3 py-2 rounded-pill">
+                <i class="fa-solid fa-calendar-check me-2" style="color: var(--brand-blue);"></i>
+                Periodo: <strong class="text-brand-black ms-1">{{ label_periodo }}</strong>
+            </span>
+            <span class="badge bg-light text-muted border px-2 py-1 rounded-pill small">
+                {{ inicio_filtro.strftime('%d/%m/%Y') }} - {{ fin_filtro.strftime('%d/%m/%Y') }}
+            </span>
+        </div>
     </div>
-    <div class="d-flex gap-2">
-        <form method="GET" action="{{ url_for('admin_bp.dashboard') }}" class="d-flex align-items-center me-2">
-            <select name="mes" class="form-select form-select-sm rounded-pill fw-bold border-0 bg-light me-2" style="width: auto;">
-                <option value="1" {% if mes == 1 %}selected{% endif %}>Enero</option>
-                <option value="2" {% if mes == 2 %}selected{% endif %}>Febrero</option>
-                <option value="3" {% if mes == 3 %}selected{% endif %}>Marzo</option>
-                <option value="4" {% if mes == 4 %}selected{% endif %}>Abril</option>
-                <option value="5" {% if mes == 5 %}selected{% endif %}>Mayo</option>
-                <option value="6" {% if mes == 6 %}selected{% endif %}>Junio</option>
-                <option value="7" {% if mes == 7 %}selected{% endif %}>Julio</option>
-                <option value="8" {% if mes == 8 %}selected{% endif %}>Agosto</option>
-                <option value="9" {% if mes == 9 %}selected{% endif %}>Septiembre</option>
-                <option value="10" {% if mes == 10 %}selected{% endif %}>Octubre</option>
-                <option value="11" {% if mes == 11 %}selected{% endif %}>Noviembre</option>
-                <option value="12" {% if mes == 12 %}selected{% endif %}>Diciembre</option>
+
+    <!-- Barra de Filtros Dinámicos -->
+    <div class="d-flex flex-wrap align-items-center gap-2">
+        <form method="GET" action="{{ url_for('admin_bp.dashboard') }}" class="d-flex flex-wrap align-items-center gap-2 p-2 bg-white rounded-pill shadow-sm border" id="dashboardFilterForm">
+            <!-- Selector de Tipo de Filtro -->
+            <select name="filtro_tipo" id="filtroTipoSelect" class="form-select form-select-sm rounded-pill fw-bold border-0 bg-light" style="width: auto; cursor: pointer;" onchange="updateFilterInputs()">
+                <option value="dia" {% if filtro_tipo == 'dia' %}selected{% endif %}>📅 Por Día</option>
+                <option value="semana" {% if filtro_tipo == 'semana' %}selected{% endif %}>📆 Por Semana</option>
+                <option value="quincena" {% if filtro_tipo == 'quincena' %}selected{% endif %}>🌓 Por Quincena</option>
+                <option value="mes" {% if filtro_tipo == 'mes' %}selected{% endif %}>🗓️ Por Mes</option>
             </select>
-            <select name="anio" class="form-select form-select-sm rounded-pill fw-bold border-0 bg-light me-2" style="width: auto;">
-                <option value="2024" {% if anio == 2024 %}selected{% endif %}>2024</option>
-                <option value="2025" {% if anio == 2025 %}selected{% endif %}>2025</option>
-                <option value="2026" {% if anio == 2026 %}selected{% endif %}>2026</option>
-                <option value="2027" {% if anio == 2027 %}selected{% endif %}>2027</option>
-            </select>
-            <button type="submit" class="btn btn-sm btn-outline-secondary rounded-pill fw-bold px-3">Filtrar</button>
+
+            <!-- 1. Campo para DÍA -->
+            <div id="inputGroupDia" class="filter-group align-items-center {% if filtro_tipo != 'dia' %}d-none{% else %}d-flex{% endif %}">
+                <input type="date" name="fecha_dia" value="{{ fecha_dia }}" class="form-control form-control-sm rounded-pill fw-bold border-0 bg-light px-3" title="Selecciona la fecha">
+            </div>
+
+            <!-- 2. Campo para SEMANA -->
+            <div id="inputGroupSemana" class="filter-group align-items-center {% if filtro_tipo != 'semana' %}d-none{% else %}d-flex{% endif %}">
+                <input type="date" name="fecha_semana" value="{{ fecha_semana }}" class="form-control form-control-sm rounded-pill fw-bold border-0 bg-light px-3" title="Selecciona cualquier día de la semana deseada">
+            </div>
+
+            <!-- 3. Campos para QUINCENA -->
+            <div id="inputGroupQuincena" class="filter-group align-items-center gap-1 {% if filtro_tipo != 'quincena' %}d-none{% else %}d-flex{% endif %}">
+                <select name="quincena_num" class="form-select form-select-sm rounded-pill fw-bold border-0 bg-light" style="width: auto;">
+                    <option value="1" {% if quincena_num == 1 %}selected{% endif %}>1ª Quincena (1-15)</option>
+                    <option value="2" {% if quincena_num == 2 %}selected{% endif %}>2ª Quincena (16-fin)</option>
+                </select>
+                <select name="mes_q" class="form-select form-select-sm rounded-pill fw-bold border-0 bg-light" style="width: auto;">
+                    <option value="1" {% if mes == 1 %}selected{% endif %}>Enero</option>
+                    <option value="2" {% if mes == 2 %}selected{% endif %}>Febrero</option>
+                    <option value="3" {% if mes == 3 %}selected{% endif %}>Marzo</option>
+                    <option value="4" {% if mes == 4 %}selected{% endif %}>Abril</option>
+                    <option value="5" {% if mes == 5 %}selected{% endif %}>Mayo</option>
+                    <option value="6" {% if mes == 6 %}selected{% endif %}>Junio</option>
+                    <option value="7" {% if mes == 7 %}selected{% endif %}>Julio</option>
+                    <option value="8" {% if mes == 8 %}selected{% endif %}>Agosto</option>
+                    <option value="9" {% if mes == 9 %}selected{% endif %}>Septiembre</option>
+                    <option value="10" {% if mes == 10 %}selected{% endif %}>Octubre</option>
+                    <option value="11" {% if mes == 11 %}selected{% endif %}>Noviembre</option>
+                    <option value="12" {% if mes == 12 %}selected{% endif %}>Diciembre</option>
+                </select>
+                <select name="anio_q" class="form-select form-select-sm rounded-pill fw-bold border-0 bg-light" style="width: auto;">
+                    <option value="2024" {% if anio == 2024 %}selected{% endif %}>2024</option>
+                    <option value="2025" {% if anio == 2025 %}selected{% endif %}>2025</option>
+                    <option value="2026" {% if anio == 2026 %}selected{% endif %}>2026</option>
+                    <option value="2027" {% if anio == 2027 %}selected{% endif %}>2027</option>
+                </select>
+            </div>
+
+            <!-- 4. Campos para MES -->
+            <div id="inputGroupMes" class="filter-group align-items-center gap-1 {% if filtro_tipo != 'mes' %}d-none{% else %}d-flex{% endif %}">
+                <select name="mes" class="form-select form-select-sm rounded-pill fw-bold border-0 bg-light" style="width: auto;">
+                    <option value="1" {% if mes == 1 %}selected{% endif %}>Enero</option>
+                    <option value="2" {% if mes == 2 %}selected{% endif %}>Febrero</option>
+                    <option value="3" {% if mes == 3 %}selected{% endif %}>Marzo</option>
+                    <option value="4" {% if mes == 4 %}selected{% endif %}>Abril</option>
+                    <option value="5" {% if mes == 5 %}selected{% endif %}>Mayo</option>
+                    <option value="6" {% if mes == 6 %}selected{% endif %}>Junio</option>
+                    <option value="7" {% if mes == 7 %}selected{% endif %}>Julio</option>
+                    <option value="8" {% if mes == 8 %}selected{% endif %}>Agosto</option>
+                    <option value="9" {% if mes == 9 %}selected{% endif %}>Septiembre</option>
+                    <option value="10" {% if mes == 10 %}selected{% endif %}>Octubre</option>
+                    <option value="11" {% if mes == 11 %}selected{% endif %}>Noviembre</option>
+                    <option value="12" {% if mes == 12 %}selected{% endif %}>Diciembre</option>
+                </select>
+                <select name="anio" class="form-select form-select-sm rounded-pill fw-bold border-0 bg-light" style="width: auto;">
+                    <option value="2024" {% if anio == 2024 %}selected{% endif %}>2024</option>
+                    <option value="2025" {% if anio == 2025 %}selected{% endif %}>2025</option>
+                    <option value="2026" {% if anio == 2026 %}selected{% endif %}>2026</option>
+                    <option value="2027" {% if anio == 2027 %}selected{% endif %}>2027</option>
+                </select>
+            </div>
+
+            <button type="submit" class="btn btn-sm btn-blue rounded-pill fw-bold px-3">
+                <i class="fa-solid fa-filter me-1"></i>Filtrar
+            </button>
         </form>
-        <button type="button" class="btn btn-blue rounded-pill fw-bold shadow-sm px-4" data-bs-toggle="modal" data-bs-target="#modalBalance">
-            <i class="fa-solid fa-scale-balanced me-2"></i>Generar Balance
+
+        <!-- Botón Balance Financiero -->
+        <button type="button" class="btn btn-outline-secondary rounded-pill fw-bold shadow-sm px-3" data-bs-toggle="modal" data-bs-target="#modalBalance">
+            <i class="fa-solid fa-scale-balanced me-1 text-primary"></i>Generar Balance
         </button>
     </div>
 </div>
@@ -49,11 +115,11 @@
               <p class="text-muted small">Selecciona el rango de fechas para cruzar las ventas e ingresos totales contra el Costo Directo y los Gastos Registrados.</p>
               <div class="mb-3">
                   <label class="form-label fw-bold text-brand-black small">Fecha de Inicio</label>
-                  <input type="date" name="fecha_inicio" class="form-control" required>
+                  <input type="date" name="fecha_inicio" value="{{ inicio_filtro.strftime('%Y-%m-%d') }}" class="form-control" required>
               </div>
               <div class="mb-4">
                   <label class="form-label fw-bold text-brand-black small">Fecha de Fin</label>
-                  <input type="date" name="fecha_fin" class="form-control" required>
+                  <input type="date" name="fecha_fin" value="{{ fin_filtro.strftime('%Y-%m-%d') }}" class="form-control" required>
               </div>
           </div>
           <div class="modal-footer border-top-0 pt-0">
@@ -65,82 +131,236 @@
   </div>
 </div>
 
-<!-- Layout de Tarjetas (Fila de 4 Elementos) -->
+<!-- FILA 1: Métricas Principales Dinámicas del Periodo (4 Tarjetas) -->
 <div class="row g-3 mb-4">
-    <!-- 1. Tarjeta: Ingresos Totales (Botones/Textos Azul Turquesa / .btn-blue) -->
+    <!-- 1. Tarjeta: Ingresos Totales del Periodo -->
     <div class="col-md-3">
-        <div class="card card-custom h-100 p-4 border-0">
-            <div class="d-flex justify-content-between align-items-start mb-3">
+        <div class="card card-custom h-100 p-4 border-0 shadow-sm">
+            <div class="d-flex justify-content-between align-items-start mb-2">
                 <i class="fa-solid fa-sack-dollar fs-1" style="color: var(--brand-blue);"></i>
-                <span class="badge bg-brand-blue rounded-pill">{{ nombre_mes }}</span>
+                <span class="badge bg-brand-blue rounded-pill">{{ badge_periodo }}</span>
             </div>
-            <h5 class="text-brand-black fw-bold">Ingresos (Mes)</h5>
-            <h2 class="fw-bolder" style="color: var(--brand-blue);">${{ (total_ventas)|cop }}</h2>
-            <p class="text-muted small mb-0"><i class="fa-solid fa-receipt me-1"></i> {{ conteo_ventas }} ventas realizadas</p>
-            <div class="mt-auto pt-3">
-                <a href="{{ url_for('sales_bp.historial') }}" class="btn btn-blue w-100 rounded-pill"><i class="fa-solid fa-file-invoice-dollar me-2"></i> Ver Historial</a>
+            <h6 class="text-muted fw-bold mb-1">Ingresos ({{ tipo_periodo_nombre }})</h6>
+            <h2 class="fw-bolder mb-1" style="color: var(--brand-blue);">${{ (total_ventas)|cop }}</h2>
+            <p class="text-muted small mb-2"><i class="fa-solid fa-receipt me-1"></i> {{ conteo_ventas }} ventas realizadas</p>
+            
+            <div class="d-flex justify-content-between text-muted small pt-2 border-top mb-3">
+                <span title="Pagos en efectivo"><i class="fa-solid fa-money-bill-wave text-success me-1"></i>${{ (ventas_efectivo)|cop }}</span>
+                <span title="Pagos por transferencia/digital"><i class="fa-solid fa-mobile-screen-button text-primary me-1"></i>${{ (ventas_transferencia)|cop }}</span>
+            </div>
+
+            <div class="mt-auto">
+                <a href="{{ url_for('sales_bp.historial') }}" class="btn btn-blue w-100 rounded-pill py-2">
+                    <i class="fa-solid fa-file-invoice-dollar me-2"></i>Ver Historial
+                </a>
             </div>
         </div>
     </div>
 
-    <!-- 2. Tarjeta: Productos en Catálogo -->
+    <!-- 2. Tarjeta: Unidades Vendidas en el Periodo -->
     <div class="col-md-3">
-        <div class="card card-custom h-100 p-4 border-0">
-            <div class="d-flex justify-content-between align-items-start mb-3">
+        <div class="card card-custom h-100 p-4 border-0 shadow-sm">
+            <div class="d-flex justify-content-between align-items-start mb-2">
                 <i class="fa-solid fa-cubes fs-1" style="color: var(--brand-blue);"></i>
+                <span class="badge bg-brand-blue rounded-pill">{{ badge_periodo }}</span>
             </div>
-            <h5 class="text-brand-black fw-bold">Productos en Catálogo</h5>
-            <h2 class="fw-bolder" style="color: var(--brand-blue);">{{ total_productos }} uds.</h2>
-            <div class="mt-auto pt-4">
-                <a href="/inventory/" class="btn btn-blue w-100 rounded-pill"><i class="fa-solid fa-sliders me-2"></i> Gestionar Inventario</a>
+            <h6 class="text-muted fw-bold mb-1">Mercancía Vendida</h6>
+            <h2 class="fw-bolder mb-1" style="color: var(--brand-blue);">{{ unidades_vendidas }} uds.</h2>
+            <p class="text-muted small mb-2"><i class="fa-solid fa-tag me-1"></i> {{ referencias_vendidas }} referencias vendidas</p>
+
+            <div class="text-muted small pt-2 border-top mb-3">
+                <i class="fa-solid fa-boxes-stacked me-1"></i> Total en catálogo: <strong>{{ total_productos }}</strong> referencias
+            </div>
+
+            <div class="mt-auto">
+                <a href="/inventory/" class="btn btn-blue w-100 rounded-pill py-2">
+                    <i class="fa-solid fa-sliders me-2"></i>Gestionar Inventario
+                </a>
             </div>
         </div>
     </div>
 
-    <!-- 3. Tarjeta: Alertas de Stock -->
+    <!-- 3. Tarjeta: Gastos Operativos del Periodo -->
     <div class="col-md-3">
-        <div class="card card-custom h-100 p-4 border-0">
-            <div class="d-flex justify-content-between align-items-start mb-3">
-                <i class="fa-solid fa-triangle-exclamation fs-1" style="color: var(--brand-blue);"></i>
+        <div class="card card-custom h-100 p-4 border-0 shadow-sm">
+            <div class="d-flex justify-content-between align-items-start mb-2">
+                <i class="fa-solid fa-file-invoice-dollar fs-1 text-danger"></i>
+                <span class="badge bg-danger bg-opacity-10 text-danger rounded-pill">{{ badge_periodo }}</span>
             </div>
-            <h5 class="text-brand-black fw-bold">Alertas Críticas de Stock</h5>
-            <h2 class="fw-bolder" style="color: var(--brand-blue);">{{ productos_bajo_stock }} productos</h2>
-            <p class="text-muted small">Tienen existencias limitadas (10 o menos unidades).</p>
-            <div class="mt-auto pt-3">
-                <a href="/inventory/" class="btn btn-blue w-100 rounded-pill"><i class="fa-solid fa-eye me-2"></i> Revisar Urgencias</a>
+            <h6 class="text-muted fw-bold mb-1">Gastos ({{ tipo_periodo_nombre }})</h6>
+            <h2 class="fw-bolder mb-1 text-danger">${{ (total_gastos)|cop }}</h2>
+            <p class="text-muted small mb-2"><i class="fa-solid fa-arrow-trend-down me-1 text-danger"></i> {{ conteo_gastos }} gastos registrados</p>
+
+            <div class="d-flex justify-content-between text-muted small pt-2 border-top mb-3">
+                <span>Diarios: ${{ (gastos_diarios)|cop }}</span>
+                <span>Indirectos: ${{ (costos_indirectos)|cop }}</span>
+            </div>
+
+            <div class="mt-auto">
+                <a href="/gastos/" class="btn btn-outline-danger w-100 rounded-pill py-2">
+                    <i class="fa-solid fa-hand-holding-dollar me-2"></i>Ver Gastos
+                </a>
             </div>
         </div>
     </div>
 
-    <!-- 4. Tarjeta: Maneos de Mercancía -->
+    <!-- 4. Tarjeta: Utilidad Estimada del Periodo -->
     <div class="col-md-3">
-        <div class="card card-custom h-100 p-4 border-0">
-            <div class="d-flex justify-content-between align-items-start mb-3">
+        <div class="card card-custom h-100 p-4 border-0 shadow-sm">
+            <div class="d-flex justify-content-between align-items-start mb-2">
+                <i class="fa-solid fa-chart-line fs-1 {% if utilidad_neta >= 0 %}text-success{% else %}text-danger{% endif %}"></i>
+                <span class="badge {% if utilidad_neta >= 0 %}bg-success bg-opacity-10 text-success{% else %}bg-danger bg-opacity-10 text-danger{% endif %} rounded-pill">
+                    {{ badge_periodo }}
+                </span>
+            </div>
+            <h6 class="text-muted fw-bold mb-1">Utilidad Estimada</h6>
+            <h2 class="fw-bolder mb-1 {% if utilidad_neta >= 0 %}text-success{% else %}text-danger{% endif %}">
+                {% if utilidad_neta >= 0 %}${{ (utilidad_neta)|cop }}{% else %}-${{ (-utilidad_neta)|cop }}{% endif %}
+            </h2>
+            <p class="text-muted small mb-2"><i class="fa-solid fa-calculator me-1"></i> Ventas - Costos - Gastos</p>
+
+            <div class="d-flex justify-content-between text-muted small pt-2 border-top mb-3">
+                <span>Costo Directo (COGS):</span>
+                <strong>${{ (costos_directos)|cop }}</strong>
+            </div>
+
+            <div class="mt-auto">
+                <button type="button" class="btn btn-outline-secondary w-100 rounded-pill py-2" data-bs-toggle="modal" data-bs-target="#modalBalance">
+                    <i class="fa-solid fa-scale-balanced me-2"></i>Reporte Detallado
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- FILA 2: Maneos, Alertas de Stock y Proveedores (3 Tarjetas) -->
+<div class="row g-3">
+    <!-- 5. Tarjeta: Maneos del Periodo -->
+    <div class="col-md-4">
+        <div class="card card-custom h-100 p-4 border-0 shadow-sm">
+            <div class="d-flex justify-content-between align-items-start mb-2">
                 <i class="fa-solid fa-handshake fs-1" style="color: var(--brand-blue);"></i>
+                <span class="badge bg-brand-blue rounded-pill">{{ badge_periodo }}</span>
             </div>
-            <h5 class="text-brand-black fw-bold">Maneos Activos</h5>
-            <h2 class="fw-bolder" style="color: var(--brand-blue);">{{ maneos_activos }} docs.</h2>
-            <p class="text-muted small">Préstamos vecinos esperando resolución.</p>
-            <div class="mt-auto pt-3">
-                <a href="{{ url_for('admin_bp.maneos') }}" class="btn btn-blue w-100 rounded-pill"><i class="fa-solid fa-eye me-2"></i> Ver Maneos</a>
+            <h6 class="text-muted fw-bold mb-1">Maneos ({{ tipo_periodo_nombre }})</h6>
+            <h2 class="fw-bolder mb-1" style="color: var(--brand-blue);">{{ maneos_periodo_count }} préstamos</h2>
+            <p class="text-muted small mb-2">
+                <i class="fa-solid fa-money-bill-transfer me-1 text-primary"></i> ${{ (maneos_periodo_monto)|cop }} en mercancía prestada
+            </p>
+
+            <div class="text-muted small pt-2 border-top mb-3">
+                <span class="badge bg-warning text-dark me-1">{{ maneos_activos }}</span> maneos vecinos pendientes de resolución
+            </div>
+
+            <div class="mt-auto">
+                <a href="{{ url_for('admin_bp.maneos') }}" class="btn btn-blue w-100 rounded-pill py-2">
+                    <i class="fa-solid fa-eye me-2"></i>Ver Maneos
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- 6. Tarjeta: Alertas de Stock -->
+    <div class="col-md-4">
+        <div class="card card-custom h-100 p-4 border-0 shadow-sm">
+            <div class="d-flex justify-content-between align-items-start mb-2">
+                <i class="fa-solid fa-triangle-exclamation fs-1 text-warning"></i>
+                <span class="badge bg-warning bg-opacity-25 text-dark rounded-pill">Stock Crítico</span>
+            </div>
+            <h6 class="text-muted fw-bold mb-1">Alertas de Stock</h6>
+            <h2 class="fw-bolder mb-1 text-warning">{{ productos_bajo_stock }} productos</h2>
+            <p class="text-muted small mb-2">Tienen existencias limitadas (10 o menos unidades).</p>
+
+            <div class="text-muted small pt-2 border-top mb-3">
+                <i class="fa-solid fa-sliders me-1"></i> {{ ajustes_periodo }} ajustes de inventario registrados en el periodo
+            </div>
+
+            <div class="mt-auto">
+                <a href="/inventory/" class="btn btn-blue w-100 rounded-pill py-2">
+                    <i class="fa-solid fa-eye me-2"></i>Revisar Urgencias
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- 7. Tarjeta: Gestión de Proveedores -->
+    <div class="col-md-4">
+        <div class="card card-custom h-100 p-4 border-0 shadow-sm" style="border-left: 4px solid var(--brand-blue) !important;">
+            <div class="d-flex justify-content-between align-items-start mb-2">
+                <i class="fa-solid fa-truck-field fs-1 text-secondary"></i>
+                <span class="badge bg-brand-blue rounded-pill">{{ badge_periodo }}</span>
+            </div>
+            <h6 class="text-muted fw-bold mb-1">Abonos a Proveedores</h6>
+            <h2 class="fw-bolder mb-1 text-brand-black">${{ (pagos_proveedores_periodo)|cop }}</h2>
+            <p class="text-muted small mb-2">
+                <i class="fa-solid fa-receipt me-1"></i> {{ conteo_pagos_prov }} abonos pagados a proveedores en el periodo
+            </p>
+
+            <div class="text-muted small pt-2 border-top mb-3">
+                <i class="fa-solid fa-folder-open me-1"></i> Cuentas por pagar, compras y abonos
+            </div>
+
+            <div class="mt-auto">
+                <a href="/proveedores" class="btn btn-blue w-100 rounded-pill py-2">
+                    <i class="fa-solid fa-folder-open me-2"></i>Abrir Proveedores
+                </a>
             </div>
         </div>
     </div>
 </div>
 
-<div class="row g-4 mt-1">
-    <!-- 5. Tarjeta: Módulo de Proveedores -->
-    <div class="col-md-3">
-        <div class="card card-custom h-100 p-4 border-0" style="border-left: 4px solid var(--brand-blue) !important;">
-            <div class="d-flex justify-content-between align-items-start mb-3">
-                <i class="fa-solid fa-truck-field fs-1 text-secondary"></i>
-            </div>
-            <h5 class="text-brand-black fw-bold">Gestión de Proveedores</h5>
-            <p class="text-muted small">Cuentas por pagar, facturas y abonos.</p>
-            <div class="mt-auto pt-3">
-                <a href="/proveedores" class="btn btn-blue w-100 rounded-pill"><i class="fa-solid fa-folder-open me-2"></i> Abrir Proveedores</a>
-            </div>
-        </div>
-    </div>
-</div>
+<script>
+function updateFilterInputs() {
+    const select = document.getElementById('filtroTipoSelect');
+    const tipo = select ? select.value : 'mes';
+    
+    const groupDia = document.getElementById('inputGroupDia');
+    const groupSemana = document.getElementById('inputGroupSemana');
+    const groupQuincena = document.getElementById('inputGroupQuincena');
+    const groupMes = document.getElementById('inputGroupMes');
+
+    const groups = {
+        'dia': groupDia,
+        'semana': groupSemana,
+        'quincena': groupQuincena,
+        'mes': groupMes
+    };
+
+    for (const [key, el] of Object.entries(groups)) {
+        if (!el) continue;
+        if (key === tipo) {
+            el.classList.remove('d-none');
+            el.classList.add('d-flex');
+            el.querySelectorAll('input, select').forEach(input => {
+                input.disabled = false;
+            });
+        } else {
+            el.classList.remove('d-flex');
+            el.classList.add('d-none');
+            el.querySelectorAll('input, select').forEach(input => {
+                input.disabled = true;
+            });
+        }
+    }
+}
+
+// Sincronizar quincena selects antes de enviar
+document.getElementById('dashboardFilterForm')?.addEventListener('submit', function(e) {
+    const tipo = document.getElementById('filtroTipoSelect').value;
+    if (tipo === 'quincena') {
+        const mesQ = document.querySelector('select[name="mes_q"]');
+        const anioQ = document.querySelector('select[name="anio_q"]');
+        if (mesQ && anioQ) {
+            // Asignar parámetros con nombre 'mes' y 'anio' para el backend
+            mesQ.name = 'mes';
+            anioQ.name = 'anio';
+        }
+    }
+});
+
+// Inicializar al cargar la página
+document.addEventListener('DOMContentLoaded', function() {
+    updateFilterInputs();
+});
+</script>
 {% endblock %}

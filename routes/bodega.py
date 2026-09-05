@@ -1,9 +1,10 @@
 from flask import Blueprint, render_template, request, flash, redirect, url_for, current_app, jsonify
 from flask_login import login_required, current_user
-from decorators import any_bodega_required
+from decorators import any_bodega_required, admin_required, bodega_required
 from models import db, Cliente, FacturaBodega, AbonoBodega, Product, StockAdjustment, FacturaBodegaDetalle, obtener_hora_bogota
 import os
 from decimal import Decimal
+from datetime import datetime, timedelta
 from werkzeug.utils import secure_filename
 
 bodega_bp = Blueprint('bodega_bp', __name__)
@@ -17,17 +18,57 @@ def allowed_file(filename):
 @login_required
 @any_bodega_required
 def dashboard():
+    ahora = obtener_hora_bogota()
+    hoy_inicio = datetime.combine(ahora.date(), datetime.min.time())
+    hoy_fin = hoy_inicio + timedelta(days=1)
+
     if current_user.rol == 'vendedor_bodega':
-        total_clientes = Cliente.query.filter_by(creado_por_id=current_user.id).count()
+        clientes_query = Cliente.query.filter_by(creado_por_id=current_user.id)
+        clientes = clientes_query.all()
+        total_clientes = len(clientes)
+        total_cartera = sum((c.deuda_total for c in clientes if c.deuda_total > 0), Decimal('0'))
+
+        facturas_hoy = FacturaBodega.query.filter(
+            FacturaBodega.usuario_id == current_user.id,
+            FacturaBodega.fecha_subida >= hoy_inicio,
+            FacturaBodega.fecha_subida < hoy_fin
+        ).all()
+        ventas_hoy_contado = sum((f.monto_total for f in facturas_hoy if f.modalidad == 'contado'), Decimal('0'))
+        ventas_hoy_credito = sum((f.monto_total for f in facturas_hoy if f.modalidad == 'credito'), Decimal('0'))
+
         facturas_recientes = FacturaBodega.query.filter_by(usuario_id=current_user.id).order_by(FacturaBodega.fecha_subida.desc()).limit(10).all()
         abonos_recientes = AbonoBodega.query.filter_by(usuario_id=current_user.id).order_by(AbonoBodega.fecha_abono.desc()).limit(10).all()
+        alertas_stock_bajo = 0
     else:
-        # Rol 'bodega' o 'admin' ve todo
-        total_clientes = Cliente.query.count()
+        # Rol 'bodega' o 'admin' ve todo el consolidado
+        clientes = Cliente.query.all()
+        total_clientes = len(clientes)
+        total_cartera = sum((c.deuda_total for c in clientes if c.deuda_total > 0), Decimal('0'))
+
+        facturas_hoy = FacturaBodega.query.filter(
+            FacturaBodega.fecha_subida >= hoy_inicio,
+            FacturaBodega.fecha_subida < hoy_fin
+        ).all()
+        ventas_hoy_contado = sum((f.monto_total for f in facturas_hoy if f.modalidad == 'contado'), Decimal('0'))
+        ventas_hoy_credito = sum((f.monto_total for f in facturas_hoy if f.modalidad == 'credito'), Decimal('0'))
+
         facturas_recientes = FacturaBodega.query.order_by(FacturaBodega.fecha_subida.desc()).limit(10).all()
         abonos_recientes = AbonoBodega.query.order_by(AbonoBodega.fecha_abono.desc()).limit(10).all()
-    
-    return render_template('bodega/dashboard.html', clientes_count=total_clientes, facturas=facturas_recientes, abonos=abonos_recientes)
+
+        # Alertas de stock bajo en bodega (stock <= 5)
+        productos_bodega = Product.query.filter_by(tipo_inventario='bodega').all()
+        alertas_stock_bajo = sum(1 for p in productos_bodega if (p.cantidad_stock or 0) <= 5)
+
+    return render_template(
+        'bodega/dashboard.html',
+        clientes_count=total_clientes,
+        total_cartera=float(total_cartera),
+        ventas_hoy_contado=float(ventas_hoy_contado),
+        ventas_hoy_credito=float(ventas_hoy_credito),
+        alertas_stock_bajo=alertas_stock_bajo,
+        facturas=facturas_recientes,
+        abonos=abonos_recientes
+    )
 
 @bodega_bp.route('/clientes/nuevo', methods=['GET', 'POST'])
 @login_required
@@ -39,6 +80,7 @@ def nuevo_cliente():
         telefono = request.form.get('telefono')
         email = request.form.get('email')
         direccion = request.form.get('direccion')
+        zona = (request.form.get('zona') or '').strip() or None
 
         if not nombre or not documento or not telefono:
             flash('Por favor completa los campos obligatorios: Nombre, Documento y Teléfono.', 'danger')
@@ -54,6 +96,7 @@ def nuevo_cliente():
             telefono=telefono.strip(),
             email=email.strip() if email else None,
             direccion=direccion.strip() if direccion else None,
+            zona=zona,
             creado_por_id=current_user.id
         )
         try:
@@ -97,6 +140,7 @@ def editar_cliente(id):
         cliente.telefono = telefono.strip()
         cliente.email = email.strip() if email else None
         cliente.direccion = direccion.strip() if direccion else None
+        cliente.zona = (request.form.get('zona') or '').strip() or None
 
         try:
             db.session.commit()
@@ -492,13 +536,35 @@ def api_buscar_producto_bodega(sku):
 @login_required
 @any_bodega_required
 def clientes():
+    zona_sel = (request.args.get('zona') or '').strip()
+    estado_sel = (request.args.get('estado') or '').strip()
+
     if current_user.rol == 'vendedor_bodega':
-        # Vendedor de bodega solo ve sus propios clientes en el listado de resumen
-        lista_clientes = Cliente.query.filter_by(creado_por_id=current_user.id).order_by(Cliente.nombre_o_razon_social).all()
+        query = Cliente.query.filter_by(creado_por_id=current_user.id)
     else:
-        # Bodega ve todo
-        lista_clientes = Cliente.query.order_by(Cliente.nombre_o_razon_social).all()
-    return render_template('bodega/clientes.html', clientes=lista_clientes)
+        query = Cliente.query
+
+    if zona_sel:
+        query = query.filter_by(zona=zona_sel)
+
+    lista_clientes = query.order_by(Cliente.nombre_o_razon_social).all()
+
+    if estado_sel == 'deuda':
+        lista_clientes = [c for c in lista_clientes if c.deuda_total > 0]
+    elif estado_sel == 'al_dia':
+        lista_clientes = [c for c in lista_clientes if c.deuda_total <= 0]
+
+    # Zonas disponibles en base de datos
+    zonas_raw = db.session.query(Cliente.zona).filter(Cliente.zona.isnot(None), Cliente.zona != '').distinct().all()
+    zonas_disponibles = sorted([z[0] for z in zonas_raw if z[0]])
+
+    return render_template(
+        'bodega/clientes.html', 
+        clientes=lista_clientes,
+        zonas_disponibles=zonas_disponibles,
+        zona_sel=zona_sel,
+        estado_sel=estado_sel
+    )
 
 @bodega_bp.route('/clientes/<int:id>')
 @login_required
@@ -774,7 +840,7 @@ def editar_abono(abono_id):
 
 @bodega_bp.route('/abonos/<int:abono_id>/eliminar', methods=['POST'])
 @login_required
-@any_bodega_required
+@admin_required
 def eliminar_abono(abono_id):
     abono = AbonoBodega.query.get_or_404(abono_id)
     cliente_id = abono.cliente_id
@@ -859,7 +925,7 @@ def editar_factura(id):
 
 @bodega_bp.route('/facturas/<int:id>/eliminar', methods=['POST'])
 @login_required
-@any_bodega_required
+@admin_required
 def eliminar_factura(id):
     factura = FacturaBodega.query.get_or_404(id)
     cliente_id = factura.cliente_id
@@ -902,7 +968,7 @@ def eliminar_factura(id):
 
 @bodega_bp.route('/clientes/<int:id>/eliminar', methods=['POST'])
 @login_required
-@any_bodega_required
+@admin_required
 def eliminar_cliente(id):
     cliente = Cliente.query.get_or_404(id)
 
@@ -935,15 +1001,17 @@ def api_search_clientes():
         return jsonify([])
     
     from sqlalchemy import or_
-    # Permitir que todos los perfiles busquen a todos los clientes para facilitar abonos e informes
     query_base = Cliente.query
 
     clientes_match = query_base.filter(
         or_(
             Cliente.nombre_o_razon_social.ilike(f'%{query}%'),
-            Cliente.documento_o_nit.ilike(f'%{query}%')
+            Cliente.documento_o_nit.ilike(f'%{query}%'),
+            Cliente.telefono.ilike(f'%{query}%'),
+            Cliente.direccion.ilike(f'%{query}%'),
+            Cliente.zona.ilike(f'%{query}%')
         )
-    ).limit(10).all()
+    ).limit(15).all()
     
     results = []
     for c in clientes_match:
@@ -951,7 +1019,10 @@ def api_search_clientes():
             'id': c.id,
             'nombre': c.nombre_o_razon_social,
             'documento': c.documento_o_nit,
+            'telefono': c.telefono or '',
+            'zona': c.zona or 'Sin Zona',
             'deuda': float(c.deuda_total),
+            'estado': c.estado_global,
             'url': url_for('bodega_bp.cliente_detalle', id=c.id)
         })
     
@@ -994,4 +1065,18 @@ def api_search_facturas():
 @login_required
 @any_bodega_required
 def modulo_abonos():
-    return render_template('bodega/modulo_abonos.html')
+    facturas_pendientes = FacturaBodega.query.filter(
+        FacturaBodega.modalidad == 'credito',
+        FacturaBodega.estado != 'Pagado'
+    ).order_by(FacturaBodega.fecha_subida.asc()).all()
+
+    todos_clientes = Cliente.query.order_by(Cliente.nombre_o_razon_social).all()
+    clientes_con_deuda = [c for c in todos_clientes if c.deuda_total > 0]
+    cartera_total = sum((c.deuda_total for c in clientes_con_deuda), Decimal('0'))
+
+    return render_template(
+        'bodega/modulo_abonos.html',
+        facturas_pendientes=facturas_pendientes,
+        clientes_con_deuda=clientes_con_deuda,
+        cartera_total=float(cartera_total)
+    )

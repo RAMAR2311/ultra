@@ -1,111 +1,527 @@
 {% extends "base.html" %}
 
 {% block content %}
-<div class="d-flex justify-content-between align-items-center mb-4">
-    <h2 class="fw-bold text-brand-black m-0">Control de Gastos y Costos</h2>
-    <a href="{{ url_for('admin_bp.dashboard') if current_user.rol == 'admin' else url_for('sales_bp.procesar_venta') }}" class="btn btn-outline-secondary rounded-pill px-4">
-        <i class="fa-solid fa-arrow-left me-1"></i> Volver al Menú
-    </a>
+<style>
+    /* Estilos Modernos para el Módulo de Gastos */
+    .gasto-kpi-card {
+        border-radius: 16px;
+        background: #ffffff;
+        border: 1px solid rgba(0, 0, 0, 0.06);
+        box-shadow: 0 4px 14px rgba(0, 0, 0, 0.04);
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+    .gasto-kpi-card:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 8px 20px rgba(0, 0, 0, 0.08);
+    }
+    .gasto-reg-card {
+        border-radius: 18px;
+        background: #ffffff;
+        border: 1px solid rgba(0, 0, 0, 0.08);
+        box-shadow: 0 6px 20px rgba(0, 0, 0, 0.05);
+    }
+    .category-pill {
+        cursor: pointer;
+        border-radius: 12px;
+        padding: 8px 14px;
+        font-size: 0.85rem;
+        font-weight: 600;
+        border: 1px solid #e2e8f0;
+        background: #f8fafc;
+        color: #334155;
+        transition: all 0.2s ease;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        user-select: none;
+    }
+    .category-pill:hover {
+        background: #e2e8f0;
+        border-color: #cbd5e1;
+        transform: translateY(-1px);
+    }
+    .category-pill.active {
+        background: #008B8B;
+        color: #ffffff;
+        border-color: #008B8B;
+        box-shadow: 0 4px 10px rgba(0, 139, 139, 0.3);
+    }
+    .category-pill.active i {
+        color: #ffffff !important;
+    }
+    .quick-cash-btn {
+        border-radius: 10px;
+        padding: 6px 12px;
+        font-size: 0.82rem;
+        font-weight: 700;
+        border: 1px dashed #cbd5e1;
+        background: #f1f5f9;
+        color: #1e293b;
+        transition: all 0.15s ease;
+    }
+    .quick-cash-btn:hover {
+        background: #e2e8f0;
+        border-color: #94a3b8;
+        transform: scale(1.03);
+    }
+    .quick-cash-btn:active {
+        transform: scale(0.97);
+    }
+    .paymethod-radio-card {
+        cursor: pointer;
+        border-radius: 12px;
+        padding: 8px 12px;
+        border: 2px solid #e2e8f0;
+        background: #ffffff;
+        text-align: center;
+        transition: all 0.2s ease;
+        user-select: none;
+    }
+    .paymethod-radio-card:hover {
+        border-color: #cbd5e1;
+        background: #f8fafc;
+    }
+    .paymethod-radio-card.active {
+        border-color: #008B8B;
+        background: rgba(0, 139, 139, 0.06);
+        box-shadow: 0 2px 8px rgba(0, 139, 139, 0.15);
+    }
+    .table-gastos tbody tr {
+        transition: background-color 0.15s ease;
+    }
+    .table-gastos tbody tr:hover {
+        background-color: #f8fafc;
+    }
+    .row-highlight {
+        animation: highlightFade 2.5s ease-out;
+    }
+    @keyframes highlightFade {
+        0% { background-color: rgba(16, 185, 129, 0.25); }
+        100% { background-color: transparent; }
+    }
+    .chip-filter {
+        border-radius: 20px;
+        font-size: 0.82rem;
+        font-weight: 600;
+        padding: 5px 14px;
+        border: 1px solid #e2e8f0;
+        background: #ffffff;
+        color: #64748b;
+        cursor: pointer;
+        transition: all 0.15s ease;
+    }
+    .chip-filter:hover {
+        background: #f1f5f9;
+        color: #1e293b;
+    }
+    .chip-filter.active {
+        background: #1e293b;
+        color: #ffffff;
+        border-color: #1e293b;
+    }
+    /* Toast flotante */
+    .toast-container-custom {
+        position: fixed;
+        bottom: 24px;
+        right: 24px;
+        z-index: 1090;
+    }
+</style>
+
+<!-- Cabecera y Navegador de Mes -->
+<div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 mb-4">
+    <div>
+        <div class="d-flex align-items-center gap-2">
+            <h2 class="fw-bolder text-brand-black m-0">Control de Gastos y Salidas</h2>
+            <span class="badge bg-danger bg-opacity-10 text-danger border border-danger-subtle rounded-pill px-3 py-1 fw-bold">
+                <i class="fa-solid fa-arrow-trend-down me-1"></i> Egresos
+            </span>
+        </div>
+        <p class="text-muted small mb-0 mt-1">Registra salidas de caja menor, compras operativas y costos administrativos al instante.</p>
+    </div>
+
+    <!-- Navegador de Periodo / Mes -->
+    <div class="d-flex align-items-center gap-2 bg-white p-2 rounded-4 shadow-sm border">
+        <a href="{{ url_for('gastos_bp.index', mes=mes_ant, anio=anio_ant) }}" class="btn btn-sm btn-light rounded-circle text-muted" title="Mes Anterior" style="width: 32px; height: 32px; padding: 0; display: flex; align-items: center; justify-content: center;">
+            <i class="fa-solid fa-chevron-left"></i>
+        </a>
+
+        <div class="dropdown">
+            <button class="btn btn-sm btn-light fw-bold text-brand-black rounded-pill px-3 dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                <i class="fa-regular fa-calendar-days text-brand-blue me-1"></i> {{ nombre_mes }} {{ anio_seleccionado }}
+            </button>
+            <ul class="dropdown-menu dropdown-menu-end shadow-sm border-0 rounded-3 p-2" style="min-width: 220px; max-height: 280px; overflow-y: auto;">
+                <li class="dropdown-header text-uppercase fw-bold text-muted small">Seleccionar Mes</li>
+                {% for num_mes, nom_m in meses_lista %}
+                <li>
+                    <a class="dropdown-item rounded-2 small py-2 {{ 'active fw-bold' if num_mes == mes_seleccionado else '' }}" href="{{ url_for('gastos_bp.index', mes=num_mes, anio=anio_seleccionado) }}">
+                        {{ nom_m }} {{ anio_seleccionado }}
+                    </a>
+                </li>
+                {% endfor %}
+            </ul>
+        </div>
+
+        <a href="{{ url_for('gastos_bp.index', mes=mes_sig, anio=anio_sig) }}" class="btn btn-sm btn-light rounded-circle text-muted" title="Mes Siguiente" style="width: 32px; height: 32px; padding: 0; display: flex; align-items: center; justify-content: center;">
+            <i class="fa-solid fa-chevron-right"></i>
+        </a>
+
+        {% if not es_mes_actual %}
+        <a href="{{ url_for('gastos_bp.index') }}" class="btn btn-sm btn-outline-primary rounded-pill px-2 py-1 small fw-semibold" title="Volver al Mes Actual">
+            Hoy
+        </a>
+        {% endif %}
+
+        <a href="{{ url_for('admin_bp.dashboard') if current_user.rol == 'admin' else url_for('sales_bp.procesar_venta') }}" class="btn btn-sm btn-outline-secondary rounded-pill px-3 ms-2">
+            <i class="fa-solid fa-arrow-left me-1"></i> Menú
+        </a>
+    </div>
 </div>
 
-<!-- Tarjetas de Resumen Financiero -->
-<div class="row g-4 mb-4">
-    <div class="col-md-6">
-        <div class="card card-custom h-100 p-4 border-0 shadow-sm" style="border-left: 5px solid var(--brand-blue) !important;">
-            <div class="d-flex justify-content-between align-items-center mb-3">
-                <h5 class="text-brand-black fw-bold mb-0">Total Gastos Diarios (Mes)</h5>
-                <i class="fa-solid fa-cart-shopping fs-2" style="color: var(--brand-blue);"></i>
+<!-- Tarjetas de Resumen Financiero Dinámicas -->
+<div class="row g-3 mb-4">
+    <!-- KPI 1: Gastos Diarios (Caja Operativa) -->
+    <div class="col-12 col-sm-6 col-xl-3">
+        <div class="gasto-kpi-card p-3 h-100" style="border-left: 5px solid #008B8B !important;">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+                <span class="text-muted small fw-bold text-uppercase">Gastos Diarios (Caja)</span>
+                <span class="badge bg-info bg-opacity-10 text-primary rounded-pill p-2">
+                    <i class="fa-solid fa-cash-register fs-6"></i>
+                </span>
             </div>
-            <h2 class="fw-bolder m-0">${{ (total_diarios)|cop }}</h2>
-            <p class="text-muted small mt-2 m-0">Operativos: comida, transportes, aseo.</p>
+            <h3 class="fw-bolder text-brand-black m-0" id="kpiTotalDiarios">${{ total_diarios|cop }}</h3>
+            <small class="text-muted d-block mt-1" style="font-size: 0.72rem;">
+                <i class="fa-solid fa-circle-info text-primary me-1"></i>Afecta arqueo y cuadre en efectivo.
+            </small>
         </div>
     </div>
-    <div class="col-md-6">
-        <div class="card card-custom h-100 p-4 border-0 shadow-sm" style="border-left: 5px solid var(--brand-pink) !important;">
-            <div class="d-flex justify-content-between align-items-center mb-3">
-                <h5 class="text-brand-black fw-bold mb-0">Total Costos Indirectos (Mes)</h5>
-                <i class="fa-solid fa-building-columns fs-2" style="color: var(--brand-pink);"></i>
+
+    <!-- KPI 2: Costos Indirectos / Fijos -->
+    <div class="col-12 col-sm-6 col-xl-3">
+        <div class="gasto-kpi-card p-3 h-100" style="border-left: 5px solid #ec4899 !important;">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+                <span class="text-muted small fw-bold text-uppercase">Costos Indirectos</span>
+                <span class="badge bg-danger bg-opacity-10 text-danger rounded-pill p-2">
+                    <i class="fa-solid fa-building-columns fs-6"></i>
+                </span>
             </div>
-            <h2 class="fw-bolder m-0">${{ (total_indirectos)|cop }}</h2>
-            <p class="text-muted small mt-2 m-0">Fijos: arriendo, nómina, servicios.</p>
+            <h3 class="fw-bolder text-brand-black m-0" id="kpiTotalIndirectos">${{ total_indirectos|cop }}</h3>
+            <small class="text-muted d-block mt-1" style="font-size: 0.72rem;">
+                <i class="fa-solid fa-building text-danger me-1"></i>Fijos: arriendos, nóminas, servicios.
+            </small>
+        </div>
+    </div>
+
+    <!-- KPI 3: Total Salidas del Periodo -->
+    <div class="col-12 col-sm-6 col-xl-3">
+        <div class="gasto-kpi-card p-3 h-100" style="border-left: 5px solid #6366f1 !important;">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+                <span class="text-muted small fw-bold text-uppercase">Total Salidas Mes</span>
+                <span class="badge bg-primary bg-opacity-10 text-primary rounded-pill p-2">
+                    <i class="fa-solid fa-arrow-trend-down fs-6"></i>
+                </span>
+            </div>
+            <h3 class="fw-bolder text-danger m-0" id="kpiTotalGeneral">${{ total_general|cop }}</h3>
+            <small class="text-muted d-block mt-1" style="font-size: 0.72rem;">
+                <span class="fw-semibold text-dark" id="kpiConteoGastos">{{ gastos|length }}</span> registros contabilizados.
+            </small>
+        </div>
+    </div>
+
+    <!-- KPI 4: Desglose Efectivo vs Bancos -->
+    <div class="col-12 col-sm-6 col-xl-3">
+        <div class="gasto-kpi-card p-3 h-100" style="border-left: 5px solid #10b981 !important;">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+                <span class="text-muted small fw-bold text-uppercase">Forma de Pago</span>
+                <span class="badge bg-success bg-opacity-10 text-success rounded-pill p-2">
+                    <i class="fa-solid fa-wallet fs-6"></i>
+                </span>
+            </div>
+            <div class="d-flex justify-content-between align-items-center mb-1">
+                <span class="small text-muted"><i class="fa-solid fa-money-bill-wave text-success me-1"></i>Efectivo:</span>
+                <span class="fw-bold text-success" id="kpiTotalEfectivo">${{ total_efectivo|cop }}</span>
+            </div>
+            <div class="d-flex justify-content-between align-items-center">
+                <span class="small text-muted"><i class="fa-solid fa-mobile-screen text-primary me-1"></i>Bancos/Digital:</span>
+                <span class="fw-bold text-primary" id="kpiTotalDigital">${{ total_digital|cop }}</span>
+            </div>
         </div>
     </div>
 </div>
 
-<!-- Formulario para Registrar Nuevo Gasto -->
-<div class="card card-custom p-4 mb-5 shadow-sm border-0">
-    <h5 class="text-brand-black fw-bold mb-4"><i class="fa-solid fa-money-bill-transfer text-brand-blue me-2"></i>Registrar Salida de Dinero</h5>
-    <form method="POST">
-        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
-        <div class="row g-3 align-items-end">
-            <div class="col-md-3">
-                <label class="form-label fw-bold text-brand-black">Tipo de Salida</label>
-                <select name="tipo_gasto" class="form-select bg-light border-0" required>
+<!-- Formulario Dinámico de Registro Rápido -->
+<div class="gasto-reg-card p-4 mb-4">
+    <div class="d-flex flex-wrap justify-content-between align-items-center mb-3 pb-2 border-bottom">
+        <div class="d-flex align-items-center gap-2">
+            <span class="bg-primary bg-opacity-10 text-primary p-2 rounded-circle">
+                <i class="fa-solid fa-bolt fs-5"></i>
+            </span>
+            <div>
+                <h5 class="fw-bold text-brand-black m-0">Registro Rápido de Gasto</h5>
+                <small class="text-muted">Ingresa salidas de dinero en segundos sin recargar la pantalla.</small>
+            </div>
+        </div>
+        <div class="form-check form-switch mt-2 mt-sm-0">
+            <input class="form-check-input" type="checkbox" role="switch" id="toggleModoAvanzado">
+            <label class="form-check-label small fw-semibold text-muted" for="toggleModoAvanzado">
+                <i class="fa-solid fa-layer-group me-1"></i> División de Pagos
+            </label>
+        </div>
+    </div>
+
+    <!-- Formulario Principal -->
+    <form id="formRegistrarGasto" method="POST" action="{{ url_for('gastos_bp.index') }}">
+        <input type="hidden" name="csrf_token" id="csrfToken" value="{{ csrf_token() }}"/>
+
+        <!-- 1. CATEGORÍAS RÁPIDAS (PILLS 1 CLIC) -->
+        <div class="mb-3">
+            <label class="form-label fw-bold text-brand-black small text-uppercase mb-2 d-flex justify-content-between align-items-center">
+                <span>1. Selecciona Categoría Rápida</span>
+                <span class="text-muted fw-normal" style="font-size: 0.75rem;">o escribe una personalizada abajo</span>
+            </label>
+            <div class="d-flex flex-wrap gap-2" id="contenedorPillsCategorias">
+                {% for cat in categorias_frecuentes %}
+                <div class="category-pill {{ 'active' if loop.first else '' }}" data-cat-nombre="{{ cat.nombre }}">
+                    <i class="fa-solid {{ cat.icono }}" style="color: {{ cat.color }};"></i>
+                    <span>{{ cat.nombre }}</span>
+                </div>
+                {% endfor %}
+                <div class="category-pill" id="pillOtraCategoria" data-cat-nombre="Otra">
+                    <i class="fa-solid fa-pen-to-square text-secondary"></i>
+                    <span>Otra Categoría...</span>
+                </div>
+            </div>
+            <!-- Input editable de categoría (sincronizado con pills) -->
+            <div class="mt-2 row g-2 align-items-center">
+                <div class="col-md-5">
+                    <div class="input-group input-group-sm">
+                        <span class="input-group-text bg-light border-0"><i class="fa-solid fa-tag text-muted"></i></span>
+                        <input type="text" name="categoria" id="inputCategoria" class="form-control bg-light border-0 fw-semibold" value="{{ categorias_frecuentes[0].nombre if categorias_frecuentes else 'Alimentación' }}" placeholder="Nombre de categoría..." required>
+                    </div>
+                </div>
+                <div class="col-md-4">
                     {% if current_user.rol == 'admin' %}
-                    <option value="" selected disabled>Seleccionar tipo...</option>
-                    <option value="Gasto Diario">Gasto Diario / Operativo</option>
-                    <option value="Costo Indirecto">Costo Indirecto / Fijo</option>
+                    <select name="tipo_gasto" id="inputTipoGasto" class="form-select form-select-sm bg-light border-0 fw-semibold">
+                        <option value="Gasto Diario" selected>Gasto Diario (Caja Chica Operativa)</option>
+                        <option value="Costo Indirecto">Costo Indirecto (Fijo / Administrativo)</option>
+                    </select>
                     {% else %}
-                    <option value="Gasto Diario" selected>Gasto Diario / Operativo</option>
+                    <input type="hidden" name="tipo_gasto" id="inputTipoGasto" value="Gasto Diario">
+                    <span class="badge bg-light text-dark border py-2 px-3 small w-100 text-start">
+                        <i class="fa-solid fa-lock text-muted me-1"></i> Tipo: Gasto Diario (Caja)
+                    </span>
                     {% endif %}
-                </select>
+                </div>
+                <div class="col-md-3">
+                    <div class="input-group input-group-sm">
+                        <span class="input-group-text bg-light border-0"><i class="fa-regular fa-calendar text-muted"></i></span>
+                        <input type="date" name="fecha_gasto" id="inputFechaGasto" class="form-control bg-light border-0 fw-semibold" value="{{ hoy }}" required>
+                    </div>
+                </div>
             </div>
-            <div class="col-md-3">
-                <label class="form-label fw-bold text-brand-black">Categoría</label>
-                <!-- Usamos datalist para permitir escribir o seleccionar opciones -->
-                <input type="text" name="categoria" list="categoriasComunes" class="form-control bg-light border-0" autocomplete="off" placeholder="Ej: Arriendo, Aseo..." required>
-                <datalist id="categoriasComunes">
-                    <option value="Arriendo">
-                    <option value="Servicios Públicos">
-                    <option value="Nómina">
-                    <option value="Internet / Teléfono">
-                    <option value="Aseo y Mantenimiento">
-                    <option value="Alimentación">
-                    <option value="Transporte / Fletes">
-                    <option value="Caja Menor">
-                    <option value="Insumos Varios">
-                </datalist>
+        </div>
+
+        <!-- 2. MONTO Y ATADOS RÁPIDOS DE DINERO (MODO SIMPLE) -->
+        <div id="seccionModoSimple" class="p-3 bg-light rounded-4 mb-3 border">
+            <div class="row g-3 align-items-center">
+                <!-- Input Monto -->
+                <div class="col-md-5">
+                    <label class="form-label fw-bold text-brand-black small text-uppercase mb-1">
+                        2. Monto a Registrar
+                    </label>
+                    <div class="input-group input-group-lg shadow-sm">
+                        <span class="input-group-text bg-white text-danger fw-bolder fs-4">$</span>
+                        <input type="number" 
+                               step="1" 
+                               min="100" 
+                               name="monto" 
+                               id="inputMonto" 
+                               class="form-control form-control-lg bg-white fw-bolder text-danger fs-3 text-end" 
+                               placeholder="0" 
+                               required 
+                               autocomplete="off">
+                    </div>
+                    <div class="d-flex justify-content-between align-items-center mt-1">
+                        <small class="text-muted" style="font-size: 0.75rem;">Valor en pesos COP.</small>
+                        <small class="fw-bold text-danger" id="lblMontoFormateado">$0</small>
+                    </div>
+                </div>
+
+                <!-- Botones Rápidos de Incremento -->
+                <div class="col-md-7">
+                    <label class="form-label fw-bold text-brand-black small text-uppercase mb-1">
+                        Atajos Rápidos de Efectivo
+                    </label>
+                    <div class="d-flex flex-wrap gap-1 mb-2">
+                        <button type="button" class="btn quick-cash-btn" data-add="2000">+ $2.000</button>
+                        <button type="button" class="btn quick-cash-btn" data-add="5000">+ $5.000</button>
+                        <button type="button" class="btn quick-cash-btn" data-add="10000">+ $10.000</button>
+                        <button type="button" class="btn quick-cash-btn" data-add="20000">+ $20.000</button>
+                        <button type="button" class="btn quick-cash-btn" data-add="50000">+ $50.000</button>
+                        <button type="button" class="btn quick-cash-btn" data-add="100000">+ $100.000</button>
+                        <button type="button" class="btn btn-outline-danger btn-sm rounded-3 fw-bold" id="btnLimpiarMonto" title="Borrar Monto">
+                            <i class="fa-solid fa-rotate-left me-1"></i> Borrar
+                        </button>
+                    </div>
+                    <small class="text-muted d-block" style="font-size: 0.72rem;">
+                        Toca los botones para sumar rápidamente denominaciones de billetes.
+                    </small>
+                </div>
             </div>
-            <div class="col-md-6 border-start ps-4">
-                <label class="form-label fw-bold text-brand-black">División de Pagos (Monto y Método)</label>
-                <div id="gastos-lineas-container">
-                    <div class="row g-2 align-items-center mb-2 linea-gasto">
-                        <div class="col-5">
-                            <input type="number" step="1" min="0" name="monto[]" class="form-control bg-light border-0" placeholder="Monto $" required>
+
+            <!-- 3. SELECTOR VISUAL DE FORMA DE PAGO -->
+            <div class="mt-3 pt-3 border-top">
+                <label class="form-label fw-bold text-brand-black small text-uppercase mb-2">
+                    3. Método de Pago de la Salida
+                </label>
+                <input type="hidden" name="metodo_pago" id="inputMetodoPago" value="efectivo">
+                <div class="row g-2" id="contenedorMetodosPago">
+                    <div class="col-6 col-sm-4 col-md-auto">
+                        <div class="paymethod-radio-card active" data-metodo="efectivo">
+                            <i class="fa-solid fa-money-bill-wave text-success fs-5 d-block mb-1"></i>
+                            <span class="small fw-bold text-dark">Efectivo (Caja)</span>
                         </div>
-                        <div class="col-5">
-                            <select name="metodo_pago[]" class="form-select bg-light border-0" required>
-                                <option value="efectivo" selected>Efectivo (Caja)</option>
-                                <option value="nequi">Nequi</option>
-                                <option value="daviplata">Daviplata</option>
-                                <option value="bancolombia">Bancolombia</option>
-                            </select>
+                    </div>
+                    <div class="col-6 col-sm-4 col-md-auto">
+                        <div class="paymethod-radio-card" data-metodo="nequi">
+                            <i class="fa-solid fa-mobile-screen text-purple fs-5 d-block mb-1" style="color: #6b21a8;"></i>
+                            <span class="small fw-bold text-dark">Nequi</span>
                         </div>
-                        <div class="col-2 text-end">
-                            <button type="button" class="btn btn-sm btn-outline-primary rounded-circle btn-add-linea"><i class="fa-solid fa-plus"></i></button>
+                    </div>
+                    <div class="col-6 col-sm-4 col-md-auto">
+                        <div class="paymethod-radio-card" data-metodo="bancolombia">
+                            <i class="fa-solid fa-building-columns text-warning fs-5 d-block mb-1" style="color: #d97706;"></i>
+                            <span class="small fw-bold text-dark">Bancolombia</span>
+                        </div>
+                    </div>
+                    <div class="col-6 col-sm-4 col-md-auto">
+                        <div class="paymethod-radio-card" data-metodo="daviplata">
+                            <i class="fa-solid fa-wallet text-danger fs-5 d-block mb-1" style="color: #dc2626;"></i>
+                            <span class="small fw-bold text-dark">Daviplata</span>
+                        </div>
+                    </div>
+                    <div class="col-6 col-sm-4 col-md-auto">
+                        <div class="paymethod-radio-card" data-metodo="datafono">
+                            <i class="fa-solid fa-credit-card text-primary fs-5 d-block mb-1"></i>
+                            <span class="small fw-bold text-dark">Datáfono / Tarjeta</span>
                         </div>
                     </div>
                 </div>
             </div>
-            <div class="col-md-2">
-                <label class="form-label fw-bold text-brand-black">Fecha</label>
-                <input type="date" name="fecha_gasto" class="form-control bg-light border-0" value="{{ hoy }}" required>
+        </div>
+
+        <!-- SECCIÓN MODO AVANZADO: DIVISIÓN DE PAGOS (OPCIONAL/COLAPSABLE) -->
+        <div id="seccionModoAvanzado" class="p-3 bg-light rounded-4 mb-3 border d-none">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+                <label class="form-label fw-bold text-brand-black small text-uppercase m-0">
+                    Desglose de Líneas de Pago (Gasto Dividido)
+                </label>
+                <button type="button" class="btn btn-sm btn-outline-primary rounded-pill px-3 fw-bold" id="btnAgregarLineaPago">
+                    <i class="fa-solid fa-plus me-1"></i> Agregar Línea
+                </button>
             </div>
-            <div class="col-md-10 mt-3">
-                <label class="form-label fw-bold text-brand-black">Nota o Descripción</label>
-                <input type="text" name="descripcion" class="form-control bg-light border-0" placeholder="Breve detalle del gasto..." required>
+            <div id="contenedorLineasMultiples">
+                <div class="row g-2 align-items-center mb-2 linea-pago-row">
+                    <div class="col-6 col-md-6">
+                        <div class="input-group input-group-sm">
+                            <span class="input-group-text bg-white text-danger fw-bold">$</span>
+                            <input type="number" step="1" min="0" name="monto[]" class="form-control bg-white fw-bold input-monto-split" placeholder="Monto parcial">
+                        </div>
+                    </div>
+                    <div class="col-5 col-md-5">
+                        <select name="metodo_pago[]" class="form-select form-select-sm bg-white fw-semibold">
+                            <option value="efectivo" selected>Efectivo (Caja)</option>
+                            <option value="nequi">Nequi</option>
+                            <option value="bancolombia">Bancolombia</option>
+                            <option value="daviplata">Daviplata</option>
+                            <option value="datafono">Datáfono</option>
+                        </select>
+                    </div>
+                    <div class="col-1 text-end">
+                        <button type="button" class="btn btn-sm btn-outline-danger rounded-circle btn-quitar-linea" disabled>
+                            <i class="fa-solid fa-minus"></i>
+                        </button>
+                    </div>
+                </div>
             </div>
-            <div class="col-md-2 mt-3 text-end">
-                <button type="submit" class="btn btn-blue w-100 rounded-pill fw-bold h-100 py-2"><i class="fa-solid fa-plus me-1"></i> Guardar</button>
+            <div class="d-flex justify-content-end align-items-center gap-2 mt-2 pt-2 border-top">
+                <span class="small text-muted">Total Dividido:</span>
+                <span class="fw-bolder text-danger fs-6" id="lblTotalDividido">$0</span>
+            </div>
+        </div>
+
+        <!-- 4. DESCRIPCIÓN Y BOTÓN DE GUARDADO -->
+        <div class="row g-3 align-items-center">
+            <div class="col-md-9">
+                <label class="form-label fw-bold text-brand-black small text-uppercase mb-1">
+                    4. Detalle / Justificación
+                </label>
+                <div class="input-group shadow-sm">
+                    <span class="input-group-text bg-light border-0"><i class="fa-solid fa-align-left text-muted"></i></span>
+                    <input type="text" 
+                           name="descripcion" 
+                           id="inputDescripcion" 
+                           class="form-control bg-light border-0" 
+                           placeholder="Ej: Almuerzo domiciliario turno tarde, flete de repuestos, etc..." 
+                           required>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <label class="form-label d-none d-md-block">&nbsp;</label>
+                <button type="submit" id="btnGuardarGasto" class="btn btn-danger w-100 rounded-pill fw-bold py-2 shadow-sm" style="background: linear-gradient(135deg, #dc2626, #b91c1c); border: none; height: 42px;">
+                    <span id="btnGuardarTexto"><i class="fa-solid fa-check me-1"></i> Registrar Gasto</span>
+                    <span id="btnGuardarSpinner" class="spinner-border spinner-border-sm d-none" role="status" aria-hidden="true"></span>
+                </button>
             </div>
         </div>
     </form>
 </div>
 
-<!-- Tabla Historial -->
-<div class="card card-custom p-0 overflow-hidden shadow-sm border-0">
+<!-- Barra de Búsqueda Reactiva y Filtros del Historial -->
+<div class="card card-custom p-3 mb-3 shadow-sm border-0">
+    <div class="row g-2 align-items-center">
+        <!-- Buscador en tiempo real -->
+        <div class="col-md-5">
+            <div class="input-group">
+                <span class="input-group-text bg-light border-0"><i class="fa-solid fa-magnifying-glass text-muted"></i></span>
+                <input type="text" id="buscadorGastos" class="form-control bg-light border-0" placeholder="Buscar por descripción, categoría, usuario o método..." autocomplete="off">
+                <button class="btn btn-light border-0 text-muted" type="button" id="btnLimpiarBusqueda" title="Limpiar"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+        </div>
+
+        <!-- Filtros por Chips -->
+        <div class="col-md-7">
+            <div class="d-flex flex-wrap gap-1 align-items-center justify-content-md-end">
+                <button type="button" class="chip-filter active" data-filter="all">Todos (<span id="countAll">{{ gastos|length }}</span>)</button>
+                <button type="button" class="chip-filter" data-filter="diario">Diarios / Caja</button>
+                <button type="button" class="chip-filter" data-filter="indirecto">Costos Fijos</button>
+                <button type="button" class="chip-filter" data-filter="efectivo">Solo Efectivo</button>
+                <button type="button" class="chip-filter" data-filter="digital">Digital / Bancos</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Tabla Dinámica de Historial de Gastos -->
+<div class="card card-custom p-0 overflow-hidden shadow-sm border-0 mb-5">
+    <div class="d-flex justify-content-between align-items-center px-4 py-3 bg-light border-bottom">
+        <div>
+            <span class="fw-bold text-brand-black small text-uppercase">
+                <i class="fa-solid fa-list-check me-1 text-muted"></i> Historial de Salidas ({{ nombre_mes }} {{ anio_seleccionado }})
+            </span>
+        </div>
+        <div class="d-flex align-items-center gap-3">
+            <span class="badge bg-white text-muted border px-3 py-2 rounded-pill small">
+                Mostrando: <strong class="text-dark" id="lblConteoFiltrados">{{ gastos|length }}</strong> registros
+            </span>
+            <span class="badge bg-danger bg-opacity-10 text-danger border border-danger-subtle px-3 py-2 rounded-pill small fw-bold">
+                Suma visible: <span id="lblSumaFiltrados">${{ total_general|cop }}</span>
+            </span>
+        </div>
+    </div>
+
     <div class="table-responsive">
-        <table class="table table-hover table-custom mb-0">
+        <table class="table table-hover table-custom table-gastos mb-0" id="tablaGastos">
             <thead class="bg-light">
                 <tr>
                     <th class="ps-4">FECHA</th>
@@ -114,93 +530,99 @@
                     <th>CATEGORÍA</th>
                     <th>DESCRIPCIÓN</th>
                     <th class="text-center">MÉTODO PAGO</th>
-                    <th class="text-end pe-4">MONTO</th>
-                    {% if current_user.rol == 'admin' %}
-                    <th class="text-center">ACCIÓN</th>
-                    {% endif %}
+                    <th class="text-end">MONTO</th>
+                    <th class="text-center pe-4" style="width: 120px;">ACCIONES</th>
                 </tr>
             </thead>
-            <tbody>
+            <tbody id="tbodyGastos">
                 {% for gasto in gastos %}
-                <tr>
-                    <td class="ps-4 text-muted"><small>{{ gasto.fecha_gasto.strftime('%d/%m/%Y') }}</small></td>
-                    <td><span class="text-brand-black fw-semibold"><i class="fa-solid fa-user-tie text-muted me-1"></i>{{ gasto.usuario.nombre }}</span></td>
+                <tr id="fila-gasto-{{ gasto.id }}" 
+                    data-id="{{ gasto.id }}"
+                    data-tipo="{{ gasto.tipo_gasto }}"
+                    data-categoria="{{ gasto.categoria }}"
+                    data-descripcion="{{ gasto.descripcion or '' }}"
+                    data-metodo="{{ (gasto.metodo_pago or 'efectivo')|lower }}"
+                    data-monto="{{ gasto.monto }}"
+                    data-fecha="{{ gasto.fecha_gasto.strftime('%Y-%m-%d') }}"
+                    data-usuario="{{ gasto.usuario.nombre if gasto.usuario else 'Sistema' }}">
+                    <td class="ps-4 text-muted"><small class="fw-semibold">{{ gasto.fecha_gasto.strftime('%d/%m/%Y') }}</small></td>
+                    <td>
+                        <span class="text-brand-black fw-semibold small">
+                            <i class="fa-solid fa-user text-muted me-1"></i>{{ gasto.usuario.nombre if gasto.usuario else 'Sistema' }}
+                        </span>
+                    </td>
                     <td>
                         {% if gasto.tipo_gasto == 'Gasto Diario' %}
-                            <span class="badge rounded-pill text-dark" style="background-color: var(--brand-blue);">{{ gasto.tipo_gasto }}</span>
+                            <span class="badge rounded-pill text-dark border" style="background-color: #e0f2fe; border-color: #bae6fd !important;">Diario (Caja)</span>
                         {% else %}
-                            <span class="badge rounded-pill text-dark" style="background-color: var(--brand-pink);">{{ gasto.tipo_gasto }}</span>
+                            <span class="badge rounded-pill text-dark border" style="background-color: #fce7f3; border-color: #fbcfe8 !important;">Costo Fijo</span>
                         {% endif %}
                     </td>
-                    <td class="fw-bold">{{ gasto.categoria }}</td>
-                    <td class="text-muted"><small>{{ gasto.descripcion }}</small></td>
+                    <td class="fw-bold text-dark">
+                        <span class="badge bg-light text-dark border px-2 py-1">{{ gasto.categoria }}</span>
+                    </td>
+                    <td class="text-muted"><small class="td-desc">{{ gasto.descripcion or '—' }}</small></td>
                     <td class="text-center">
-                        {% if gasto.metodo_pago == 'efectivo' %}
-                        <span class="badge bg-success bg-opacity-10 text-success border border-success"><i class="fa-solid fa-money-bill-wave me-1"></i> Efectivo</span>
+                        {% set mp = (gasto.metodo_pago or 'efectivo')|lower %}
+                        {% if mp == 'efectivo' %}
+                        <span class="badge bg-success bg-opacity-10 text-success border border-success-subtle px-2 py-1">
+                            <i class="fa-solid fa-money-bill-wave me-1"></i> Efectivo
+                        </span>
+                        {% elif mp == 'nequi' %}
+                        <span class="badge bg-purple bg-opacity-10 text-purple border px-2 py-1" style="color: #6b21a8; background: rgba(107, 33, 168, 0.08); border-color: #d8b4fe !important;">
+                            <i class="fa-solid fa-mobile-screen me-1"></i> Nequi
+                        </span>
+                        {% elif mp == 'bancolombia' %}
+                        <span class="badge bg-warning bg-opacity-10 text-dark border px-2 py-1" style="background: rgba(245, 158, 11, 0.1); border-color: #fde68a !important;">
+                            <i class="fa-solid fa-building-columns me-1 text-warning"></i> Bancolombia
+                        </span>
+                        {% elif mp == 'daviplata' %}
+                        <span class="badge bg-danger bg-opacity-10 text-danger border border-danger-subtle px-2 py-1">
+                            <i class="fa-solid fa-wallet me-1"></i> Daviplata
+                        </span>
                         {% else %}
-                        <span class="badge bg-info bg-opacity-10 text-info border border-info"><i class="fa-solid fa-building-columns me-1"></i> {{ gasto.metodo_pago|capitalize }}</span>
+                        <span class="badge bg-primary bg-opacity-10 text-primary border border-primary-subtle px-2 py-1">
+                            <i class="fa-solid fa-credit-card me-1"></i> {{ mp|capitalize }}
+                        </span>
                         {% endif %}
                     </td>
-                    <td class="text-end pe-4 fw-bolder text-brand-black">${{ (gasto.monto)|cop }}</td>
-                    {% if current_user.rol == 'admin' %}
-                    <td class="text-center">
-                        <button type="button" class="btn btn-sm btn-outline-danger rounded-pill px-3" data-bs-toggle="modal" data-bs-target="#modalEliminarGasto{{ gasto.id }}">
-                            <i class="fa-solid fa-trash-can"></i>
-                        </button>
-                    </td>
-                    {% endif %}
-                </tr>
-
-                {% if current_user.rol == 'admin' %}
-                <!-- Modal de Confirmación para Eliminar Gasto -->
-                <div class="modal fade" id="modalEliminarGasto{{ gasto.id }}" tabindex="-1" aria-labelledby="modalEliminarGastoLabel{{ gasto.id }}" aria-hidden="true">
-                    <div class="modal-dialog modal-dialog-centered">
-                        <div class="modal-content border-0 shadow rounded-4 overflow-hidden">
-                            <div class="modal-header bg-danger text-white border-0">
-                                <h5 class="modal-title fw-bold" id="modalEliminarGastoLabel{{ gasto.id }}">
-                                    <i class="fa-solid fa-triangle-exclamation me-2"></i> Confirmar Eliminación
-                                </h5>
-                                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
-                            </div>
-                            <div class="modal-body p-4">
-                                <p class="mb-2">¿Estás seguro de que deseas eliminar este gasto?</p>
-                                <div class="bg-light rounded-3 p-3 mb-3">
-                                    <div class="d-flex justify-content-between align-items-center mb-1">
-                                        <span class="text-muted small">Categoría</span>
-                                        <span class="fw-bold">{{ gasto.categoria }}</span>
-                                    </div>
-                                    <div class="d-flex justify-content-between align-items-center mb-1">
-                                        <span class="text-muted small">Monto</span>
-                                        <span class="fw-bolder text-danger">${{ (gasto.monto)|cop }}</span>
-                                    </div>
-                                    <div class="d-flex justify-content-between align-items-center">
-                                        <span class="text-muted small">Descripción</span>
-                                        <span class="small">{{ gasto.descripcion or '—' }}</span>
-                                    </div>
-                                </div>
-                                <div class="alert alert-warning border-0 rounded-3 mb-0">
-                                    <i class="fa-solid fa-info-circle me-1"></i> Esta acción <strong>no se puede deshacer</strong> y afectará los reportes financieros.
-                                </div>
-                            </div>
-                            <div class="modal-footer border-0 pt-0">
-                                <button type="button" class="btn btn-outline-secondary rounded-pill px-4" data-bs-dismiss="modal">Cancelar</button>
-                                <form action="{{ url_for('gastos_bp.eliminar_gasto', id=gasto.id) }}" method="POST" class="d-inline">
-                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
-                                    <button type="submit" class="btn btn-danger rounded-pill px-4 fw-bold">
-                                        <i class="fa-solid fa-trash-can me-1"></i> Sí, Eliminar
-                                    </button>
-                                </form>
-                            </div>
+                    <td class="text-end fw-bolder text-danger fs-6 td-monto">${{ gasto.monto|cop }}</td>
+                    <td class="text-center pe-4">
+                        <div class="btn-group btn-group-sm" role="group">
+                            <!-- Botón Editar -->
+                            <button type="button" 
+                                    class="btn btn-outline-secondary rounded-start-pill btn-editar-gasto px-2" 
+                                    title="Editar Gasto"
+                                    data-id="{{ gasto.id }}"
+                                    data-categoria="{{ gasto.categoria }}"
+                                    data-descripcion="{{ gasto.descripcion or '' }}"
+                                    data-monto="{{ gasto.monto }}"
+                                    data-metodo="{{ (gasto.metodo_pago or 'efectivo')|lower }}"
+                                    data-fecha="{{ gasto.fecha_gasto.strftime('%Y-%m-%d') }}"
+                                    data-tipo="{{ gasto.tipo_gasto }}">
+                                <i class="fa-regular fa-pen-to-square"></i>
+                            </button>
+                            {% if current_user.rol == 'admin' %}
+                            <!-- Botón Eliminar -->
+                            <button type="button" 
+                                    class="btn btn-outline-danger rounded-end-pill btn-eliminar-gasto px-2" 
+                                    title="Eliminar Gasto"
+                                    data-id="{{ gasto.id }}"
+                                    data-categoria="{{ gasto.categoria }}"
+                                    data-descripcion="{{ gasto.descripcion or '' }}"
+                                    data-monto="{{ gasto.monto|cop }}">
+                                <i class="fa-solid fa-trash-can"></i>
+                            </button>
+                            {% endif %}
                         </div>
-                    </div>
-                </div>
-                {% endif %}
-
+                    </td>
+                </tr>
                 {% else %}
-                <tr>
-                    <td colspan="{{ 7 if current_user.rol == 'admin' else 6 }}" class="text-center py-5 text-muted">
-                        <i class="fa-solid fa-wallet fs-2 mb-3 text-brand-blue opacity-50"></i>
-                        <p class="mb-0">No se han registrado salidas de dinero este mes.</p>
+                <tr id="filaSinGastos">
+                    <td colspan="8" class="text-center py-5 text-muted">
+                        <i class="fa-solid fa-receipt fs-1 mb-3 text-brand-blue opacity-50 d-block"></i>
+                        <h6 class="fw-bold text-dark mb-1">No hay salidas registradas este mes</h6>
+                        <p class="small text-muted mb-0">Usa el formulario de arriba para registrar salidas de caja o compras al instante.</p>
                     </td>
                 </tr>
                 {% endfor %}
@@ -209,33 +631,712 @@
     </div>
 </div>
 
+<!-- MODAL PARA EDITAR GASTO -->
+<div class="modal fade" id="modalEditarGasto" tabindex="-1" aria-labelledby="modalEditarGastoLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
+            <div class="modal-header bg-dark text-white border-0 py-3">
+                <h5 class="modal-title fw-bold" id="modalEditarGastoLabel">
+                    <i class="fa-solid fa-pen-to-square me-2 text-warning"></i> Editar Salida de Dinero
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form id="formEditarGasto" method="POST">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                <input type="hidden" id="editGastoId" name="gasto_id">
+                <div class="modal-body p-4">
+                    <div class="mb-3">
+                        <label class="form-label fw-bold text-brand-black small">Categoría</label>
+                        <input type="text" name="categoria" id="editCategoria" class="form-control bg-light border-0 fw-semibold" required>
+                    </div>
+                    <div class="row g-2 mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold text-brand-black small">Monto ($ COP)</label>
+                            <input type="number" step="1" min="1" name="monto" id="editMonto" class="form-control bg-light border-0 fw-bolder text-danger" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold text-brand-black small">Método de Pago</label>
+                            <select name="metodo_pago" id="editMetodoPago" class="form-select bg-light border-0 fw-semibold">
+                                <option value="efectivo">Efectivo (Caja)</option>
+                                <option value="nequi">Nequi</option>
+                                <option value="bancolombia">Bancolombia</option>
+                                <option value="daviplata">Daviplata</option>
+                                <option value="datafono">Datáfono</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="row g-2 mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold text-brand-black small">Fecha</label>
+                            <input type="date" name="fecha_gasto" id="editFechaGasto" class="form-control bg-light border-0 fw-semibold" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold text-brand-black small">Tipo</label>
+                            {% if current_user.rol == 'admin' %}
+                            <select name="tipo_gasto" id="editTipoGasto" class="form-select bg-light border-0 fw-semibold">
+                                <option value="Gasto Diario">Gasto Diario</option>
+                                <option value="Costo Indirecto">Costo Indirecto</option>
+                            </select>
+                            {% else %}
+                            <input type="text" id="editTipoGasto" class="form-control bg-light border-0" value="Gasto Diario" disabled>
+                            {% endif %}
+                        </div>
+                    </div>
+                    <div class="mb-2">
+                        <label class="form-label fw-bold text-brand-black small">Descripción / Justificación</label>
+                        <input type="text" name="descripcion" id="editDescripcion" class="form-control bg-light border-0" placeholder="Detalle..." required>
+                    </div>
+                    <div class="alert alert-warning border-0 rounded-3 p-2 small mt-3 mb-0">
+                        <i class="fa-solid fa-triangle-exclamation me-1"></i> No se permite editar si la jornada de la fecha ya fue cerrada en Arqueo.
+                    </div>
+                </div>
+                <div class="modal-footer border-0 pt-0">
+                    <button type="button" class="btn btn-outline-secondary rounded-pill px-4" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" id="btnGuardarEdicion" class="btn btn-primary rounded-pill px-4 fw-bold">
+                        <span id="btnEditTexto">Guardar Cambios</span>
+                        <span id="btnEditSpinner" class="spinner-border spinner-border-sm d-none"></span>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL PARA ELIMINAR GASTO -->
+<div class="modal fade" id="modalEliminarGastoGenerico" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
+            <div class="modal-header bg-danger text-white border-0 py-3">
+                <h5 class="modal-title fw-bold">
+                    <i class="fa-solid fa-trash-can me-2"></i> Eliminar Registro de Gasto
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-4">
+                <p class="mb-2">¿Estás seguro de que deseas eliminar este gasto?</p>
+                <div class="bg-light rounded-3 p-3 mb-3 border">
+                    <div class="d-flex justify-content-between mb-1">
+                        <span class="text-muted small">Categoría:</span>
+                        <strong id="delModalCat">—</strong>
+                    </div>
+                    <div class="d-flex justify-content-between mb-1">
+                        <span class="text-muted small">Monto:</span>
+                        <strong class="text-danger fs-6" id="delModalMonto">$0</strong>
+                    </div>
+                    <div class="d-flex justify-content-between">
+                        <span class="text-muted small">Descripción:</span>
+                        <span class="small text-dark" id="delModalDesc">—</span>
+                    </div>
+                </div>
+                <div class="alert alert-warning border-0 rounded-3 p-2 small mb-0">
+                    <i class="fa-solid fa-triangle-exclamation me-1"></i> Esta acción actualizará los reportes y no se puede deshacer.
+                </div>
+            </div>
+            <div class="modal-footer border-0 pt-0">
+                <button type="button" class="btn btn-outline-secondary rounded-pill px-4" data-bs-dismiss="modal">Cancelar</button>
+                <form id="formEliminarGastoGenerico" method="POST" class="d-inline">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                    <button type="submit" id="btnConfirmarEliminar" class="btn btn-danger rounded-pill px-4 fw-bold">
+                        <span id="btnDelTexto"><i class="fa-solid fa-trash-can me-1"></i> Sí, Eliminar</span>
+                        <span id="btnDelSpinner" class="spinner-border spinner-border-sm d-none"></span>
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Toast Flotante -->
+<div class="toast-container-custom">
+    <div id="toastApp" class="toast align-items-center text-white bg-dark border-0 shadow-lg rounded-4" role="alert" aria-live="assertive" aria-atomic="true">
+        <div class="d-flex p-2">
+            <div class="toast-body d-flex align-items-center gap-2 fw-semibold" id="toastMsg">
+                <i class="fa-solid fa-circle-check text-success fs-5"></i> <span>Mensaje</span>
+            </div>
+            <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+        </div>
+    </div>
+</div>
+
+<!-- SCRIPTS DE DINAMIZACIÓN COMPLETA -->
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    const container = document.getElementById('gastos-lineas-container');
-    
-    container.addEventListener('click', function(e) {
-        if (e.target.closest('.btn-add-linea')) {
-            const nuevaLinea = document.createElement('div');
-            nuevaLinea.className = 'row g-2 align-items-center mb-2 linea-gasto';
-            nuevaLinea.innerHTML = `
-                <div class="col-5">
-                    <input type="number" step="1" min="0" name="monto[]" class="form-control bg-light border-0" placeholder="Monto $" required>
+    const csrfToken = document.getElementById('csrfToken').value;
+
+    // Elementos de UI
+    const inputCategoria = document.getElementById('inputCategoria');
+    const inputMonto = document.getElementById('inputMonto');
+    const lblMontoFormateado = document.getElementById('lblMontoFormateado');
+    const inputMetodoPago = document.getElementById('inputMetodoPago');
+    const inputDescripcion = document.getElementById('inputDescripcion');
+    const formRegistrarGasto = document.getElementById('formRegistrarGasto');
+    const btnGuardarGasto = document.getElementById('btnGuardarGasto');
+    const btnGuardarTexto = document.getElementById('btnGuardarTexto');
+    const btnGuardarSpinner = document.getElementById('btnGuardarSpinner');
+
+    // KPIs
+    const kpiTotalDiarios = document.getElementById('kpiTotalDiarios');
+    const kpiTotalIndirectos = document.getElementById('kpiTotalIndirectos');
+    const kpiTotalGeneral = document.getElementById('kpiTotalGeneral');
+    const kpiTotalEfectivo = document.getElementById('kpiTotalEfectivo');
+    const kpiTotalDigital = document.getElementById('kpiTotalDigital');
+    const kpiConteoGastos = document.getElementById('kpiConteoGastos');
+    const countAll = document.getElementById('countAll');
+    const tbodyGastos = document.getElementById('tbodyGastos');
+
+    // Formateador COP
+    function formatCOP(valor) {
+        return '$' + Math.round(Number(valor) || 0).toLocaleString('es-CO');
+    }
+
+    // Normalizador de texto para búsqueda insensible
+    function normalizarTexto(str) {
+        if (!str) return '';
+        return str.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+    }
+
+    // Toast flotante
+    const toastEl = document.getElementById('toastApp');
+    const toastApp = new bootstrap.Toast(toastEl, { delay: 3500 });
+    function mostrarToast(mensaje, tipo = 'success') {
+        const toastMsg = document.getElementById('toastMsg');
+        const icono = tipo === 'success' ? 'fa-circle-check text-success' : (tipo === 'warning' ? 'fa-triangle-exclamation text-warning' : 'fa-circle-xmark text-danger');
+        toastMsg.innerHTML = `<i class="fa-solid ${icono} fs-5"></i> <span>${mensaje}</span>`;
+        toastApp.show();
+    }
+
+    // 1. Manejo de Pills de Categoría
+    const pills = document.querySelectorAll('.category-pill');
+    pills.forEach(pill => {
+        pill.addEventListener('click', function() {
+            pills.forEach(p => p.classList.remove('active'));
+            this.classList.add('active');
+
+            const catNombre = this.getAttribute('data-cat-nombre');
+            if (catNombre === 'Otra') {
+                inputCategoria.value = '';
+                inputCategoria.focus();
+            } else {
+                inputCategoria.value = catNombre;
+                // Si la descripción está vacía, sugerir contexto amigable
+                if (!inputDescripcion.value.trim()) {
+                    inputDescripcion.placeholder = `Detalle de ${catNombre}...`;
+                }
+                inputMonto.focus();
+            }
+        });
+    });
+
+    // 2. Formateo y Atajos de Monto
+    function actualizarVisualMonto() {
+        const val = parseFloat(inputMonto.value) || 0;
+        lblMontoFormateado.textContent = formatCOP(val);
+    }
+
+    inputMonto.addEventListener('input', actualizarVisualMonto);
+
+    document.querySelectorAll('.quick-cash-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+            const incremento = parseFloat(this.getAttribute('data-add')) || 0;
+            const actual = parseFloat(inputMonto.value) || 0;
+            inputMonto.value = actual + incremento;
+            actualizarVisualMonto();
+            inputMonto.focus();
+        });
+    });
+
+    document.getElementById('btnLimpiarMonto').addEventListener('click', function() {
+        inputMonto.value = '';
+        actualizarVisualMonto();
+        inputMonto.focus();
+    });
+
+    // 3. Selector Visual de Métodos de Pago
+    const payCards = document.querySelectorAll('.paymethod-radio-card');
+    payCards.forEach(card => {
+        card.addEventListener('click', function() {
+            payCards.forEach(c => c.classList.remove('active'));
+            this.classList.add('active');
+            inputMetodoPago.value = this.getAttribute('data-metodo');
+        });
+    });
+
+    // 4. Modo División de Pagos (Toggle)
+    const toggleModoAvanzado = document.getElementById('toggleModoAvanzado');
+    const seccionModoSimple = document.getElementById('seccionModoSimple');
+    const seccionModoAvanzado = document.getElementById('seccionModoAvanzado');
+    const btnAgregarLineaPago = document.getElementById('btnAgregarLineaPago');
+    const contenedorLineasMultiples = document.getElementById('contenedorLineasMultiples');
+    const lblTotalDividido = document.getElementById('lblTotalDividido');
+
+    toggleModoAvanzado.addEventListener('change', function() {
+        if (this.checked) {
+            seccionModoSimple.classList.add('d-none');
+            seccionModoAvanzado.classList.remove('d-none');
+            inputMonto.removeAttribute('required');
+            actualizarSumaLineasMultiples();
+        } else {
+            seccionModoSimple.classList.remove('d-none');
+            seccionModoAvanzado.classList.add('d-none');
+            inputMonto.setAttribute('required', 'required');
+        }
+    });
+
+    function actualizarSumaLineasMultiples() {
+        let suma = 0;
+        document.querySelectorAll('.input-monto-split').forEach(inp => {
+            suma += parseFloat(inp.value) || 0;
+        });
+        lblTotalDividido.textContent = formatCOP(suma);
+    }
+
+    contenedorLineasMultiples.addEventListener('input', function(e) {
+        if (e.target.classList.contains('input-monto-split')) {
+            actualizarSumaLineasMultiples();
+        }
+    });
+
+    btnAgregarLineaPago.addEventListener('click', function() {
+        const nuevaLinea = document.createElement('div');
+        nuevaLinea.className = 'row g-2 align-items-center mb-2 linea-pago-row';
+        nuevaLinea.innerHTML = `
+            <div class="col-6 col-md-6">
+                <div class="input-group input-group-sm">
+                    <span class="input-group-text bg-white text-danger fw-bold">$</span>
+                    <input type="number" step="1" min="0" name="monto[]" class="form-control bg-white fw-bold input-monto-split" placeholder="Monto parcial">
                 </div>
-                <div class="col-5">
-                    <select name="metodo_pago[]" class="form-select bg-light border-0" required>
-                        <option value="efectivo" selected>Efectivo (Caja)</option>
-                        <option value="nequi">Nequi</option>
-                        <option value="daviplata">Daviplata</option>
-                        <option value="bancolombia">Bancolombia</option>
-                    </select>
+            </div>
+            <div class="col-5 col-md-5">
+                <select name="metodo_pago[]" class="form-select form-select-sm bg-white fw-semibold">
+                    <option value="efectivo">Efectivo (Caja)</option>
+                    <option value="nequi" selected>Nequi</option>
+                    <option value="bancolombia">Bancolombia</option>
+                    <option value="daviplata">Daviplata</option>
+                    <option value="datafono">Datáfono</option>
+                </select>
+            </div>
+            <div class="col-1 text-end">
+                <button type="button" class="btn btn-sm btn-outline-danger rounded-circle btn-quitar-linea">
+                    <i class="fa-solid fa-minus"></i>
+                </button>
+            </div>
+        `;
+        contenedorLineasMultiples.appendChild(nuevaLinea);
+    });
+
+    contenedorLineasMultiples.addEventListener('click', function(e) {
+        const btnQuit = e.target.closest('.btn-quitar-linea');
+        if (btnQuit && document.querySelectorAll('.linea-pago-row').length > 1) {
+            btnQuit.closest('.linea-pago-row').remove();
+            actualizarSumaLineasMultiples();
+        }
+    });
+
+    // 5. Envío Asíncrono Ultra Rápido (AJAX / Fetch)
+    formRegistrarGasto.addEventListener('submit', async function(e) {
+        e.preventDefault();
+
+        // Validaciones previas
+        const esAvanzado = toggleModoAvanzado.checked;
+        if (!esAvanzado && (!parseFloat(inputMonto.value) || parseFloat(inputMonto.value) <= 0)) {
+            mostrarToast('Ingresa un monto válido mayor a 0.', 'warning');
+            inputMonto.focus();
+            return;
+        }
+
+        btnGuardarGasto.disabled = true;
+        btnGuardarTexto.classList.add('d-none');
+        btnGuardarSpinner.classList.remove('d-none');
+
+        const formData = new FormData(formRegistrarGasto);
+
+        try {
+            const resp = await fetch("{{ url_for('gastos_bp.index') }}", {
+                method: 'POST',
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'X-CSRFToken': csrfToken
+                },
+                body: formData
+            });
+
+            const data = await resp.json();
+
+            if (!resp.ok || !data.success) {
+                mostrarToast(data.error || 'Error al registrar el gasto.', 'danger');
+                return;
+            }
+
+            // Éxito: actualizar KPIs en vivo
+            actualizarKPIsDOM(data.kpis);
+
+            // Inserción de nuevas filas en la tabla con animación
+            const filaSin = document.getElementById('filaSinGastos');
+            if (filaSin) filaSin.remove();
+
+            data.gastos.forEach(g => {
+                insertarFilaGasto(g);
+            });
+
+            mostrarToast(data.message || 'Gasto registrado correctamente.', 'success');
+
+            // Limpieza de inputs y preparación para el siguiente gasto
+            inputMonto.value = '';
+            actualizarVisualMonto();
+            inputDescripcion.value = '';
+            if (esAvanzado) {
+                toggleModoAvanzado.checked = false;
+                seccionModoSimple.classList.remove('d-none');
+                seccionModoAvanzado.classList.add('d-none');
+                inputMonto.setAttribute('required', 'required');
+            }
+
+            // Recalcular contador y filtro actual
+            aplicarFiltroYBusqueda();
+
+            inputMonto.focus();
+
+        } catch (err) {
+            console.error(err);
+            mostrarToast('Error de conexión al guardar el gasto.', 'danger');
+        } finally {
+            btnGuardarGasto.disabled = false;
+            btnGuardarTexto.classList.remove('d-none');
+            btnGuardarSpinner.classList.add('d-none');
+        }
+    });
+
+    function actualizarKPIsDOM(kpis) {
+        if (!kpis) return;
+        kpiTotalDiarios.textContent = formatCOP(kpis.total_diarios);
+        kpiTotalIndirectos.textContent = formatCOP(kpis.total_indirectos);
+        kpiTotalGeneral.textContent = formatCOP(kpis.total_general);
+        kpiTotalEfectivo.textContent = formatCOP(kpis.total_efectivo);
+        kpiTotalDigital.textContent = formatCOP(kpis.total_digital);
+        kpiConteoGastos.textContent = kpis.conteo_gastos;
+        countAll.textContent = kpis.conteo_gastos;
+    }
+
+    function renderBadgeMetodo(mp) {
+        mp = (mp || 'efectivo').toLowerCase();
+        if (mp === 'efectivo') {
+            return `<span class="badge bg-success bg-opacity-10 text-success border border-success-subtle px-2 py-1"><i class="fa-solid fa-money-bill-wave me-1"></i> Efectivo</span>`;
+        } else if (mp === 'nequi') {
+            return `<span class="badge bg-purple bg-opacity-10 text-purple border px-2 py-1" style="color: #6b21a8; background: rgba(107, 33, 168, 0.08); border-color: #d8b4fe !important;"><i class="fa-solid fa-mobile-screen me-1"></i> Nequi</span>`;
+        } else if (mp === 'bancolombia') {
+            return `<span class="badge bg-warning bg-opacity-10 text-dark border px-2 py-1" style="background: rgba(245, 158, 11, 0.1); border-color: #fde68a !important;"><i class="fa-solid fa-building-columns me-1 text-warning"></i> Bancolombia</span>`;
+        } else if (mp === 'daviplata') {
+            return `<span class="badge bg-danger bg-opacity-10 text-danger border border-danger-subtle px-2 py-1"><i class="fa-solid fa-wallet me-1"></i> Daviplata</span>`;
+        } else {
+            return `<span class="badge bg-primary bg-opacity-10 text-primary border border-primary-subtle px-2 py-1"><i class="fa-solid fa-credit-card me-1"></i> ${mp.toUpperCase()}</span>`;
+        }
+    }
+
+    function insertarFilaGasto(g) {
+        const tr = document.createElement('tr');
+        tr.id = `fila-gasto-${g.id}`;
+        tr.className = 'row-highlight';
+        tr.setAttribute('data-id', g.id);
+        tr.setAttribute('data-tipo', g.tipo_gasto);
+        tr.setAttribute('data-categoria', g.categoria);
+        tr.setAttribute('data-descripcion', g.descripcion || '');
+        tr.setAttribute('data-metodo', (g.metodo_pago || 'efectivo').toLowerCase());
+        tr.setAttribute('data-monto', g.monto);
+        tr.setAttribute('data-fecha', g.fecha_raw);
+        tr.setAttribute('data-usuario', g.usuario_nombre);
+
+        const badgeTipo = g.tipo_gasto === 'Gasto Diario' 
+            ? '<span class="badge rounded-pill text-dark border" style="background-color: #e0f2fe; border-color: #bae6fd !important;">Diario (Caja)</span>'
+            : '<span class="badge rounded-pill text-dark border" style="background-color: #fce7f3; border-color: #fbcfe8 !important;">Costo Fijo</span>';
+
+        const esAdmin = "{{ current_user.rol }}" === 'admin';
+        const btnEliminarHtml = esAdmin ? `
+            <button type="button" 
+                    class="btn btn-outline-danger rounded-end-pill btn-eliminar-gasto px-2" 
+                    title="Eliminar Gasto"
+                    data-id="${g.id}"
+                    data-categoria="${g.categoria}"
+                    data-descripcion="${g.descripcion || ''}"
+                    data-monto="${formatCOP(g.monto)}">
+                <i class="fa-solid fa-trash-can"></i>
+            </button>
+        ` : '';
+
+        tr.innerHTML = `
+            <td class="ps-4 text-muted"><small class="fw-semibold">${g.fecha}</small></td>
+            <td><span class="text-brand-black fw-semibold small"><i class="fa-solid fa-user text-muted me-1"></i>${g.usuario_nombre}</span></td>
+            <td>${badgeTipo}</td>
+            <td class="fw-bold text-dark"><span class="badge bg-light text-dark border px-2 py-1">${g.categoria}</span></td>
+            <td class="text-muted"><small class="td-desc">${g.descripcion || '—'}</small></td>
+            <td class="text-center">${renderBadgeMetodo(g.metodo_pago)}</td>
+            <td class="text-end fw-bolder text-danger fs-6 td-monto">${formatCOP(g.monto)}</td>
+            <td class="text-center pe-4">
+                <div class="btn-group btn-group-sm" role="group">
+                    <button type="button" 
+                            class="btn btn-outline-secondary ${esAdmin ? 'rounded-start-pill' : 'rounded-pill'} btn-editar-gasto px-2" 
+                            title="Editar Gasto"
+                            data-id="${g.id}"
+                            data-categoria="${g.categoria}"
+                            data-descripcion="${g.descripcion || ''}"
+                            data-monto="${g.monto}"
+                            data-metodo="${(g.metodo_pago || 'efectivo').toLowerCase()}"
+                            data-fecha="${g.fecha_raw}"
+                            data-tipo="${g.tipo_gasto}">
+                        <i class="fa-regular fa-pen-to-square"></i>
+                    </button>
+                    ${btnEliminarHtml}
                 </div>
-                <div class="col-2 text-end">
-                    <button type="button" class="btn btn-sm btn-outline-danger rounded-circle btn-remove-linea"><i class="fa-solid fa-minus"></i></button>
-                </div>
-            `;
-            container.appendChild(nuevaLinea);
-        } else if (e.target.closest('.btn-remove-linea')) {
-            e.target.closest('.linea-gasto').remove();
+            </td>
+        `;
+
+        tbodyGastos.insertBefore(tr, tbodyGastos.firstChild);
+    }
+
+    // 6. Buscador y Filtros Dinámicos de Tabla
+    const buscadorGastos = document.getElementById('buscadorGastos');
+    const btnLimpiarBusqueda = document.getElementById('btnLimpiarBusqueda');
+    const chipFilters = document.querySelectorAll('.chip-filter');
+    const lblConteoFiltrados = document.getElementById('lblConteoFiltrados');
+    const lblSumaFiltrados = document.getElementById('lblSumaFiltrados');
+
+    let filtroActivo = 'all';
+
+    function aplicarFiltroYBusqueda() {
+        const q = normalizarTexto(buscadorGastos.value.trim());
+        const filas = tbodyGastos.querySelectorAll('tr[data-id]');
+
+        let visibles = 0;
+        let sumaVisibles = 0;
+
+        filas.forEach(fila => {
+            const tipo = fila.getAttribute('data-tipo') || '';
+            const cat = normalizarTexto(fila.getAttribute('data-categoria') || '');
+            const desc = normalizarTexto(fila.getAttribute('data-descripcion') || '');
+            const metodo = (fila.getAttribute('data-metodo') || '').toLowerCase();
+            const usuario = normalizarTexto(fila.getAttribute('data-usuario') || '');
+            const monto = parseFloat(fila.getAttribute('data-monto')) || 0;
+
+            // Filtro por chip
+            let pasaChip = true;
+            if (filtroActivo === 'diario') pasaChip = (tipo === 'Gasto Diario');
+            else if (filtroActivo === 'indirecto') pasaChip = (tipo === 'Costo Indirecto');
+            else if (filtroActivo === 'efectivo') pasaChip = (metodo === 'efectivo');
+            else if (filtroActivo === 'digital') pasaChip = (metodo !== 'efectivo');
+
+            // Filtro por texto
+            let pasaTexto = true;
+            if (q) {
+                pasaTexto = cat.includes(q) || desc.includes(q) || metodo.includes(q) || usuario.includes(q);
+            }
+
+            if (pasaChip && pasaTexto) {
+                fila.classList.remove('d-none');
+                visibles++;
+                sumaVisibles += monto;
+            } else {
+                fila.classList.add('d-none');
+            }
+        });
+
+        lblConteoFiltrados.textContent = visibles;
+        lblSumaFiltrados.textContent = formatCOP(sumaVisibles);
+    }
+
+    buscadorGastos.addEventListener('input', aplicarFiltroYBusqueda);
+
+    btnLimpiarBusqueda.addEventListener('click', function() {
+        buscadorGastos.value = '';
+        aplicarFiltroYBusqueda();
+        buscadorGastos.focus();
+    });
+
+    chipFilters.forEach(chip => {
+        chip.addEventListener('click', function() {
+            chipFilters.forEach(c => c.classList.remove('active'));
+            this.classList.add('active');
+            filtroActivo = this.getAttribute('data-filter');
+            aplicarFiltroYBusqueda();
+        });
+    });
+
+    // 7. MODAL DE EDICIÓN
+    const modalEditarGastoEl = document.getElementById('modalEditarGasto');
+    const modalEditarGasto = new bootstrap.Modal(modalEditarGastoEl);
+    const formEditarGasto = document.getElementById('formEditarGasto');
+    const editGastoId = document.getElementById('editGastoId');
+    const editCategoria = document.getElementById('editCategoria');
+    const editMonto = document.getElementById('editMonto');
+    const editMetodoPago = document.getElementById('editMetodoPago');
+    const editFechaGasto = document.getElementById('editFechaGasto');
+    const editTipoGasto = document.getElementById('editTipoGasto');
+    const editDescripcion = document.getElementById('editDescripcion');
+    const btnGuardarEdicion = document.getElementById('btnGuardarEdicion');
+    const btnEditTexto = document.getElementById('btnEditTexto');
+    const btnEditSpinner = document.getElementById('btnEditSpinner');
+
+    tbodyGastos.addEventListener('click', function(e) {
+        const btnEdit = e.target.closest('.btn-editar-gasto');
+        if (btnEdit) {
+            editGastoId.value = btnEdit.getAttribute('data-id');
+            editCategoria.value = btnEdit.getAttribute('data-categoria');
+            editMonto.value = btnEdit.getAttribute('data-monto');
+            editMetodoPago.value = btnEdit.getAttribute('data-metodo');
+            editFechaGasto.value = btnEdit.getAttribute('data-fecha');
+            if (editTipoGasto) editTipoGasto.value = btnEdit.getAttribute('data-tipo');
+            editDescripcion.value = btnEdit.getAttribute('data-descripcion');
+            modalEditarGasto.show();
+        }
+    });
+
+    formEditarGasto.addEventListener('submit', async function(e) {
+        e.preventDefault();
+        const id = editGastoId.value;
+
+        btnGuardarEdicion.disabled = true;
+        btnEditTexto.classList.add('d-none');
+        btnEditSpinner.classList.remove('d-none');
+
+        const formData = new FormData(formEditarGasto);
+
+        try {
+            const resp = await fetch(`/gastos/${id}/editar`, {
+                method: 'POST',
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'X-CSRFToken': csrfToken
+                },
+                body: formData
+            });
+
+            const data = await resp.json();
+
+            if (!resp.ok || !data.success) {
+                mostrarToast(data.error || 'Error al actualizar el gasto.', 'danger');
+                return;
+            }
+
+            modalEditarGasto.hide();
+            mostrarToast('Gasto actualizado exitosamente.', 'success');
+
+            // Actualizar fila en la tabla
+            const fila = document.getElementById(`fila-gasto-${id}`);
+            if (fila && data.gasto) {
+                const g = data.gasto;
+                fila.setAttribute('data-tipo', g.tipo_gasto);
+                fila.setAttribute('data-categoria', g.categoria);
+                fila.setAttribute('data-descripcion', g.descripcion || '');
+                fila.setAttribute('data-metodo', (g.metodo_pago || 'efectivo').toLowerCase());
+                fila.setAttribute('data-monto', g.monto);
+                fila.setAttribute('data-fecha', g.fecha_raw);
+
+                fila.querySelector('.td-desc').textContent = g.descripcion || '—';
+                fila.querySelector('.td-monto').textContent = formatCOP(g.monto);
+                fila.children[3].innerHTML = `<span class="badge bg-light text-dark border px-2 py-1">${g.categoria}</span>`;
+                fila.children[5].innerHTML = renderBadgeMetodo(g.metodo_pago);
+
+                // Actualizar data attributes en botón de editar
+                const btnEdit = fila.querySelector('.btn-editar-gasto');
+                if (btnEdit) {
+                    btnEdit.setAttribute('data-categoria', g.categoria);
+                    btnEdit.setAttribute('data-descripcion', g.descripcion || '');
+                    btnEdit.setAttribute('data-monto', g.monto);
+                    btnEdit.setAttribute('data-metodo', (g.metodo_pago || 'efectivo').toLowerCase());
+                    btnEdit.setAttribute('data-fecha', g.fecha_raw);
+                    btnEdit.setAttribute('data-tipo', g.tipo_gasto);
+                }
+
+                fila.classList.add('row-highlight');
+                setTimeout(() => fila.classList.remove('row-highlight'), 2500);
+            }
+
+            actualizarKPIsDOM(data.kpis);
+            aplicarFiltroYBusqueda();
+
+        } catch (err) {
+            console.error(err);
+            mostrarToast('Error al conectar con el servidor.', 'danger');
+        } finally {
+            btnGuardarEdicion.disabled = false;
+            btnEditTexto.classList.remove('d-none');
+            btnEditSpinner.classList.add('d-none');
+        }
+    });
+
+    // 8. MODAL DE ELIMINACIÓN
+    const modalEliminarEl = document.getElementById('modalEliminarGastoGenerico');
+    const modalEliminar = new bootstrap.Modal(modalEliminarEl);
+    const formEliminar = document.getElementById('formEliminarGastoGenerico');
+    const delModalCat = document.getElementById('delModalCat');
+    const delModalMonto = document.getElementById('delModalMonto');
+    const delModalDesc = document.getElementById('delModalDesc');
+    const btnConfirmarEliminar = document.getElementById('btnConfirmarEliminar');
+    const btnDelTexto = document.getElementById('btnDelTexto');
+    const btnDelSpinner = document.getElementById('btnDelSpinner');
+
+    let idGastoAEliminar = null;
+
+    tbodyGastos.addEventListener('click', function(e) {
+        const btnDel = e.target.closest('.btn-eliminar-gasto');
+        if (btnDel) {
+            idGastoAEliminar = btnDel.getAttribute('data-id');
+            delModalCat.textContent = btnDel.getAttribute('data-categoria');
+            delModalMonto.textContent = btnDel.getAttribute('data-monto');
+            delModalDesc.textContent = btnDel.getAttribute('data-descripcion') || '—';
+            formEliminar.action = `/gastos/${idGastoAEliminar}/eliminar`;
+            modalEliminar.show();
+        }
+    });
+
+    formEliminar.addEventListener('submit', async function(e) {
+        e.preventDefault();
+        if (!idGastoAEliminar) return;
+
+        btnConfirmarEliminar.disabled = true;
+        btnDelTexto.classList.add('d-none');
+        btnDelSpinner.classList.remove('d-none');
+
+        try {
+            const resp = await fetch(`/gastos/${idGastoAEliminar}/eliminar`, {
+                method: 'POST',
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'X-CSRFToken': csrfToken
+                }
+            });
+
+            const data = await resp.json();
+
+            if (!resp.ok || !data.success) {
+                mostrarToast(data.error || 'Error al eliminar el gasto.', 'danger');
+                return;
+            }
+
+            modalEliminar.hide();
+            mostrarToast(data.message || 'Gasto eliminado.', 'success');
+
+            const fila = document.getElementById(`fila-gasto-${idGastoAEliminar}`);
+            if (fila) fila.remove();
+
+            actualizarKPIsDOM(data.kpis);
+            aplicarFiltroYBusqueda();
+
+        } catch (err) {
+            console.error(err);
+            mostrarToast('Error al conectar con el servidor.', 'danger');
+        } finally {
+            btnConfirmarEliminar.disabled = false;
+            btnDelTexto.classList.remove('d-none');
+            btnDelSpinner.classList.add('d-none');
+        }
+    });
+
+    // Atajos de Teclado
+    document.addEventListener('keydown', function(e) {
+        // Ctrl + Enter para guardar gasto
+        if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+            if (!btnGuardarGasto.disabled) {
+                formRegistrarGasto.requestSubmit();
+            }
         }
     });
 });

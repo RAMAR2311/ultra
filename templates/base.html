@@ -3,185 +3,265 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>KOBA - CRM & POS</title>
+    <title>{% block title %}ULTRA TECH - CRM & POS{% endblock %}</title>
     <!-- Favicon y PWA -->
-    <link rel="icon" type="image/png" href="{{ url_for('static', filename='img/KOBA.png') }}?v=3">
-    <link rel="shortcut icon" type="image/png" href="{{ url_for('static', filename='img/KOBA.png') }}?v=3">
+    <link rel="icon" type="image/png" href="{{ url_for('static', filename='img/icons/icon-192x192.png') }}?v=4">
+    <link rel="shortcut icon" type="image/png" href="{{ url_for('static', filename='img/icons/icon-192x192.png') }}?v=4">
     <link rel="manifest" href="{{ url_for('static', filename='manifest.json') }}">
     
     <!-- Meta tags para iOS y PWA -->
     <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="default">
-    <meta name="apple-mobile-web-app-title" content="KOBA">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="ULTRA TECH">
     <link rel="apple-touch-icon" href="{{ url_for('static', filename='img/icons/icon-192x192.png') }}">
-    <meta name="theme-color" content="#F8F9FA">
+    <meta name="theme-color" content="#FFFFFF">
+
+    <!-- Google Fonts: Orbitron & Montserrat -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,400;1,600&family=Orbitron:ital,wght@0,400;0,600;0,700;0,800;0,900;1,700;1,800;1,900&display=swap" rel="stylesheet">
 
     <!-- Bootstrap 5 CDN -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <!-- FontAwesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <style>
-        /* REGLA DE BRANDING ESTRICTA Y COLORES: KOBA (MODO CLARO) */
+        /* =========================================================
+           ULTRA TECH DESIGN SYSTEM: CLEAN WHITE / MAGENTA TECH
+           Paleta Oficial: #FFFFFF / #F8F9FA (Fondo Blanco),
+           #FF007F (Magenta Neón), #CC0052 (Magenta Oscuro/Hover),
+           #0F172A (Texto Principal Oscuro de Alta Legibilidad)
+           ========================================================= */
         :root {
-            --brand-red: #008B8B;    /* Color principal del logo (Teal oscuro para contraste) */
-            --brand-blue: #008B8B;   /* Color principal del logo (Teal oscuro para contraste) */
-            --brand-cyan: #85FFFF;   /* Color cyan brillante del logo */
-            --brand-black: #333333;  /* Texto oscuro */
-            --brand-white: #FFFFFF;  /* Blanco */
-            
-            --brand-bg: #F8F9FA;     /* Fondo claro */
-            --brand-card-bg: #FFFFFF; /* Tarjetas blancas */
-            
-            --brand-neon-glow: none;
+            --brand-bg: #F8F9FA;            /* Fondo blanco limpio */
+            --brand-white: #FFFFFF;         /* Blanco puro */
+            --brand-surface: #FFFFFF;       /* Tarjetas blancas */
+            --brand-surface-card: #FFFFFF;
+            --brand-card-bg: #FFFFFF;
+            --brand-surface-hover: #F1F5F9;
+
+            --brand-primary: #FF007F;       /* Rosa Neón / Magenta Brillante */
+            --brand-secondary: #CC0052;     /* Magenta Oscuro */
+            --brand-pink: #FF007F;
+            --brand-red: #FF007F;
+            --brand-cyan: #FF007F;
+            --brand-blue: #0F172A;
+
+            --brand-text: #0F172A;          /* Texto principal oscuro de máxima legibilidad */
+            --brand-text-dark: #0F172A;
+            --brand-black: #0F172A;
+            --brand-text-muted: #64748B;    /* Gris secundario para descripciones */
+            --brand-border: #E2E8F0;        /* Bordes claros y limpios */
+            --brand-border-dark: #CBD5E1;
+
+            --brand-gradient: linear-gradient(135deg, #FF007F 0%, #CC0052 100%);
+            --brand-gradient-hover: linear-gradient(135deg, #FF268F 0%, #E6005C 100%);
+            --brand-neon-glow: 0 0 16px rgba(255, 0, 127, 0.35);
+            --brand-neon-glow-sm: 0 0 8px rgba(255, 0, 127, 0.25);
+
+            --font-heading: 'Orbitron', -apple-system, sans-serif;
+            --font-body: 'Montserrat', -apple-system, sans-serif;
         }
 
         body {
-            background-color: var(--brand-bg);
-            color: var(--brand-black);
-            font-family: 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background-color: var(--brand-bg) !important;
+            color: var(--brand-text) !important;
+            font-family: var(--font-body);
             -webkit-font-smoothing: antialiased;
         }
 
-        /* Clases base en modo claro */
-        .bg-brand-blue { background-color: var(--brand-card-bg) !important; color: var(--brand-black); border: 1px solid #dee2e6; }
-        .bg-brand-pink { background-color: var(--brand-red) !important; color: #FFFFFF; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
-        .bg-brand-white { background-color: var(--brand-card-bg) !important; color: var(--brand-black); border: 1px solid #dee2e6; }
-        
-        .text-brand-black { color: var(--brand-black) !important; }
-        .text-brand-pink { color: var(--brand-red) !important; }
+        h1, h2, h3, h4, h5, h6, .font-orbitron {
+            font-family: var(--font-heading);
+            letter-spacing: 0.5px;
+            color: var(--brand-text);
+        }
 
-        /* Navbar Neon Vibe */
+        /* Clases base con alto contraste */
+        .bg-brand-blue { background-color: #0F172A !important; color: #FFFFFF !important; border: 1px solid #0F172A; }
+        .text-brand-blue { color: #0F172A !important; font-weight: 700; }
+        .bg-brand-pink { background: var(--brand-gradient) !important; color: #FFFFFF !important; box-shadow: var(--brand-neon-glow-sm); }
+        .bg-brand-white { background-color: #FFFFFF !important; color: var(--brand-text) !important; border: 1px solid var(--brand-border); }
+        
+        .text-brand-black { color: var(--brand-text) !important; }
+        .text-brand-pink { color: var(--brand-primary) !important; font-weight: 700; }
+
+        /* Navbar Dark Tech para contraste y elegancia */
         .navbar-custom {
-            background-color: var(--brand-black);
-            border-bottom: 2px solid var(--brand-red);
-            padding: 1rem 0;
-            box-shadow: 0 4px 15px rgba(0, 255, 255, 0.15);
+            background-color: #0F172A;
+            border-bottom: 3px solid var(--brand-primary);
+            padding: 0.85rem 0;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.12);
         }
         
         .navbar-custom .navbar-brand {
-            font-weight: 800;
-            color: var(--brand-white) !important;
-            font-size: 1.75rem;
-            letter-spacing: -0.5px;
+            font-family: var(--font-heading);
+            font-weight: 900;
+            font-style: italic;
+            color: #FFFFFF !important;
+            font-size: 1.7rem;
+            letter-spacing: 1.5px;
+        }
+
+        .navbar-brand-tech {
+            color: var(--brand-primary) !important;
+            text-shadow: 0 0 12px rgba(255, 0, 127, 0.7);
         }
 
         .navbar-custom .nav-link {
-            color: var(--brand-white);
+            color: #FFFFFF;
             font-weight: 500;
             margin-left: 1rem;
             transition: color 0.2s;
         }
 
         .navbar-custom .nav-link:hover {
-            color: var(--brand-red);
+            color: var(--brand-primary);
         }
 
         /* Botones Pro */
-        .btn-pink { /* Botón primario neón */
-            background-color: var(--brand-red);
-            color: #000;
+        .btn-pink, .btn-primary {
+            background: var(--brand-gradient) !important;
+            color: #FFFFFF !important;
             font-weight: 700;
             border: none;
             transition: all 0.2s ease-in-out;
-            box-shadow: 0 0 8px rgba(0, 255, 255, 0.4);
+            box-shadow: 0 4px 10px rgba(255, 0, 127, 0.25);
         }
-        .btn-pink:hover {
-            background-color: #00E5E5;
-            color: #000;
+        .btn-pink:hover, .btn-primary:hover {
+            background: var(--brand-gradient-hover) !important;
+            color: #FFFFFF !important;
             transform: translateY(-2px);
             box-shadow: var(--brand-neon-glow);
         }
 
-        .btn-blue { /* Botón secundario oscuro */
-            background-color: var(--brand-black);
-            color: var(--brand-red);
+        .btn-blue {
+            background-color: #0F172A !important;
+            color: #FFFFFF !important;
             font-weight: 600;
-            border: 1px solid var(--brand-red);
+            border: 1px solid #0F172A;
             transition: all 0.2s ease-in-out;
         }
         .btn-blue:hover {
-            background-color: var(--brand-red);
-            color: #000;
+            background-color: #1E293B !important;
+            color: #FFFFFF !important;
             transform: translateY(-2px);
-            box-shadow: var(--brand-neon-glow);
+            box-shadow: 0 4px 12px rgba(15, 23, 42, 0.25);
+        }
+
+        .btn-outline-pink {
+            background-color: transparent;
+            color: var(--brand-primary) !important;
+            font-weight: 600;
+            border: 1.5px solid var(--brand-primary);
+            transition: all 0.2s ease-in-out;
+        }
+        .btn-outline-pink:hover {
+            background: var(--brand-gradient) !important;
+            color: #FFFFFF !important;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(255, 0, 127, 0.3);
         }
 
         /* Superficies */
-        .card-custom {
-            background-color: var(--brand-card-bg);
-            border: 1px solid #333;
+        .card-custom, .card {
+            background-color: #FFFFFF;
+            border: 1px solid var(--brand-border);
             border-radius: 16px;
-            box-shadow: 0 10px 25px rgba(0,0,0,0.5);
-            color: #E0E0E0;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+            color: var(--brand-text);
         }
 
         /* Tablas */
-        .table-custom {
-            background-color: var(--brand-card-bg);
+        .table-custom, .table {
+            background-color: #FFFFFF;
             border-radius: 12px;
-            color: #E0E0E0;
+            color: var(--brand-text);
+            border-color: var(--brand-border);
         }
-        .table-custom thead th {
-            color: var(--brand-red);
-            border-bottom: 2px solid var(--brand-red);
+        .table-custom thead th, .table thead th {
+            background-color: #0F172A;
+            color: #FFFFFF;
+            border-bottom: 2px solid var(--brand-primary);
             text-transform: uppercase;
-            font-size: 0.75rem;
+            font-size: 0.78rem;
             letter-spacing: 0.5px;
-            padding: 1.25rem 1rem;
+            padding: 1rem;
+            font-family: var(--font-heading);
         }
-        .table-custom tbody td {
-            padding: 1.25rem 1rem;
+        .table-custom tbody td, .table tbody td {
+            padding: 1rem;
             vertical-align: middle;
-            border-bottom: 1px solid #333;
-            color: #E0E0E0;
+            border-bottom: 1px solid var(--brand-border);
+            color: var(--brand-text);
+            background-color: #FFFFFF;
         }
 
-        /* Sidebar Offcanvas Estilos (Dark Mode Adaptado a KOBA) */
+        /* Inputs y Formularios */
+        .form-control, .form-select {
+            background-color: #FFFFFF !important;
+            border: 1px solid #CBD5E1 !important;
+            color: var(--brand-text) !important;
+        }
+        .form-control:focus, .form-select:focus {
+            border-color: var(--brand-primary) !important;
+            box-shadow: 0 0 0 3px rgba(255, 0, 127, 0.15) !important;
+            background-color: #FFFFFF !important;
+            color: var(--brand-text) !important;
+        }
+        .input-group-text {
+            background-color: #F1F5F9 !important;
+            border-color: #CBD5E1 !important;
+            color: var(--brand-text) !important;
+            font-weight: 600;
+        }
+
+        /* Sidebar Offcanvas Estilos (Clean Light Mode ULTRA TECH) */
         .offcanvas {
-            background-color: var(--brand-black) !important;
-            color: #E0E0E0 !important;
-            border-right: 1px solid #222 !important;
+            background-color: #FFFFFF !important;
+            color: var(--brand-text) !important;
+            border-right: 1px solid var(--brand-border) !important;
+            box-shadow: 4px 0 25px rgba(0, 0, 0, 0.08) !important;
         }
         .offcanvas-header {
-            background-color: var(--brand-black) !important;
-            border-bottom: 1px solid var(--brand-cyan) !important;
+            background: linear-gradient(135deg, #0F172A 0%, #1E293B 100%) !important;
+            border-bottom: 3px solid var(--brand-primary) !important;
         }
         .offcanvas-title {
-            color: var(--brand-cyan) !important;
-            text-shadow: 0 0 5px rgba(133,255,255,0.3);
+            color: #FFFFFF !important;
+            font-family: var(--font-heading);
+            letter-spacing: 1px;
         }
-        .btn-close {
+        .offcanvas-header .btn-close {
             filter: invert(1) grayscale(100%) brightness(200%);
         }
         .offcanvas-body .nav-link {
-            color: #E0E0E0 !important;
+            color: #1E293B !important;
             transition: all 0.2s ease-in-out;
+            font-weight: 500;
         }
         .offcanvas-body .fa-solid {
-            color: var(--brand-cyan) !important;
+            color: var(--brand-primary) !important;
         }
         .offcanvas-body .nav-link:hover {
-            background-color: rgba(133, 255, 255, 0.1);
+            background-color: rgba(255, 0, 127, 0.08);
             transform: translateX(4px);
-            border-left: 3px solid var(--brand-cyan) !important;
-            color: var(--brand-cyan) !important;
-            text-shadow: 0 0 5px rgba(133,255,255,0.3);
+            border-left: 3px solid var(--brand-primary) !important;
+            color: var(--brand-primary) !important;
         }
-        /* Ajustes específicos de Bootstrap utilitarios en el sidebar */
-        .offcanvas-body .border-bottom { border-bottom-color: #444 !important; }
-        .offcanvas-body .bg-light { background-color: #2a2a2a !important; border-color: #444 !important; color: #E0E0E0 !important; }
-        .offcanvas-body .text-muted { color: #aaa !important; }
+        .offcanvas-body .border-bottom { border-bottom-color: #E2E8F0 !important; }
+        .offcanvas-body .bg-light { background-color: #F8F9FA !important; border-color: #E2E8F0 !important; color: var(--brand-text) !important; }
+        .offcanvas-body .text-muted { color: #64748B !important; }
     </style>
 </head>
 <body>
-    <!-- Navbar KOBA -->
+    <!-- Navbar ULTRA TECH -->
     <nav class="navbar navbar-custom mb-5 position-relative">
         <div class="container-fluid px-3 d-flex justify-content-between align-items-center">
             
             {% if current_user.is_authenticated %}
             <!-- Botón Hamburguesa (Izquierda) -->
             <button class="navbar-toggler border-0 shadow-none p-2" type="button" data-bs-toggle="offcanvas" data-bs-target="#offcanvasNavbar" aria-controls="offcanvasNavbar">
-                <i class="fa-solid fa-bars fs-3" style="color: var(--brand-cyan); text-shadow: 0 0 5px rgba(133,255,255,0.5);"></i>
+                <i class="fa-solid fa-bars fs-3" style="color: var(--brand-primary); text-shadow: 0 0 8px rgba(255,0,127,0.6);"></i>
             </button>
             {% else %}
             <!-- Spacer if not authenticated -->
@@ -189,9 +269,9 @@
             {% endif %}
 
             <!-- Brand Logo (Centro) -->
-            <a class="navbar-brand d-flex align-items-center fw-bold m-0 position-absolute start-50 translate-middle-x" href="{{ url_for('index') }}">
-                <img src="{{ url_for('static', filename='img/KOBA.png') }}" alt="KOBA" style="height: 38px; width: auto; filter: drop-shadow(0 0 8px rgba(0,255,255,0.5));" class="me-2 rounded">
-                KOBA
+            <a class="navbar-brand d-flex align-items-center fw-bold m-0 position-absolute start-50 translate-middle-x" href="{{ url_for('index') }}" style="letter-spacing: 1.5px; font-style: italic;">
+                <span style="color: #FFFFFF; font-weight: 900;">ULTRA</span>
+                <span class="navbar-brand-tech" style="color: var(--brand-primary); font-weight: 900; margin-left: 6px;">TECH</span>
             </a>
 
             <!-- Badge Superior Servidor Zenic (Derecha) -->
@@ -200,10 +280,10 @@
                     {% if pago_servidor.estado == 'pagado' or pago_servidor.estado == 'al_dia' %}
                     <button type="button" 
                             class="btn btn-sm px-2 px-md-3 py-1 rounded-pill fw-bold d-flex align-items-center gap-1 shadow-sm text-nowrap"
-                            style="background-color: #d1e7dd; color: #0f5132; border: 1.5px solid #0f5132; font-size: 0.82rem;"
+                            style="background-color: #112211; color: #00E676; border: 1.5px solid #00E676; font-size: 0.82rem;"
                             data-bs-toggle="modal" 
                             data-bs-target="#modalPagoServidor">
-                        <i class="fa-solid fa-circle-check" style="color: #0f5132;"></i>
+                        <i class="fa-solid fa-circle-check" style="color: #00E676;"></i>
                         <span>✓ Zenic: Al día</span>
                     </button>
                     {% endif %}
@@ -266,6 +346,9 @@
                         </div>
                     </li>
                     <li class="nav-item">
+                        <a class="nav-link text-brand-black rounded-3 px-3 py-2 fw-semibold border-bottom" href="{{ url_for('bodega_bp.dashboard') }}"><i class="fa-solid fa-boxes-stacked text-brand-pink me-2" style="width:20px; text-align:center;"></i> Bodega Mayorista</a>
+                    </li>
+                    <li class="nav-item">
                         <a class="nav-link text-brand-black rounded-3 px-3 py-2 fw-semibold border-bottom" href="/admin/vendedores"><i class="fa-solid fa-users text-info me-2" style="width:20px; text-align:center;"></i> Personal</a>
                     </li>
                     <li class="nav-item">
@@ -275,13 +358,13 @@
                         <a class="nav-link text-brand-black rounded-3 px-3 py-2 fw-semibold border-bottom" href="/gastos"><i class="fa-solid fa-money-bill-transfer text-danger me-2" style="width:20px; text-align:center;"></i> Gastos</a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link text-brand-black rounded-3 px-3 py-2 fw-semibold border-bottom" href="/clientes"><i class="fa-solid fa-users-line text-warning me-2" style="width:20px; text-align:center;"></i> Clientes y Locales</a>
+                        <a class="nav-link text-brand-black rounded-3 px-3 py-2 fw-semibold border-bottom" href="/clientes"><i class="fa-solid fa-users-line text-warning me-2" style="width:20px; text-align:center;"></i> Locales Maneos</a>
                     </li>
                     <li class="nav-item">
                         <a class="nav-link text-brand-black rounded-3 px-3 py-2 fw-semibold border-bottom" href="/admin/maneos"><i class="fa-solid fa-handshake text-primary me-2" style="width:20px; text-align:center;"></i> Maneos</a>
                     </li>
                     <li class="nav-item mt-2">
-                        <a class="nav-link text-brand-black rounded-3 px-3 py-2 fw-bold bg-light border" href="/admin/arqueo"><i class="fa-solid fa-calculator text-brand-blue me-2" style="width:20px; text-align:center;"></i> Arqueo de Caja</a>
+                        <a class="nav-link text-brand-black rounded-3 px-3 py-2 fw-bold bg-light border" href="/arqueo/nuevo"><i class="fa-solid fa-calculator text-brand-blue me-2" style="width:20px; text-align:center;"></i> Arqueo de Caja</a>
                     </li>
                 {% elif current_user.rol == 'vendedor' %}
                     <!-- Vistas Estrictamente Operativas (Cajeros) -->
@@ -298,7 +381,7 @@
                         <a class="nav-link text-brand-black rounded-3 px-3 py-2 fw-semibold border-bottom" href="/sales/ventas_hoy"><i class="fa-solid fa-list-check me-2" style="color: var(--brand-blue); width:20px; text-align:center;"></i> Ventas del Día</a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link text-brand-black rounded-3 px-3 py-2 fw-semibold border-bottom" href="/clientes"><i class="fa-solid fa-users-line text-warning me-2" style="width:20px; text-align:center;"></i> Clientes y Locales</a>
+                        <a class="nav-link text-brand-black rounded-3 px-3 py-2 fw-semibold border-bottom" href="/clientes"><i class="fa-solid fa-users-line text-warning me-2" style="width:20px; text-align:center;"></i> Locales Maneos</a>
                     </li>
                     <li class="nav-item">
                         <a class="nav-link text-brand-black rounded-3 px-3 py-2 fw-semibold border-bottom" href="/admin/maneos"><i class="fa-solid fa-handshake text-muted me-2" style="width:20px; text-align:center;"></i> Maneos</a>
@@ -307,7 +390,7 @@
                         <a class="nav-link text-brand-black rounded-3 px-3 py-2 fw-semibold border-bottom" href="/gastos"><i class="fa-solid fa-money-bill-transfer text-success me-2" style="width:20px; text-align:center;"></i> Gastos</a>
                     </li>
                     <li class="nav-item mt-2">
-                        <a class="nav-link text-brand-black rounded-3 px-3 py-2 fw-bold bg-light border" href="/admin/arqueo"><i class="fa-solid fa-calculator text-brand-blue me-2" style="width:20px; text-align:center;"></i> Arqueo de Caja</a>
+                        <a class="nav-link text-brand-black rounded-3 px-3 py-2 fw-bold bg-light border" href="/arqueo/nuevo"><i class="fa-solid fa-calculator text-brand-blue me-2" style="width:20px; text-align:center;"></i> Arqueo de Caja</a>
                     </li>
                 {% elif current_user.rol == 'bodega' %}
                     <!-- Vistas Exclusivas para el Encargado de Bodega -->
@@ -430,9 +513,9 @@
     <!-- Modal Pago de Servidor Zenic -->
     <div class="modal fade" id="modalPagoServidor" tabindex="-1" aria-labelledby="modalPagoServidorLabel" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered">
-            <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden" style="background-color: #ffffff;">
+            <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden" style="background-color: #FFFFFF; border: 1px solid var(--brand-border) !important;">
                 <!-- Modal Header -->
-                <div class="modal-header text-white border-0 py-3" style="background: linear-gradient(135deg, #008B8B 0%, #005656 100%);">
+                <div class="modal-header text-white border-0 py-3" style="background: var(--brand-gradient);">
                     <div class="d-flex align-items-center gap-2">
                         <i class="fa-solid fa-server fs-4"></i>
                         <h5 class="modal-title fw-bold m-0" id="modalPagoServidorLabel">Pago Mensualidad Servidor Zenic</h5>
@@ -444,7 +527,7 @@
                 <div class="modal-body p-4 text-dark">
                     <!-- Status Badge & Date -->
                     <div class="d-flex justify-content-between align-items-center mb-3">
-                        <span class="badge bg-light text-secondary border px-3 py-2 rounded-pill fw-semibold">
+                        <span class="badge bg-light text-dark border px-3 py-2 rounded-pill fw-semibold">
                             <i class="fa-solid fa-calendar-day me-1"></i> Vencimiento: 30 de {{ pago_servidor.mes_nombre }} {{ pago_servidor.anio }}
                         </span>
                         {% if pago_servidor.estado == 'pagado' %}
@@ -459,12 +542,12 @@
                     </div>
 
                     <!-- Monto Destacado -->
-                    <div class="card border-0 bg-light rounded-4 p-3 text-center mb-4 shadow-sm" style="border: 2px dashed #008B8B !important;">
+                    <div class="card border-0 rounded-4 p-3 text-center mb-4 shadow-sm" style="border: 2px dashed #FF007F !important; background-color: #FFF0F5 !important;">
                         <span class="text-uppercase text-muted fw-bold small">Valor de la Mensualidad</span>
-                        <h2 class="fw-extrabold m-0 text-success" style="font-size: 2.2rem;">${{ pago_servidor.monto }} COP</h2>
+                        <h2 class="fw-extrabold m-0" style="color: #059669; font-size: 2.2rem; font-family: var(--font-heading);">${{ pago_servidor.monto }} COP</h2>
                     </div>
 
-                    <p class="fw-semibold text-secondary small mb-2"><i class="fa-solid fa-building-columns me-1"></i> Cuentas de Transferencia Directa:</p>
+                    <p class="fw-semibold text-muted small mb-2"><i class="fa-solid fa-building-columns me-1"></i> Cuentas de Transferencia Directa:</p>
                     
                     <!-- Tarjetas de Transferencia -->
                     <div class="row g-3 mb-4">

@@ -17,7 +17,7 @@
     <!-- Columna Izquierda: Formulario (Card en Blanco Sólido) -->
     <div class="col-md-4">
         <div class="card card-custom p-4 h-100">
-            <h5 class="fw-bold text-brand-black mb-4"><i class="fa-solid fa-id-badge me-2 text-brand-pink"></i> Alta de Nuevo Vendedor</h5>
+            <h5 class="fw-bold text-brand-black mb-4"><i class="fa-solid fa-id-badge me-2 text-brand-pink"></i> Alta de Nuevo Personal / Usuario</h5>
             <form method="POST">
                 <!-- Autenticador Estricto para el Servidor Jinja -->
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
@@ -29,7 +29,7 @@
                 
                 <div class="mb-3">
                     <label class="form-label text-brand-black fw-semibold small">Correo Empresarial (Login)</label>
-                    <input type="email" name="email" class="form-control bg-light border-0 py-2" required placeholder="ventas@koba.com">
+                    <input type="email" name="email" class="form-control bg-light border-0 py-2" required placeholder="admin@ultratech.com">
                 </div>
                 
                 <div class="mb-3">
@@ -40,9 +40,10 @@
                 <div class="mb-3">
                     <label class="form-label text-brand-black fw-semibold small">Asignar Rol / Perfil de Usuario</label>
                     <select name="rol" class="form-select bg-light border-0 py-2" required>
-                        <option value="vendedor">Vendedor (Cajas/Tienda)</option>
-                        <option value="bodega">Encargado de Bodega (Admin de Bodega)</option>
-                        <option value="vendedor_bodega">Vendedor de Bodega (Facturación)</option>
+                        <option value="admin">🛡️ Administrador (Acceso Total al Sistema)</option>
+                        <option value="vendedor" selected>🏪 Vendedor (Cajas/Tienda)</option>
+                        <option value="bodega">📦 Encargado de Bodega (Admin de Bodega)</option>
+                        <option value="vendedor_bodega">🚚 Vendedor de Bodega (Facturación)</option>
                     </select>
                 </div>
 
@@ -82,15 +83,30 @@
                     <tbody>
                         {% for vendedor in vendedores %}
                         <tr>
-                            <td class="fw-bold text-brand-black ps-4">{{ vendedor.nombre }}</td>
+                            <td class="fw-bold text-brand-black ps-4">
+                                {{ vendedor.nombre }}
+                                {% if vendedor.id == current_user.id %}
+                                    <span class="badge bg-secondary bg-opacity-10 text-secondary border border-secondary rounded-pill ms-1" style="font-size: 0.7rem;">Tú</span>
+                                {% endif %}
+                            </td>
                             <td class="text-muted">{{ vendedor.email }}</td>
-                            <td class="text-muted">
-                                {% if vendedor.rol == 'vendedor' %}
-                                    <span class="badge bg-info bg-opacity-10 text-info border border-info rounded-pill px-2">Vendedor Cajas</span>
+                            <td>
+                                {% if vendedor.rol == 'admin' %}
+                                    <span class="badge bg-danger bg-opacity-10 text-danger border border-danger rounded-pill px-2">
+                                        <i class="fa-solid fa-shield-halved me-1"></i> Administrador
+                                    </span>
+                                {% elif vendedor.rol == 'vendedor' %}
+                                    <span class="badge bg-info bg-opacity-10 text-info border border-info rounded-pill px-2">
+                                        <i class="fa-solid fa-cash-register me-1"></i> Vendedor Cajas
+                                    </span>
                                 {% elif vendedor.rol == 'bodega' %}
-                                    <span class="badge bg-primary bg-opacity-10 text-primary border border-primary rounded-pill px-2">Encargado Bodega</span>
+                                    <span class="badge bg-primary bg-opacity-10 text-primary border border-primary rounded-pill px-2">
+                                        <i class="fa-solid fa-warehouse me-1"></i> Encargado Bodega
+                                    </span>
                                 {% elif vendedor.rol == 'vendedor_bodega' %}
-                                    <span class="badge bg-warning bg-opacity-10 text-warning border border-warning rounded-pill px-2">Vendedor Bodega</span>
+                                    <span class="badge bg-warning bg-opacity-10 text-warning border border-warning rounded-pill px-2">
+                                        <i class="fa-solid fa-truck-ramp-box me-1"></i> Vendedor Bodega
+                                    </span>
                                 {% else %}
                                     {{ vendedor.rol }}
                                 {% endif %}
@@ -99,19 +115,25 @@
                                 <span class="badge bg-success bg-opacity-10 text-success border border-success rounded-pill px-3 py-2 w-100">Activo</span>
                             </td>
                             <td class="text-center pe-4">
-                                <form action="{{ url_for('admin_bp.eliminar_vendedor', id=vendedor.id) }}" method="POST" class="d-inline" onsubmit="return confirm('¿Estás seguro de que deseas eliminar a este trabajador? Esta acción no se puede deshacer.');">
-                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
-                                    <button type="submit" class="btn btn-sm btn-outline-danger rounded-circle shadow-sm" title="Eliminar trabajador">
-                                        <i class="fa-solid fa-trash-can"></i>
-                                    </button>
-                                </form>
+                                {% if vendedor.id == current_user.id %}
+                                    <span class="badge bg-light text-muted border rounded-pill px-2 py-1" style="font-size: 0.75rem;">
+                                        <i class="fa-solid fa-user-check me-1"></i> Sesión Actual
+                                    </span>
+                                {% else %}
+                                    <form action="{{ url_for('admin_bp.eliminar_vendedor', id=vendedor.id) }}" method="POST" class="d-inline" onsubmit="return confirm('¿Estás seguro de que deseas eliminar este usuario? Esta acción no se puede deshacer.');">
+                                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                                        <button type="submit" class="btn btn-sm btn-outline-danger rounded-circle shadow-sm" title="Dar de baja usuario">
+                                            <i class="fa-solid fa-trash-can"></i>
+                                        </button>
+                                    </form>
+                                {% endif %}
                             </td>
                         </tr>
                         {% else %}
                         <tr>
                             <td colspan="5" class="text-center py-5 text-muted">
                                 <i class="fa-solid fa-users-slash fs-1 mb-3 opacity-25"></i>
-                                <p class="mb-0">Aún no has dado de alta a ningún Vendedor/Cajero.</p>
+                                <p class="mb-0">Aún no has dado de alta a ningún usuario en el sistema.</p>
                             </td>
                         </tr>
                         {% endfor %}

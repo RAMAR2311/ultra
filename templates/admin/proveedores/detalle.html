@@ -1,73 +1,94 @@
 {% extends "base.html" %}
 
 {% block content %}
-<!-- Cabecera -->
-<div class="d-flex justify-content-between align-items-center mb-4">
+<style>
+    .kpi-detalle {
+        border-radius: 16px;
+        transition: transform 0.15s ease, box-shadow 0.15s ease;
+    }
+    .kpi-detalle:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 10px 20px rgba(0,0,0,0.06) !important;
+    }
+</style>
+
+<!-- Cabecera Proveedor -->
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4">
     <div>
-        <h2 class="fw-bold text-brand-black m-0">
-            <i class="fa-solid fa-address-book me-2 text-brand-blue"></i>
-            {{ proveedor.nombre }}
-        </h2>
-        <span class="text-muted d-block mt-1">
-            <i class="fa-solid fa-building me-1"></i> {{ proveedor.empresa if proveedor.empresa else 'Sin empresa registrada' }}
-            <span class="mx-2">|</span>
-            <i class="fa-solid fa-phone me-1"></i> {{ proveedor.telefono if proveedor.telefono else 'Sin teléfono' }}
+        <div class="d-flex align-items-center gap-2">
+            <h2 class="fw-bold text-brand-black m-0">
+                <i class="fa-solid fa-address-book me-2 text-brand-blue"></i>{{ proveedor.nombre }}
+            </h2>
+            <button class="btn btn-sm btn-outline-secondary rounded-pill px-2 py-0 border-0" 
+                    title="Editar datos del proveedor" 
+                    onclick="abrirModalEditarProveedor({{ proveedor.id }}, '{{ proveedor.nombre|replace('\'', '\\\'') }}', '{{ (proveedor.empresa or '')|replace('\'', '\\\'') }}', '{{ (proveedor.telefono or '')|replace('\'', '\\\'') }}')">
+                <i class="fa-solid fa-pen-to-square text-muted"></i>
+            </button>
+        </div>
+        <span class="text-muted d-block mt-1 small">
+            <i class="fa-regular fa-building me-1 text-muted"></i>{{ proveedor.empresa if proveedor.empresa else 'Sin empresa registrada' }}
+            <span class="mx-2 text-black-50">•</span>
+            <i class="fa-solid fa-phone me-1 text-success"></i>{{ proveedor.telefono if proveedor.telefono else 'Sin teléfono' }}
+            <span class="mx-2 text-black-50">•</span>
+            <i class="fa-regular fa-calendar me-1"></i>Registrado el {{ proveedor.fecha_creacion.strftime('%d/%m/%Y') if proveedor.fecha_creacion else '-' }}
         </span>
     </div>
-    <div>
-        <a href="{{ url_for('providers_bp.index') }}" class="btn btn-outline-secondary rounded-pill px-4 me-2">
+    <div class="d-flex align-items-center gap-2">
+        <a href="{{ url_for('providers_bp.index') }}" class="btn btn-outline-secondary rounded-pill px-4">
             <i class="fa-solid fa-arrow-left me-1"></i> Volver
         </a>
-        <form action="{{ url_for('providers_bp.eliminar', id=proveedor.id) }}" method="POST" class="d-inline" onsubmit="return confirm('¿Estás seguro de que deseas eliminar este proveedor? Toda su historia de facturas y pagos se borrará.');">
+        <form action="{{ url_for('providers_bp.eliminar', id=proveedor.id) }}" method="POST" class="d-inline" onsubmit="return confirm('¿Estás seguro de que deseas eliminar este proveedor? Toda su historia de facturas y pagos se borrará permanentemente.');">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-            <button type="submit" class="btn btn-outline-danger rounded-pill px-3">
+            <button type="submit" class="btn btn-outline-danger rounded-pill px-3" title="Eliminar Proveedor">
                 <i class="fa-solid fa-trash"></i>
             </button>
         </form>
     </div>
 </div>
 
-<!-- KPIs -->
+<!-- KPIs de Cuenta -->
 <div class="row g-3 mb-4">
     <div class="col-md-4">
-        <div class="card card-custom h-100 p-4 border-0 shadow-sm" style="border-left: 4px solid #A3D8DE !important;">
-            <div class="d-flex justify-content-between align-items-start mb-3">
-                <i class="fa-solid fa-file-invoice-dollar fs-1 text-muted"></i>
-                <button class="btn btn-sm btn-outline-primary rounded-pill px-3" data-bs-toggle="modal" data-bs-target="#nuevaFacturaModal">
+        <div class="card card-custom kpi-detalle h-100 p-3 border-0 shadow-sm bg-white" style="border-left: 5px solid #7BC8D0 !important;">
+            <div class="d-flex justify-content-between align-items-start mb-2">
+                <span class="text-muted small fw-bold text-uppercase">Total Facturado</span>
+                <button class="btn btn-sm btn-outline-primary rounded-pill px-3 py-1" data-bs-toggle="modal" data-bs-target="#nuevaFacturaModal">
                     <i class="fa-solid fa-plus me-1"></i> Factura
                 </button>
             </div>
-            <h6 class="text-secondary fw-bold text-uppercase mb-1">Total Facturado</h6>
             <h3 class="fw-bolder text-dark mb-0">${{ total_facturado|cop }}</h3>
+            <small class="text-muted">{{ facturas|length }} facturas registradas</small>
         </div>
     </div>
     
     <div class="col-md-4">
-        <div class="card card-custom h-100 p-4 border-0 shadow-sm" style="border-left: 4px solid #28a745 !important;">
-            <div class="d-flex justify-content-between align-items-start mb-3">
-                <i class="fa-solid fa-money-bill-transfer fs-1 text-muted"></i>
-                <button class="btn btn-sm btn-outline-success rounded-pill px-3" data-bs-toggle="modal" data-bs-target="#nuevoAbonoModal">
+        <div class="card card-custom kpi-detalle h-100 p-3 border-0 shadow-sm bg-white" style="border-left: 5px solid #28a745 !important;">
+            <div class="d-flex justify-content-between align-items-start mb-2">
+                <span class="text-muted small fw-bold text-uppercase">Total Abonado</span>
+                <button class="btn btn-sm btn-outline-success rounded-pill px-3 py-1" data-bs-toggle="modal" data-bs-target="#nuevoAbonoModal">
                     <i class="fa-solid fa-plus me-1"></i> Abono
                 </button>
             </div>
-            <h6 class="text-secondary fw-bold text-uppercase mb-1">Total Abonado</h6>
             <h3 class="fw-bolder text-success mb-0">${{ total_abonado|cop }}</h3>
+            <small class="text-muted">{{ pagos|length }} abonos registrados</small>
         </div>
     </div>
 
     <div class="col-md-4">
-        <div class="card card-custom h-100 p-4 border-0 shadow-sm {% if saldo_pendiente > 0 %}bg-danger text-white{% elif saldo_pendiente < 0 %}bg-success text-white{% else %}bg-light{% endif %}">
-            <div class="d-flex justify-content-between align-items-start mb-3">
-                <i class="fa-solid fa-scale-balanced fs-1 {% if saldo_pendiente != 0 %}text-white-50{% else %}text-muted{% endif %}"></i>
+        <div class="card card-custom kpi-detalle h-100 p-3 border-0 shadow-sm {% if saldo_pendiente > 0 %}bg-danger text-white{% elif saldo_pendiente < 0 %}bg-success text-white{% else %}bg-light text-dark border{% endif %}">
+            <div class="d-flex justify-content-between align-items-start mb-2">
+                <span class="{% if saldo_pendiente != 0 %}text-white-50{% else %}text-muted{% endif %} small fw-bold text-uppercase">
+                    Saldo Pendiente a Pagar
+                </span>
+                <i class="fa-solid fa-scale-balanced fs-5 {% if saldo_pendiente != 0 %}text-white-50{% else %}text-muted{% endif %}"></i>
             </div>
-            <h6 class="{% if saldo_pendiente != 0 %}text-white-50{% else %}text-secondary{% endif %} fw-bold text-uppercase mb-1">Saldo Pendiente a Pagar</h6>
             <h3 class="fw-bolder mb-0">${{ saldo_pendiente|cop }}</h3>
             {% if saldo_pendiente > 0 %}
-                <small class="d-block mt-1 opacity-75">Existe deuda con el proveedor.</small>
+                <small class="d-block mt-1 opacity-90 fw-semibold"><i class="fa-solid fa-circle-exclamation me-1"></i>Existe deuda con el proveedor.</small>
             {% elif saldo_pendiente < 0 %}
-                <small class="d-block mt-1 opacity-75">Saldo a favor de la empresa.</small>
+                <small class="d-block mt-1 opacity-90 fw-semibold"><i class="fa-solid fa-circle-check me-1"></i>Saldo a favor de la empresa.</small>
             {% else %}
-                <small class="d-block mt-1 opacity-75">Cuenta al día.</small>
+                <small class="d-block mt-1 text-success fw-semibold"><i class="fa-solid fa-circle-check me-1"></i>Cuenta completamente al día.</small>
             {% endif %}
         </div>
     </div>
@@ -76,43 +97,82 @@
 <!-- Tablas de Historial -->
 <div class="row g-4">
     <!-- Facturas -->
-    <div class="col-md-7">
+    <div class="col-lg-7">
         <div class="card card-custom p-0 h-100 border-0 shadow-sm">
-            <div class="card-header bg-white border-bottom-0 pt-4 px-4">
-                <h5 class="fw-bold text-brand-black mb-0"><i class="fa-solid fa-file-invoice text-brand-blue me-2"></i>Historial de Facturas</h5>
+            <div class="card-header bg-white border-bottom-0 pt-4 px-4 pb-2 d-flex justify-content-between align-items-center">
+                <div>
+                    <h5 class="fw-bold text-brand-black m-0">
+                        <i class="fa-solid fa-file-invoice text-brand-blue me-2"></i>Historial de Facturas
+                    </h5>
+                    <small class="text-muted">Compras y cuentas por pagar registradas</small>
+                </div>
+                <button class="btn btn-sm btn-blue rounded-pill px-3" data-bs-toggle="modal" data-bs-target="#nuevaFacturaModal">
+                    <i class="fa-solid fa-plus me-1"></i> Nueva Factura
+                </button>
             </div>
             <div class="card-body p-0">
                 <div class="table-responsive">
                     <table class="table table-hover align-middle mb-0">
-                        <thead class="table-light text-secondary" style="font-size: 0.85rem;">
+                        <thead class="table-light text-secondary" style="font-size: 0.82rem;">
                             <tr>
                                 <th class="ps-4">FECHA</th>
                                 <th>FOLIO / REF</th>
                                 <th>DESCRIPCIÓN</th>
                                 <th class="text-end">MONTO TOTAL</th>
-                                <th class="text-center pe-4">SOPORTE</th>
+                                <th class="text-center">SOPORTE</th>
+                                <th class="text-center pe-4" style="width: 100px;">ACCIONES</th>
                             </tr>
                         </thead>
-                        <tbody style="font-size: 0.9rem;">
+                        <tbody style="font-size: 0.88rem;">
                             {% for inv in facturas %}
                             <tr>
-                                <td class="ps-4 text-muted">{{ inv.fecha_factura.strftime('%Y-%m-%d') }}</td>
-                                <td class="fw-bold">{{ inv.numero_factura if inv.numero_factura else '-' }}</td>
-                                <td class="text-truncate" style="max-width: 150px;" title="{{ inv.descripcion }}">{{ inv.descripcion if inv.descripcion else '-' }}</td>
-                                <td class="text-end fw-bold text-dark">${{ inv.monto_total|cop }}</td>
-                                <td class="text-center pe-4">
+                                <td class="ps-4 text-muted">
+                                    {{ inv.fecha_factura.strftime('%d/%m/%Y') if inv.fecha_factura else '-' }}
+                                </td>
+                                <td class="fw-bold text-brand-black">
+                                    {{ inv.numero_factura if inv.numero_factura else '-' }}
+                                </td>
+                                <td class="text-truncate" style="max-width: 140px;" title="{{ inv.descripcion or '' }}">
+                                    {{ inv.descripcion if inv.descripcion else '-' }}
+                                </td>
+                                <td class="text-end fw-bold text-dark">
+                                    ${{ inv.monto_total|cop }}
+                                </td>
+                                <td class="text-center">
                                     {% if inv.comprobante %}
-                                        <a href="{{ url_for('static', filename='uploads/providers/' ~ inv.comprobante) }}" target="_blank" class="btn btn-sm btn-outline-info rounded-pill px-3">
-                                            <i class="fa-solid fa-file-pdf"></i>
+                                        <a href="{{ url_for('static', filename='uploads/providers/' ~ inv.comprobante) }}" target="_blank" class="btn btn-xs btn-outline-info rounded-pill px-2 py-0" title="Ver comprobante">
+                                            <i class="fa-solid fa-paperclip me-1"></i>Ver
                                         </a>
                                     {% else %}
-                                        <span class="text-muted small">Sin adjunto</span>
+                                        <span class="text-muted" style="font-size: 0.75rem;">-</span>
                                     {% endif %}
+                                </td>
+                                <td class="text-center pe-4">
+                                    <div class="btn-group btn-group-sm">
+                                        <button type="button" 
+                                                class="btn btn-outline-secondary p-1 border-0" 
+                                                title="Editar factura"
+                                                onclick="abrirModalEditarFactura({{ inv.id }}, '{{ inv.numero_factura|replace('\'', '\\\'') if inv.numero_factura else '' }}', {{ inv.monto_total }}, '{{ (inv.fecha_factura.strftime('%Y-%m-%d') if inv.fecha_factura else '') }}', '{{ (inv.descripcion or '')|replace('\'', '\\\'') }}', '{{ inv.comprobante or '' }}')">
+                                            <i class="fa-solid fa-pen-to-square text-primary"></i>
+                                        </button>
+                                        <button type="button" 
+                                                class="btn btn-outline-secondary p-1 border-0" 
+                                                title="Eliminar factura"
+                                                onclick="confirmarEliminarFactura({{ inv.id }}, '{{ inv.numero_factura or inv.id }}', {{ inv.monto_total }})">
+                                            <i class="fa-solid fa-trash text-danger"></i>
+                                        </button>
+                                    </div>
                                 </td>
                             </tr>
                             {% else %}
                             <tr>
-                                <td colspan="5" class="text-center text-muted py-4">No hay facturas registradas.</td>
+                                <td colspan="6" class="text-center text-muted py-5">
+                                    <i class="fa-solid fa-receipt fs-2 d-block mb-2 opacity-50"></i>
+                                    No hay facturas registradas.<br>
+                                    <button class="btn btn-sm btn-outline-primary rounded-pill px-3 mt-2" data-bs-toggle="modal" data-bs-target="#nuevaFacturaModal">
+                                        <i class="fa-solid fa-plus me-1"></i> Registrar Primera Factura
+                                    </button>
+                                </td>
                             </tr>
                             {% endfor %}
                         </tbody>
@@ -123,31 +183,68 @@
     </div>
 
     <!-- Abonos -->
-    <div class="col-md-5">
+    <div class="col-lg-5">
         <div class="card card-custom p-0 h-100 border-0 shadow-sm">
-            <div class="card-header bg-white border-bottom-0 pt-4 px-4">
-                <h5 class="fw-bold text-brand-black mb-0"><i class="fa-solid fa-money-check-dollar text-success me-2"></i>Historial de Abonos</h5>
+            <div class="card-header bg-white border-bottom-0 pt-4 px-4 pb-2 d-flex justify-content-between align-items-center">
+                <div>
+                    <h5 class="fw-bold text-brand-black m-0">
+                        <i class="fa-solid fa-money-check-dollar text-success me-2"></i>Historial de Abonos
+                    </h5>
+                    <small class="text-muted">Pagos efectuados a este proveedor</small>
+                </div>
+                <button class="btn btn-sm btn-success rounded-pill px-3" data-bs-toggle="modal" data-bs-target="#nuevoAbonoModal">
+                    <i class="fa-solid fa-plus me-1"></i> Nuevo Abono
+                </button>
             </div>
             <div class="card-body p-0">
                 <div class="table-responsive">
                     <table class="table table-hover align-middle mb-0">
-                        <thead class="table-light text-secondary" style="font-size: 0.85rem;">
+                        <thead class="table-light text-secondary" style="font-size: 0.82rem;">
                             <tr>
                                 <th class="ps-4">FECHA</th>
-                                <th>OBSERVACIÓN</th>
-                                <th class="text-end pe-4">MONTO ABONADO</th>
+                                <th>OBSERVACIÓN / REF</th>
+                                <th class="text-end">MONTO</th>
+                                <th class="text-center pe-4" style="width: 80px;">ACCIONES</th>
                             </tr>
                         </thead>
-                        <tbody style="font-size: 0.9rem;">
+                        <tbody style="font-size: 0.88rem;">
                             {% for pay in pagos %}
                             <tr>
-                                <td class="ps-4 text-muted">{{ pay.fecha_pago.strftime('%Y-%m-%d') }}</td>
-                                <td class="text-truncate" style="max-width: 150px;" title="{{ pay.observacion }}">{{ pay.observacion if pay.observacion else '-' }}</td>
-                                <td class="text-end fw-bold text-success pe-4">${{ pay.monto_abonado|cop }}</td>
+                                <td class="ps-4 text-muted">
+                                    {{ pay.fecha_pago.strftime('%d/%m/%Y') if pay.fecha_pago else '-' }}
+                                </td>
+                                <td class="text-truncate" style="max-width: 140px;" title="{{ pay.observacion or '' }}">
+                                    {{ pay.observacion if pay.observacion else '-' }}
+                                </td>
+                                <td class="text-end fw-bold text-success">
+                                    ${{ pay.monto_abonado|cop }}
+                                </td>
+                                <td class="text-center pe-4">
+                                    <div class="btn-group btn-group-sm">
+                                        <button type="button" 
+                                                class="btn btn-outline-secondary p-1 border-0" 
+                                                title="Editar abono"
+                                                onclick="abrirModalEditarAbono({{ pay.id }}, {{ pay.monto_abonado }}, '{{ (pay.fecha_pago.strftime('%Y-%m-%d') if pay.fecha_pago else '') }}', '{{ (pay.observacion or '')|replace('\'', '\\\'') }}')">
+                                            <i class="fa-solid fa-pen-to-square text-success"></i>
+                                        </button>
+                                        <button type="button" 
+                                                class="btn btn-outline-secondary p-1 border-0" 
+                                                title="Eliminar abono"
+                                                onclick="confirmarEliminarAbono({{ pay.id }}, {{ pay.monto_abonado }})">
+                                            <i class="fa-solid fa-trash text-danger"></i>
+                                        </button>
+                                    </div>
+                                </td>
                             </tr>
                             {% else %}
                             <tr>
-                                <td colspan="3" class="text-center text-muted py-4">No hay pagos registrados.</td>
+                                <td colspan="4" class="text-center text-muted py-5">
+                                    <i class="fa-solid fa-hand-holding-dollar fs-2 d-block mb-2 opacity-50"></i>
+                                    No hay abonos registrados aún.<br>
+                                    <button class="btn btn-sm btn-outline-success rounded-pill px-3 mt-2" data-bs-toggle="modal" data-bs-target="#nuevoAbonoModal">
+                                        <i class="fa-solid fa-plus me-1"></i> Registrar Primer Abono
+                                    </button>
+                                </td>
                             </tr>
                             {% endfor %}
                         </tbody>
@@ -158,77 +255,314 @@
     </div>
 </div>
 
+<!-- ============================================================== -->
+<!-- MODALES DE FACTURA (NUEVA Y EDITAR) -->
+<!-- ============================================================== -->
+
 <!-- Modal Nueva Factura -->
 <div class="modal fade" id="nuevaFacturaModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content border-0 shadow-lg rounded-4">
             <div class="modal-header border-bottom-0 bg-light rounded-top-4">
-                <h5 class="modal-title fw-bold text-brand-black"><i class="fa-solid fa-file-invoice-dollar me-2 text-brand-blue"></i>Registrar Factura de Compra</h5>
+                <h5 class="modal-title fw-bold text-brand-black">
+                    <i class="fa-solid fa-file-invoice-dollar me-2 text-brand-blue"></i>Registrar Factura de Compra
+                </h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <form action="{{ url_for('providers_bp.registrar_factura', id=proveedor.id) }}" method="POST" enctype="multipart/form-data">
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <div class="modal-body p-4">
-                    <div class="mb-3">
-                        <label class="form-label fw-bold">Monto Total a Pagar <span class="text-danger">*</span></label>
-                        <div class="input-group">
-                            <span class="input-group-text bg-white border-end-0"><i class="fa-solid fa-dollar-sign text-muted"></i></span>
-                            <input type="number" step="0.01" min="0.01" name="monto_total" class="form-control border-start-0 bg-light" required autofocus>
+                    <div class="row g-2 mb-3">
+                        <div class="col-md-7">
+                            <label class="form-label fw-bold small">Monto Total a Pagar <span class="text-danger">*</span></label>
+                            <div class="input-group">
+                                <span class="input-group-text bg-white border-end-0 fw-bold text-muted">$</span>
+                                <input type="number" step="0.01" min="0.01" name="monto_total" class="form-control border-start-0 bg-light fw-bold" placeholder="0" required autofocus>
+                            </div>
+                        </div>
+                        <div class="col-md-5">
+                            <label class="form-label fw-bold small">Fecha Factura</label>
+                            <input type="date" name="fecha_factura" class="form-control bg-light border-0" value="{{ hoy }}">
                         </div>
                     </div>
+
                     <div class="mb-3">
-                        <label class="form-label fw-bold">Número de Factura / Folio (Opcional)</label>
-                        <input type="text" name="numero_factura" class="form-control bg-light border-0" placeholder="Ej: F-12345">
+                        <label class="form-label fw-bold small">Número de Factura / Folio (Opcional)</label>
+                        <input type="text" name="numero_factura" class="form-control bg-light border-0" placeholder="Ej: FAC-1234 o Remisión #55">
                     </div>
+
                     <div class="mb-3">
-                        <label class="form-label fw-bold">Descripción (Opcional)</label>
-                        <input type="text" name="descripcion" class="form-control bg-light border-0" placeholder="Ej: Mercancía de Agosto">
+                        <label class="form-label fw-bold small">Descripción del Pedido (Opcional)</label>
+                        <input type="text" name="descripcion" class="form-control bg-light border-0" placeholder="Ej: 50 Fundas iPhone y 20 Cargadores">
                     </div>
-                    <div class="mb-3">
-                        <label class="form-label fw-bold">Adjuntar Soporte (Opcional)</label>
+
+                    <div class="mb-2">
+                        <label class="form-label fw-bold small">Adjuntar Comprobante o Foto (Opcional)</label>
                         <input type="file" name="comprobante" class="form-control bg-light border-0" accept=".png,.jpg,.jpeg,.pdf">
-                        <small class="text-muted d-block mt-1">Formatos permitidos: PDF, JPG, PNG.</small>
+                        <small class="text-muted d-block mt-1" style="font-size: 0.75rem;">Formatos aceptados: PDF, JPG, PNG.</small>
                     </div>
                 </div>
                 <div class="modal-footer border-top-0 bg-light rounded-bottom-4">
                     <button type="button" class="btn btn-outline-secondary rounded-pill px-4" data-bs-dismiss="modal">Cancelar</button>
-                    <button type="submit" class="btn btn-blue rounded-pill px-4">Guardar Factura</button>
+                    <button type="submit" class="btn btn-blue rounded-pill px-4 fw-semibold">Guardar Factura</button>
                 </div>
             </form>
         </div>
     </div>
 </div>
+
+<!-- Modal Editar Factura -->
+<div class="modal fade" id="modalEditarFactura" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg rounded-4">
+            <div class="modal-header border-bottom-0 bg-light rounded-top-4">
+                <h5 class="modal-title fw-bold text-brand-black">
+                    <i class="fa-solid fa-pen-to-square me-2 text-brand-blue"></i>Editar Factura de Proveedor
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form id="formEditarFactura" method="POST" enctype="multipart/form-data">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <div class="modal-body p-4">
+                    <div class="row g-2 mb-3">
+                        <div class="col-md-7">
+                            <label class="form-label fw-bold small">Monto Total <span class="text-danger">*</span></label>
+                            <div class="input-group">
+                                <span class="input-group-text bg-white border-end-0 fw-bold text-muted">$</span>
+                                <input type="number" step="0.01" min="0.01" name="monto_total" id="edit_fact_monto" class="form-control border-start-0 bg-light fw-bold" required>
+                            </div>
+                        </div>
+                        <div class="col-md-5">
+                            <label class="form-label fw-bold small">Fecha Factura</label>
+                            <input type="date" name="fecha_factura" id="edit_fact_fecha" class="form-control bg-light border-0">
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-bold small">Número de Factura / Folio</label>
+                        <input type="text" name="numero_factura" id="edit_fact_numero" class="form-control bg-light border-0">
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-bold small">Descripción</label>
+                        <input type="text" name="descripcion" id="edit_fact_descripcion" class="form-control bg-light border-0">
+                    </div>
+
+                    <div class="mb-2">
+                        <label class="form-label fw-bold small">Soporte Digital</label>
+                        <div id="edit_fact_soporte_actual" class="mb-2 small text-muted d-none">
+                            <i class="fa-solid fa-paperclip me-1"></i>Soporte actual: <span id="edit_fact_soporte_nombre" class="fw-bold"></span>
+                            <div class="form-check mt-1">
+                                <input class="form-check-input" type="checkbox" name="eliminar_comprobante" value="1" id="chkEliminarComprobante">
+                                <label class="form-check-label text-danger small" for="chkEliminarComprobante">
+                                    Eliminar soporte actual
+                                </label>
+                            </div>
+                        </div>
+                        <input type="file" name="comprobante" class="form-control bg-light border-0" accept=".png,.jpg,.jpeg,.pdf">
+                        <small class="text-muted d-block mt-1" style="font-size: 0.75rem;">Sube un archivo solo si deseas reemplazar el soporte actual.</small>
+                    </div>
+                </div>
+                <div class="modal-footer border-top-0 bg-light rounded-bottom-4">
+                    <button type="button" class="btn btn-outline-secondary rounded-pill px-4" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary rounded-pill px-4 fw-semibold">Actualizar Factura</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- ============================================================== -->
+<!-- MODALES DE ABONO (NUEVO Y EDITAR) -->
+<!-- ============================================================== -->
 
 <!-- Modal Nuevo Abono -->
 <div class="modal fade" id="nuevoAbonoModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content border-0 shadow-lg rounded-4">
             <div class="modal-header border-bottom-0 bg-light rounded-top-4">
-                <h5 class="modal-title fw-bold text-success"><i class="fa-solid fa-money-bill-transfer me-2"></i>Registrar Abono o Pago</h5>
+                <h5 class="modal-title fw-bold text-success">
+                    <i class="fa-solid fa-money-bill-transfer me-2"></i>Registrar Abono o Pago a Proveedor
+                </h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <form action="{{ url_for('providers_bp.registrar_pago', id=proveedor.id) }}" method="POST">
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <div class="modal-body p-4">
-                    <div class="mb-3">
-                        <label class="form-label fw-bold">Monto del Abono <span class="text-danger">*</span></label>
-                        <div class="input-group">
-                            <span class="input-group-text bg-white border-end-0"><i class="fa-solid fa-dollar-sign text-muted"></i></span>
-                            <input type="number" step="0.01" min="0.01" name="monto_abonado" class="form-control border-start-0 bg-light" required autofocus>
+                    <div class="row g-2 mb-3">
+                        <div class="col-md-7">
+                            <label class="form-label fw-bold small">Monto del Abono <span class="text-danger">*</span></label>
+                            <div class="input-group">
+                                <span class="input-group-text bg-white border-end-0 fw-bold text-success">$</span>
+                                <input type="number" step="0.01" min="0.01" name="monto_abonado" class="form-control border-start-0 bg-light fw-bold text-success fs-5" placeholder="0" required autofocus>
+                            </div>
+                        </div>
+                        <div class="col-md-5">
+                            <label class="form-label fw-bold small">Fecha del Pago</label>
+                            <input type="date" name="fecha_pago" class="form-control bg-light border-0" value="{{ hoy }}">
                         </div>
                     </div>
-                    <div class="mb-3">
-                        <label class="form-label fw-bold">Observaciones (Opcional)</label>
-                        <input type="text" name="observacion" class="form-control bg-light border-0" placeholder="Ej: Transferencia Bancolombia #1234">
+
+                    <div class="mb-2">
+                        <label class="form-label fw-bold small">Observaciones o Método de Pago (Opcional)</label>
+                        <input type="text" name="observacion" class="form-control bg-light border-0" placeholder="Ej: Transferencia Bancolombia Ref #12345 o Efectivo">
                     </div>
                 </div>
                 <div class="modal-footer border-top-0 bg-light rounded-bottom-4">
                     <button type="button" class="btn btn-outline-secondary rounded-pill px-4" data-bs-dismiss="modal">Cancelar</button>
-                    <button type="submit" class="btn btn-success rounded-pill px-4">Registrar Abono</button>
+                    <button type="submit" class="btn btn-success rounded-pill px-4 fw-semibold">Registrar Abono</button>
                 </div>
             </form>
         </div>
     </div>
 </div>
 
+<!-- Modal Editar Abono -->
+<div class="modal fade" id="modalEditarAbono" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg rounded-4">
+            <div class="modal-header border-bottom-0 bg-light rounded-top-4">
+                <h5 class="modal-title fw-bold text-success">
+                    <i class="fa-solid fa-pen-to-square me-2"></i>Editar Abono a Proveedor
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form id="formEditarAbono" method="POST">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <div class="modal-body p-4">
+                    <div class="row g-2 mb-3">
+                        <div class="col-md-7">
+                            <label class="form-label fw-bold small">Monto del Abono <span class="text-danger">*</span></label>
+                            <div class="input-group">
+                                <span class="input-group-text bg-white border-end-0 fw-bold text-success">$</span>
+                                <input type="number" step="0.01" min="0.01" name="monto_abonado" id="edit_abono_monto" class="form-control border-start-0 bg-light fw-bold text-success fs-5" required>
+                            </div>
+                        </div>
+                        <div class="col-md-5">
+                            <label class="form-label fw-bold small">Fecha del Pago</label>
+                            <input type="date" name="fecha_pago" id="edit_abono_fecha" class="form-control bg-light border-0">
+                        </div>
+                    </div>
+
+                    <div class="mb-2">
+                        <label class="form-label fw-bold small">Observaciones o Referencia</label>
+                        <input type="text" name="observacion" id="edit_abono_observacion" class="form-control bg-light border-0">
+                    </div>
+                </div>
+                <div class="modal-footer border-top-0 bg-light rounded-bottom-4">
+                    <button type="button" class="btn btn-outline-secondary rounded-pill px-4" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-success rounded-pill px-4 fw-semibold">Actualizar Abono</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- ============================================================== -->
+<!-- MODAL EDITAR PROVEEDOR (DESDE DETALLE) -->
+<!-- ============================================================== -->
+<div class="modal fade" id="modalEditarProveedor" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg rounded-4">
+            <div class="modal-header border-bottom-0 bg-light rounded-top-4">
+                <h5 class="modal-title fw-bold text-brand-black">
+                    <i class="fa-solid fa-pen-to-square me-2 text-brand-blue"></i>Editar Datos del Proveedor
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form id="formEditarProveedor" method="POST">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <div class="modal-body p-4">
+                    <div class="mb-3">
+                        <label class="form-label fw-bold small">Nombre del Representante o Proveedor <span class="text-danger">*</span></label>
+                        <input type="text" name="nombre" id="edit_prov_nombre" class="form-control bg-light border-0 py-2" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold small">Empresa o Razón Social</label>
+                        <input type="text" name="empresa" id="edit_prov_empresa" class="form-control bg-light border-0 py-2">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold small">Teléfono o WhatsApp</label>
+                        <input type="text" name="telefono" id="edit_prov_telefono" class="form-control bg-light border-0 py-2">
+                    </div>
+                </div>
+                <div class="modal-footer border-top-0 bg-light rounded-bottom-4">
+                    <button type="button" class="btn btn-outline-secondary rounded-pill px-4" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary rounded-pill px-4 fw-semibold">Guardar Cambios</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Formularios invisibles para acciones POST de eliminación -->
+<form id="formAccionEliminar" method="POST" style="display: none;">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+</form>
+
+<script>
+    function formatoCOP(val) {
+        return new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 }).format(val || 0);
+    }
+
+    // Funciones Factura
+    function abrirModalEditarFactura(id, numero, monto, fecha, desc, comprobante) {
+        const form = document.getElementById('formEditarFactura');
+        form.action = `/proveedores/factura/${id}/editar`;
+        document.getElementById('edit_fact_numero').value = numero;
+        document.getElementById('edit_fact_monto').value = monto;
+        document.getElementById('edit_fact_fecha').value = fecha;
+        document.getElementById('edit_fact_descripcion').value = desc;
+
+        const contSoporte = document.getElementById('edit_fact_soporte_actual');
+        const chkEliminar = document.getElementById('chkEliminarComprobante');
+        if (chkEliminar) chkEliminar.checked = false;
+
+        if (comprobante) {
+            contSoporte.classList.remove('d-none');
+            document.getElementById('edit_fact_soporte_nombre').textContent = comprobante;
+        } else {
+            contSoporte.classList.add('d-none');
+        }
+
+        new bootstrap.Modal(document.getElementById('modalEditarFactura')).show();
+    }
+
+    function confirmarEliminarFactura(id, folio, monto) {
+        if (confirm(`¿Eliminar la Factura #${folio} por valor de ${formatoCOP(monto)}?\n\n⚠️ El saldo pendiente del proveedor será recalculado inmediatamente.`)) {
+            const form = document.getElementById('formAccionEliminar');
+            form.action = `/proveedores/factura/${id}/eliminar`;
+            form.submit();
+        }
+    }
+
+    // Funciones Abono
+    function abrirModalEditarAbono(id, monto, fecha, obs) {
+        const form = document.getElementById('formEditarAbono');
+        form.action = `/proveedores/pago/${id}/editar`;
+        document.getElementById('edit_abono_monto').value = monto;
+        document.getElementById('edit_abono_fecha').value = fecha;
+        document.getElementById('edit_abono_observacion').value = obs;
+
+        new bootstrap.Modal(document.getElementById('modalEditarAbono')).show();
+    }
+
+    function confirmarEliminarAbono(id, monto) {
+        if (confirm(`¿Eliminar este abono de ${formatoCOP(monto)}?\n\n⚠️ La deuda pendiente con el proveedor aumentará por el mismo valor.`)) {
+            const form = document.getElementById('formAccionEliminar');
+            form.action = `/proveedores/pago/${id}/eliminar`;
+            form.submit();
+        }
+    }
+
+    // Funciones Proveedor
+    function abrirModalEditarProveedor(id, nombre, empresa, telefono) {
+        const form = document.getElementById('formEditarProveedor');
+        form.action = `/proveedores/${id}/editar`;
+        document.getElementById('edit_prov_nombre').value = nombre;
+        document.getElementById('edit_prov_empresa').value = empresa;
+        document.getElementById('edit_prov_telefono').value = telefono;
+        new bootstrap.Modal(document.getElementById('modalEditarProveedor')).show();
+    }
+</script>
 {% endblock %}

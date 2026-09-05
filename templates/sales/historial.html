@@ -1,114 +1,292 @@
 {% extends "base.html" %}
 
 {% block content %}
-<div class="row mb-4">
-    <div class="col-12 d-flex justify-content-between align-items-center mb-4">
-        <!-- Título con acento Azul Turquesa según reglas de Branding (.text-brand-blue es #A3D8DE) -->
-        <h2 class="fw-bolder m-0" style="color: var(--brand-blue);">
-            <i class="fa-solid fa-clock-rotate-left me-2"></i>Historial de Operaciones
-        </h2>
-        <div class="d-flex align-items-center gap-2 d-print-none">
-            <button onclick="window.print()" class="btn px-4 rounded-pill fw-bold text-dark border shadow-sm" style="background-color: #F9C8D3; border-color: #ebaebc;">
-                <i class="fa-solid fa-print me-1"></i> Imprimir a PDF
+<div class="row mb-4 g-3 align-items-center">
+    <div class="col-12 col-md-7 d-flex align-items-center gap-3">
+        <div class="p-3 rounded-4 bg-light border shadow-sm d-inline-flex align-items-center justify-content-center" style="width: 52px; height: 52px;">
+            <i class="fa-solid fa-clock-rotate-left fs-4" style="color: #FF007F;"></i>
+        </div>
+        <div>
+            <h2 class="fw-bolder m-0 text-brand-black font-orbitron">
+                Historial de Operaciones
+            </h2>
+            <p class="text-muted small mb-0">
+                Consolidado de ventas y trazabilidad financiera
+            </p>
+        </div>
+    </div>
+    <div class="col-12 col-md-5 d-flex justify-content-md-end align-items-center gap-2 d-print-none">
+        <button onclick="window.print()" class="btn px-3 rounded-pill fw-bold text-dark border shadow-sm" style="background-color: #F9C8D3; border-color: #ebaebc;">
+            <i class="fa-solid fa-print me-1"></i> Imprimir a PDF
+        </button>
+        <a href="/admin/dashboard" class="btn btn-light rounded-pill px-3 fw-bold text-muted border shadow-sm">
+            <i class="fa-solid fa-arrow-left me-1"></i> Panel 
+        </a>
+    </div>
+</div>
+
+<!-- Barra de Contexto y Período Analizado -->
+<div class="card card-custom border-0 shadow-sm p-3 mb-4 bg-white">
+    <div class="d-flex flex-wrap justify-content-between align-items-center gap-3">
+        <div class="d-flex align-items-center gap-2 flex-wrap">
+            <span class="badge bg-light text-dark border px-3 py-2 rounded-pill font-orbitron" style="font-size: 0.8rem;">
+                <i class="fa-solid fa-calendar-day text-brand-pink me-1"></i> 
+                {{ fecha_inicio if fecha_inicio else 'Inicios' }} <span class="text-muted mx-1">➜</span> {{ fecha_fin if fecha_fin else 'Hoy' }}
+            </span>
+            <span class="badge bg-light text-secondary border px-3 py-2 rounded-pill" style="font-size: 0.8rem;">
+                <i class="fa-solid fa-receipt me-1 text-primary"></i> <strong>{{ total_operaciones }}</strong> Operaciones
+            </span>
+            {% if total_mixto > 0 %}
+            <span class="badge bg-light text-secondary border px-3 py-2 rounded-pill" style="font-size: 0.8rem;">
+                <i class="fa-solid fa-arrows-split-up-and-left text-warning me-1"></i> <strong>{{ total_mixto }}</strong> Pagos Mixtos
+            </span>
+            {% endif %}
+            {% if current_user.rol != 'admin' %}
+            <span class="badge bg-light text-dark border px-3 py-2 rounded-pill" style="font-size: 0.8rem;">
+                <i class="fa-solid fa-user me-1 text-info"></i> {{ current_user.nombre }}
+            </span>
+            {% endif %}
+        </div>
+
+        <div class="d-print-none">
+            <button class="btn btn-outline-dark btn-sm rounded-pill fw-bold px-3 shadow-sm" type="button" data-bs-toggle="collapse" data-bs-target="#filtrosCollapse">
+                <i class="fa-solid fa-filter me-1"></i> Filtrar Rango de Fechas
             </button>
-            <a href="/admin/dashboard" class="btn btn-light rounded-pill px-4 fw-bold text-muted border shadow-sm">
-                <i class="fa-solid fa-arrow-left me-1"></i> Panel 
-            </a>
         </div>
     </div>
 
-    <!-- Encabezado de Impresión / PDF -->
-    <div class="col-12 d-none d-print-block text-center mb-4 pb-3 border-bottom">
-        <h1 class="fw-bold text-brand-black mb-1"><i class="fa-solid fa-chart-line me-2"></i> koba.com</h1>
-        <h4 class="text-muted fw-semibold">REPORTE CONSOLIDADO DE VENTAS</h4>
-        <p class="mb-0 text-secondary">
-            Período Analizado: <strong>{{ fecha_inicio if fecha_inicio else 'Inicios' }}</strong> hasta <strong>{{ fecha_fin if fecha_fin else 'Hoy' }}</strong>
-        </p>
-        {% if current_user.rol != 'admin' %}
-            <p class="mb-0 text-brand-black fw-bold">Usuario Solicitante: {{ current_user.nombre }}</p>
-        {% endif %}
+    <!-- UI: Filtro de Fechas Colapsable -->
+    <div class="collapse mt-3 d-print-none" id="filtrosCollapse">
+        <div class="p-3 rounded-3 bg-light border">
+            <form method="GET" action="{{ url_for('sales_bp.historial') }}" class="row align-items-end g-3">
+                <div class="col-md-4">
+                    <label class="form-label fw-bold text-brand-black small mb-1">
+                        <i class="fa-regular fa-calendar-minus me-1 text-muted"></i> Fecha Inicial
+                    </label>
+                    <input type="date" name="fecha_inicio" class="form-control bg-white border shadow-sm" value="{{ fecha_inicio or '' }}">
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label fw-bold text-brand-black small mb-1">
+                        <i class="fa-regular fa-calendar-plus me-1 text-muted"></i> Fecha Final
+                    </label>
+                    <input type="date" name="fecha_fin" class="form-control bg-white border shadow-sm" value="{{ fecha_fin or '' }}">
+                </div>
+                <div class="col-md-4 d-flex gap-2">
+                    <button type="submit" class="btn btn-blue flex-grow-1 rounded-pill shadow-sm fw-bold">
+                        <i class="fa-solid fa-magnifying-glass me-1"></i> Aplicar
+                    </button>
+                    {% if fecha_inicio or fecha_fin %}
+                    <a href="{{ url_for('sales_bp.historial') }}" class="btn btn-outline-secondary rounded-pill fw-bold" title="Restablecer filtros">
+                        <i class="fa-solid fa-rotate-left"></i>
+                    </a>
+                    {% endif %}
+                </div>
+            </form>
+        </div>
     </div>
+</div>
 
-    <!-- UI: Resumen Financiero Dinámico (Tarjetas) -->
-    <div class="col-6 col-md-3 mb-3">
-        <div class="card card-custom h-100" style="border-left: 6px solid var(--brand-blue) !important;">
-            <div class="card-body py-3 ps-3">
-                <p class="text-muted fw-bold text-uppercase mb-1" style="font-size: 0.75rem;"><i class="fa-solid fa-money-bills me-1"></i> Efectivo</p>
-                <h4 class="fw-bolder m-0" style="color: var(--brand-blue);">${{ (total_efectivo)|cop }}</h4>
+<!-- ENCABEZADO EXCLUSIVO PARA IMPRESIÓN / PDF -->
+<div class="d-none d-print-block mb-4">
+    <h1 class="fw-bold font-orbitron mb-1"><i class="fa-solid fa-chart-line me-2" style="color: #FF007F;"></i> ULTRA TECH</h1>
+    <h4 class="text-muted fw-semibold font-orbitron">REPORTE CONSOLIDADO DE VENTAS</h4>
+    <p class="mb-0 text-secondary">
+        Período Analizado: <strong>{{ fecha_inicio if fecha_inicio else 'Inicios' }}</strong> hasta <strong>{{ fecha_fin if fecha_fin else 'Hoy' }}</strong>
+    </p>
+    {% if current_user.rol != 'admin' %}
+        <p class="mb-0 text-dark fw-bold">Usuario Solicitante: {{ current_user.nombre }}</p>
+    {% endif %}
+</div>
+
+<!-- ========================================================================= -->
+<!-- TARJETAS DINÁMICAS Y ORDENADAS: NIVEL 1 - KPIS PRINCIPALES (3 COLUMNAS)   -->
+<!-- ========================================================================= -->
+<div class="row g-3 mb-3">
+    <!-- Tarjeta Principal: TOTAL CONSOLIDADO -->
+    <div class="col-12 col-md-4">
+        <div class="card card-custom h-100 p-3 border-0 shadow-sm metric-card" style="border-top: 4px solid #FF007F !important; background: linear-gradient(180deg, #FFFFFF 0%, #FFF9FB 100%);">
+            <div class="d-flex justify-content-between align-items-start mb-2">
+                <div>
+                    <span class="badge px-2 py-1 rounded-pill fw-bold mb-1" style="background-color: #FFE4EC; color: #FF007F; font-size: 0.72rem; letter-spacing: 0.5px;">
+                        <i class="fa-solid fa-gem me-1"></i> CONSOLIDADO TOTAL
+                    </span>
+                    <h3 class="fw-bolder m-0 font-orbitron text-brand-black mt-1">
+                        ${{ (total_general)|cop }}
+                    </h3>
+                </div>
+                <div class="p-2 rounded-circle d-flex align-items-center justify-content-center" style="width: 44px; height: 44px; background-color: #FFE4EC; color: #FF007F;">
+                    <i class="fa-solid fa-sack-dollar fs-5"></i>
+                </div>
+            </div>
+            <div class="d-flex align-items-center justify-content-between pt-2 border-top mt-auto" style="border-color: #FFE4EC !important;">
+                <span class="small text-muted">
+                    <i class="fa-solid fa-receipt me-1"></i> {{ total_operaciones }} venta{{ 's' if total_operaciones != 1 else '' }}
+                </span>
+                <span class="small fw-bold" style="color: #FF007F;">
+                    Prom. ${{ (ticket_promedio)|cop }}
+                </span>
             </div>
         </div>
     </div>
-    
-    <div class="col-6 col-md-3 mb-3">
-        <div class="card card-custom h-100" style="border-left: 6px solid #6f42c1 !important;">
-            <div class="card-body py-3 ps-3">
-                <p class="text-muted fw-bold text-uppercase mb-1" style="font-size: 0.75rem;"><i class="fa-solid fa-mobile-button me-1"></i> Nequi</p>
-                <h4 class="fw-bolder m-0" style="color: #6f42c1;">${{ (total_nequi)|cop }}</h4>
+
+    <!-- Tarjeta 2: TOTAL EFECTIVO EN CAJA -->
+    <div class="col-12 col-sm-6 col-md-4">
+        <div class="card card-custom h-100 p-3 border-0 shadow-sm metric-card" style="border-top: 4px solid #10B981 !important; background: linear-gradient(180deg, #FFFFFF 0%, #F6FDF9 100%);">
+            <div class="d-flex justify-content-between align-items-start mb-2">
+                <div>
+                    <span class="badge px-2 py-1 rounded-pill fw-bold mb-1" style="background-color: #DCFCE7; color: #166534; font-size: 0.72rem; letter-spacing: 0.5px;">
+                        <i class="fa-solid fa-money-bills me-1"></i> EFECTIVO EN CAJA
+                    </span>
+                    <h3 class="fw-bolder m-0 font-orbitron mt-1" style="color: #0F172A;">
+                        ${{ (total_efectivo)|cop }}
+                    </h3>
+                </div>
+                <div class="p-2 rounded-circle d-flex align-items-center justify-content-center" style="width: 44px; height: 44px; background-color: #DCFCE7; color: #10B981;">
+                    <i class="fa-solid fa-coins fs-5"></i>
+                </div>
+            </div>
+            <div class="d-flex align-items-center justify-content-between pt-2 border-top mt-auto" style="border-color: #E2E8F0 !important;">
+                <span class="small text-muted">Disponibilidad Inmediata</span>
+                {% set pct_efectivo = ((total_efectivo / total_general * 100)|round(1)) if total_general > 0 else 0 %}
+                <span class="badge bg-white border text-success fw-bold px-2 py-1 rounded-pill" style="font-size: 0.75rem;">
+                    {{ pct_efectivo }}% del Total
+                </span>
             </div>
         </div>
     </div>
 
-    <div class="col-6 col-md-3 mb-3">
-        <div class="card card-custom h-100" style="border-left: 6px solid #fd7e14 !important;">
-            <div class="card-body py-3 ps-3">
-                <p class="text-muted fw-bold text-uppercase mb-1" style="font-size: 0.75rem;"><i class="fa-solid fa-building-columns me-1"></i> Bancolombia</p>
-                <h4 class="fw-bolder m-0" style="color: #fd7e14;">${{ (total_bancolombia)|cop }}</h4>
+    <!-- Tarjeta 3: DINERO DIGITAL CONSOLIDADO -->
+    <div class="col-12 col-sm-6 col-md-4">
+        <div class="card card-custom h-100 p-3 border-0 shadow-sm metric-card" style="border-top: 4px solid #0284C7 !important; background: linear-gradient(180deg, #FFFFFF 0%, #F0F9FF 100%);">
+            <div class="d-flex justify-content-between align-items-start mb-2">
+                <div>
+                    <span class="badge px-2 py-1 rounded-pill fw-bold mb-1" style="background-color: #E0F2FE; color: #0369A1; font-size: 0.72rem; letter-spacing: 0.5px;">
+                        <i class="fa-solid fa-wallet me-1"></i> TRANSFERENCIAS / BANCOS
+                    </span>
+                    <h3 class="fw-bolder m-0 font-orbitron mt-1" style="color: #0F172A;">
+                        ${{ (total_digital)|cop }}
+                    </h3>
+                </div>
+                <div class="p-2 rounded-circle d-flex align-items-center justify-content-center" style="width: 44px; height: 44px; background-color: #E0F2FE; color: #0284C7;">
+                    <i class="fa-solid fa-network-wired fs-5"></i>
+                </div>
+            </div>
+            <div class="d-flex align-items-center justify-content-between pt-2 border-top mt-auto" style="border-color: #E2E8F0 !important;">
+                <span class="small text-muted">Canales Electrónicos</span>
+                {% set pct_digital = ((total_digital / total_general * 100)|round(1)) if total_general > 0 else 0 %}
+                <span class="badge bg-white border text-primary fw-bold px-2 py-1 rounded-pill" style="font-size: 0.75rem;">
+                    {{ pct_digital }}% del Total
+                </span>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ========================================================================= -->
+<!-- TARJETAS DINÁMICAS: NIVEL 2 - DESGLOSE DE CANALES DIGITALES (NEQUI, ETC) -->
+<!-- ========================================================================= -->
+<div class="row g-3 mb-4">
+    <!-- NEQUI -->
+    <div class="col-12 col-sm-6 {% if total_transferencia_legacy > 0 %}col-md-3{% else %}col-md-4{% endif %}">
+        <div class="card card-custom h-100 p-3 border-0 shadow-sm metric-subcard" style="border-left: 5px solid #6f42c1 !important;">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <div class="d-flex align-items-center gap-1 mb-1">
+                        <span class="badge rounded-circle p-1" style="background-color: #6f42c1;"></span>
+                        <span class="text-muted fw-bold text-uppercase" style="font-size: 0.75rem;">Nequi</span>
+                    </div>
+                    <h4 class="fw-bolder m-0 font-orbitron" style="color: #6f42c1;">${{ (total_nequi)|cop }}</h4>
+                </div>
+                <div class="p-2 rounded-3 d-flex align-items-center justify-content-center" style="width: 40px; height: 40px; background-color: #F3E8FF; color: #6f42c1;">
+                    <i class="fa-solid fa-mobile-screen-button fs-5"></i>
+                </div>
+            </div>
+            {% set pct_nequi = ((total_nequi / total_digital * 100)|round(1)) if total_digital > 0 else 0 %}
+            <div class="progress mt-2" style="height: 4px; background-color: #F1F5F9;">
+                <div class="progress-bar" role="progressbar" style="width: {{ pct_nequi }}%; background-color: #6f42c1;"></div>
+            </div>
+            <div class="d-flex justify-content-between mt-1 text-muted" style="font-size: 0.7rem;">
+                <span>Digital: {{ pct_nequi }}%</span>
             </div>
         </div>
     </div>
 
-    <div class="col-6 col-md-3 mb-3">
-        <div class="card card-custom h-100" style="border-left: 6px solid #dc3545 !important;">
-            <div class="card-body py-3 ps-3">
-                <p class="text-muted fw-bold text-uppercase mb-1" style="font-size: 0.75rem;"><i class="fa-solid fa-mobile-screen me-1"></i> Daviplata</p>
-                <h4 class="fw-bolder m-0" style="color: #dc3545;">${{ (total_daviplata)|cop }}</h4>
+    <!-- BANCOLOMBIA -->
+    <div class="col-12 col-sm-6 {% if total_transferencia_legacy > 0 %}col-md-3{% else %}col-md-4{% endif %}">
+        <div class="card card-custom h-100 p-3 border-0 shadow-sm metric-subcard" style="border-left: 5px solid #fd7e14 !important;">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <div class="d-flex align-items-center gap-1 mb-1">
+                        <span class="badge rounded-circle p-1" style="background-color: #fd7e14;"></span>
+                        <span class="text-muted fw-bold text-uppercase" style="font-size: 0.75rem;">Bancolombia</span>
+                    </div>
+                    <h4 class="fw-bolder m-0 font-orbitron" style="color: #fd7e14;">${{ (total_bancolombia)|cop }}</h4>
+                </div>
+                <div class="p-2 rounded-3 d-flex align-items-center justify-content-center" style="width: 40px; height: 40px; background-color: #FFF4E5; color: #fd7e14;">
+                    <i class="fa-solid fa-building-columns fs-5"></i>
+                </div>
+            </div>
+            {% set pct_bancolombia = ((total_bancolombia / total_digital * 100)|round(1)) if total_digital > 0 else 0 %}
+            <div class="progress mt-2" style="height: 4px; background-color: #F1F5F9;">
+                <div class="progress-bar" role="progressbar" style="width: {{ pct_bancolombia }}%; background-color: #fd7e14;"></div>
+            </div>
+            <div class="d-flex justify-content-between mt-1 text-muted" style="font-size: 0.7rem;">
+                <span>Digital: {{ pct_bancolombia }}%</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- DAVIPLATA -->
+    <div class="col-12 col-sm-6 {% if total_transferencia_legacy > 0 %}col-md-3{% else %}col-md-4{% endif %}">
+        <div class="card card-custom h-100 p-3 border-0 shadow-sm metric-subcard" style="border-left: 5px solid #dc3545 !important;">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <div class="d-flex align-items-center gap-1 mb-1">
+                        <span class="badge rounded-circle p-1" style="background-color: #dc3545;"></span>
+                        <span class="text-muted fw-bold text-uppercase" style="font-size: 0.75rem;">Daviplata</span>
+                    </div>
+                    <h4 class="fw-bolder m-0 font-orbitron" style="color: #dc3545;">${{ (total_daviplata)|cop }}</h4>
+                </div>
+                <div class="p-2 rounded-3 d-flex align-items-center justify-content-center" style="width: 40px; height: 40px; background-color: #FFEBEF; color: #dc3545;">
+                    <i class="fa-solid fa-mobile-screen fs-5"></i>
+                </div>
+            </div>
+            {% set pct_daviplata = ((total_daviplata / total_digital * 100)|round(1)) if total_digital > 0 else 0 %}
+            <div class="progress mt-2" style="height: 4px; background-color: #F1F5F9;">
+                <div class="progress-bar" role="progressbar" style="width: {{ pct_daviplata }}%; background-color: #dc3545;"></div>
+            </div>
+            <div class="d-flex justify-content-between mt-1 text-muted" style="font-size: 0.7rem;">
+                <span>Digital: {{ pct_daviplata }}%</span>
             </div>
         </div>
     </div>
 
     {% if total_transferencia_legacy > 0 %}
-    <div class="col-12 mb-3">
-        <div class="card card-custom h-100" style="border-left: 6px solid var(--brand-pink) !important;">
-            <div class="card-body py-3 ps-3">
-                <p class="text-muted fw-bold text-uppercase mb-1" style="font-size: 0.75rem;"><i class="fa-solid fa-clock-rotate-left me-1"></i> Transf. Históricas</p>
-                <h4 class="fw-bolder m-0" style="color: var(--brand-pink);">${{ (total_transferencia_legacy)|cop }}</h4>
+    <!-- TRANSFERENCIAS HISTÓRICAS -->
+    <div class="col-12 col-sm-6 col-md-3">
+        <div class="card card-custom h-100 p-3 border-0 shadow-sm metric-subcard" style="border-left: 5px solid var(--brand-pink) !important;">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <div class="d-flex align-items-center gap-1 mb-1">
+                        <span class="badge rounded-circle p-1" style="background-color: var(--brand-pink);"></span>
+                        <span class="text-muted fw-bold text-uppercase" style="font-size: 0.75rem;">Transf. Antiguas</span>
+                    </div>
+                    <h4 class="fw-bolder m-0 font-orbitron" style="color: var(--brand-pink);">${{ (total_transferencia_legacy)|cop }}</h4>
+                </div>
+                <div class="p-2 rounded-3 d-flex align-items-center justify-content-center" style="width: 40px; height: 40px; background-color: #FFE4EC; color: var(--brand-pink);">
+                    <i class="fa-solid fa-clock-rotate-left fs-5"></i>
+                </div>
+            </div>
+            {% set pct_legacy = ((total_transferencia_legacy / total_digital * 100)|round(1)) if total_digital > 0 else 0 %}
+            <div class="progress mt-2" style="height: 4px; background-color: #F1F5F9;">
+                <div class="progress-bar" role="progressbar" style="width: {{ pct_legacy }}%; background-color: var(--brand-pink);"></div>
+            </div>
+            <div class="d-flex justify-content-between mt-1 text-muted" style="font-size: 0.7rem;">
+                <span>Digital: {{ pct_legacy }}%</span>
             </div>
         </div>
     </div>
     {% endif %}
-    
-    <!-- UI: Filtro de Fechas Oculto (Collapsible Bootstrap) -->
-    <div class="col-12 mt-2 mb-2 d-print-none">
-        <button class="btn btn-outline-dark btn-sm rounded-pill fw-bold" type="button" data-bs-toggle="collapse" data-bs-target="#filtrosCollapse">
-            <i class="fa-solid fa-filter me-1"></i> Ver más filtros
-        </button>
-        
-        <div class="collapse mt-3" id="filtrosCollapse">
-            <div class="card card-custom p-4 bg-light">
-                <form method="GET" action="{{ url_for('sales_bp.historial') }}" class="row align-items-end g-3">
-                    <div class="col-md-4">
-                        <label class="form-label fw-bold text-brand-black small">Desde (Día)</label>
-                        <input type="date" name="fecha_inicio" class="form-control border-0 shadow-sm" value="{{ fecha_inicio or '' }}">
-                    </div>
-                    <div class="col-md-4">
-                        <label class="form-label fw-bold text-brand-black small">Hasta (Límite)</label>
-                        <input type="date" name="fecha_fin" class="form-control border-0 shadow-sm" value="{{ fecha_fin or '' }}">
-                    </div>
-                    <div class="col-md-4">
-                        <!-- El botón manda la alerta GET en color predominante Turquesa -->
-                        <button type="submit" class="btn btn-blue w-100 rounded-3 shadow-sm fw-bold">
-                            <i class="fa-solid fa-magnifying-glass me-2"></i>Aplicar Filtros
-                        </button>
-                        {% if fecha_inicio or fecha_fin %}
-                        <div class="text-center mt-2">
-                            <a href="{{ url_for('sales_bp.historial') }}" class="text-muted small text-decoration-none border-bottom border-secondary">Borrar Rango Analítico</a>
-                        </div>
-                        {% endif %}
-                    </div>
-                </form>
-            </div>
-        </div>
-    </div>
 </div>
 
 <div class="card card-custom p-0 overflow-hidden">
@@ -195,15 +373,33 @@
 </div>
 
 <style>
+/* Microinteracciones dinámicas en Pantalla */
+.metric-card {
+    transition: transform 0.22s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.22s ease;
+    border-radius: 14px !important;
+}
+.metric-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 12px 24px rgba(0, 0, 0, 0.07) !important;
+}
+.metric-subcard {
+    transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.2s ease;
+    border-radius: 12px !important;
+}
+.metric-subcard:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.05) !important;
+}
+
 /* ====== Estilos Exclusivos para PDF/Impresión del Reporte de Ventas ====== */
 @media print {
     /* 1. Resetear Página y Contenedores Base */
-    @page { margin: 1.5cm; }
+    @page { margin: 1cm; }
     body, html {
         background-color: white !important;
         margin: 0 !important; 
         padding: 0 !important;
-        font-size: 10pt !important;
+        font-size: 9pt !important;
         color: black !important;
     }
     
@@ -224,49 +420,49 @@
         display: block !important;
     }
 
-    /* 3. Arreglar Tarjetas Superiores (Resumen) para que no se sobrepongan */
+    /* 3. Arreglar Tarjetas Superiores (Resumen) para que se distribuyan en fila */
     .row {
         display: flex !important;
         flex-direction: row !important;
-        flex-wrap: nowrap !important;
-        gap: 15px !important;
-        margin-bottom: 20px !important;
+        flex-wrap: wrap !important;
+        gap: 8px !important;
+        margin-bottom: 15px !important;
     }
-    .col-6 {
-        flex: 1 !important;
-        max-width: 50% !important;
+    .col-12.col-md-4, .col-12.col-sm-6.col-md-4, .col-12.col-sm-6.col-md-3 {
+        flex: 1 1 22% !important;
+        max-width: 32% !important;
         padding: 0 !important;
     }
     
-    /* Simplificar tarjetas, quitando sombras y rebordes gigantes */
-    .card-custom, .card {
+    /* Simplificar tarjetas, quitando sombras y fondos degradados */
+    .card-custom, .card, .metric-card, .metric-subcard {
         border: 1px solid #ccc !important;
         box-shadow: none !important;
-        background-color: transparent !important;
+        background: transparent !important;
         border-radius: 4px !important;
         page-break-inside: avoid;
+        padding: 8px !important;
     }
-    .card-custom[style] {
-        border-left: 1px solid #ccc !important; /* Sobrescribir borde de color grueso */
+    .metric-card h3, .metric-subcard h4 {
+        font-size: 13pt !important;
+        color: black !important;
     }
-    .card-body {
-        padding: 10px 15px !important;
+    .progress {
+        display: none !important;
     }
-    .card-body p { margin-bottom: 5px !important; font-size: 9pt !important; }
-    .card-body h2 { font-size: 16pt !important; color: black !important; }
 
     /* 4. Arreglar la Tabla de Datos para evitar desbordamientos */
     .table-responsive {
-        overflow: visible !important; /* Desactiva el scroll horizontal */
+        overflow: visible !important;
     }
     .table {
         width: 100% !important;
         border-collapse: collapse !important;
-        table-layout: auto !important; /* Permite adaptación de columnas */
+        table-layout: auto !important;
     }
     .table th, .table td {
         padding: 6px !important;
-        font-size: 9pt !important;
+        font-size: 8.5pt !important;
         white-space: normal !important; 
         word-wrap: break-word !important;
         border: 1px solid #eee !important;
@@ -289,11 +485,11 @@
         background: transparent !important;
         color: black !important;
         padding: 0 !important;
-        font-size: 9pt !important;
+        font-size: 8.5pt !important;
         font-weight: bold !important;
     }
     .badge i {
-        display: none !important; /* Ocultar íconos para ahorrar espacio horizontal */
+        display: none !important;
     }
 
     * {

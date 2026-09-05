@@ -3,17 +3,17 @@
 {% block content %}
 <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-3 mb-4">
     <div>
-        <h2 class="fw-bold text-brand-black m-0">
-            <i class="fa-solid fa-users-line text-brand-blue me-2"></i>Directorio de Clientes y Locales
+        <h2 class="fw-bold text-brand-black m-0 font-orbitron">
+            <i class="fa-solid fa-users-line text-brand-blue me-2"></i>Directorio de Locales Maneos
         </h2>
-        <p class="text-muted small m-0 mt-1">Cuentas corrientes, consignaciones y control de maneos de mercancía.</p>
+        <p class="text-muted small m-0 mt-1">Cuentas corrientes, préstamos de mercancía y control de saldos por local comercial.</p>
     </div>
     <div class="d-flex gap-2 flex-wrap">
         <a href="{{ url_for('admin_bp.maneos') }}" class="btn btn-outline-secondary rounded-pill px-3 fw-semibold">
             <i class="fa-solid fa-handshake me-1 text-brand-blue"></i> Módulo Maneos
         </a>
         <a href="{{ url_for('clientes_bp.nuevo') }}" class="btn btn-blue rounded-pill px-4 fw-bold shadow-sm">
-            <i class="fa-solid fa-plus me-1"></i> Nuevo Local / Cliente
+            <i class="fa-solid fa-plus me-1"></i> Nuevo Local Maneo
         </a>
     </div>
 </div>

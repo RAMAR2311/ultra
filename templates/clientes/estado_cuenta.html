@@ -27,7 +27,7 @@
     <!-- Botones de Acción Superior -->
     <div class="d-flex gap-2 flex-wrap">
         <a href="{{ url_for('clientes_bp.index') }}" class="btn btn-outline-secondary rounded-pill px-3">
-            <i class="fa-solid fa-arrow-left me-1"></i> Directorio
+            <i class="fa-solid fa-arrow-left me-1"></i> Directorio Locales Maneos
         </a>
         <button type="button" class="btn btn-outline-success rounded-pill px-3 fw-bold" id="btnCompartirWhatsApp">
             <i class="fa-brands fa-whatsapp me-1 fs-5 align-middle"></i> Enviar Estado
@@ -162,20 +162,15 @@
                                 ${{ '{:,.0f}'.format(m.subtotal_calculado) }}
                             </td>
                             <td class="text-center pe-4">
-                                <div class="d-flex justify-content-center gap-1">
+                                <div class="d-flex justify-content-center gap-2">
                                     <!-- Botón Facturar / Cobrar -->
                                     <button type="button" class="btn btn-sm btn-success rounded-pill px-3 fw-bold shadow-sm" data-bs-toggle="modal" data-bs-target="#modalFacturar{{ m.id }}" title="Cobrar / Facturar este producto">
                                         <i class="fa-solid fa-cash-register me-1"></i> Cobrar
                                     </button>
-                                    <!-- Botón Devolver -->
-                                    <form method="POST" action="{{ url_for('admin_bp.maneos_devolver', id=m.id) }}" onsubmit="return confirm('¿Confirmas que recibiste devuelto el producto intacto? Esto lo devolverá al stock físico de KOBA.');" class="d-inline">
-                                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                                        <input type="hidden" name="origen" value="estado_cuenta">
-                                        <input type="hidden" name="cliente_id" value="{{ cliente.id }}">
-                                        <button type="submit" class="btn btn-sm btn-outline-secondary rounded-pill px-2" title="Devolver producto intacto">
-                                            <i class="fa-solid fa-rotate-left"></i> Devolver
-                                        </button>
-                                    </form>
+                                    <!-- Botón Devolver (Abre Modal Amigable) -->
+                                    <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill px-3 fw-semibold shadow-sm" data-bs-toggle="modal" data-bs-target="#modalDevolver{{ m.id }}" title="Devolver producto intacto al inventario">
+                                        <i class="fa-solid fa-rotate-left me-1"></i> Devolver
+                                    </button>
                                 </div>
                             </td>
                         </tr>
@@ -254,40 +249,58 @@
     </div>
 </div>
 
+<!-- Datos JSON para WhatsApp -->
+<script type="application/json" id="estadoCuentaData">
+{
+    "nombre": {{ cliente.nombre_o_razon_social|tojson }},
+    "saldo": {{ saldo_pendiente }},
+    "unidades": {{ unidades_pendientes }},
+    "telefono": {{ (cliente.telefono or '')|tojson }},
+    "maneos": [
+        {% for m in maneos_activos %}
+        {
+            "cantidad": {{ m.cantidad }},
+            "producto": {{ m.producto.nombre|tojson }},
+            "variante": {{ (m.variante.nombre_variante if m.variante else '')|tojson }},
+            "subtotal": {{ m.subtotal_calculado }}
+        }{% if not loop.last %},{% endif %}
+        {% endfor %}
+    ]
+}
+</script>
+
 <!-- Script para armar y enviar mensaje limpio por WhatsApp -->
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     const btnWhatsApp = document.getElementById('btnCompartirWhatsApp');
-    if (btnWhatsApp) {
+    const dataEl = document.getElementById('estadoCuentaData');
+    if (btnWhatsApp && dataEl) {
         btnWhatsApp.addEventListener('click', function() {
-            const nombre = {{ cliente.nombre_o_razon_social|tojson }};
-            const saldo = {{ saldo_pendiente }};
-            const unidades = {{ unidades_pendientes }};
-            const tel = {{ (cliente.telefono or '')|tojson }};
-
-            let texto = `*ESTADO DE CUENTA - KOBA*\n`;
-            texto += `Cliente / Local: *${nombre}*\n`;
+            const data = JSON.parse(dataEl.textContent);
+            let texto = `*ESTADO DE CUENTA - ULTRA TECH*\n`;
+            texto += `Cliente / Local: *${data.nombre}*\n`;
             texto += `Fecha: ${new Date().toLocaleDateString('es-CO')}\n`;
             texto += `--------------------------------\n`;
 
-            {% if maneos_activos %}
+            if (data.maneos && data.maneos.length > 0) {
                 texto += `*PRODUCTOS PENDIENTES EN MANEO:*\n`;
-                {% for m in maneos_activos %}
-                    texto += `• {{ m.cantidad }}x {{ m.producto.nombre }}{% if m.variante %} ({{ m.variante.nombre_variante }}){% endif %} - ${{ '{:,.0f}'.format(m.subtotal_calculado) }}\n`;
-                {% endfor %}
+                data.maneos.forEach(function(m) {
+                    const varText = m.variante ? ` (${m.variante})` : '';
+                    texto += `• ${m.cantidad}x ${m.producto}${varText} - $${Number(m.subtotal).toLocaleString('es-CO')}\n`;
+                });
                 texto += `--------------------------------\n`;
-                texto += `*TOTAL PENDIENTE POR PAGAR:* $${Number(saldo).toLocaleString('es-CO')}\n`;
-                texto += `Total Unidades: ${unidades}\n`;
-            {% else %}
+                texto += `*TOTAL PENDIENTE POR PAGAR:* $${Number(data.saldo).toLocaleString('es-CO')}\n`;
+                texto += `Total Unidades: ${data.unidades}\n`;
+            } else {
                 texto += `Actualmente estás *AL DÍA* sin productos ni dinero pendiente.\n`;
-            {% endif %}
+            }
 
             texto += `\n¡Gracias por tu colaboración comercial!`;
 
             const encoded = encodeURIComponent(texto);
             let url = '';
-            if (tel && tel.trim().length >= 7) {
-                const cleanPhone = tel.replace(/[^0-9]/g, '');
+            if (data.telefono && data.telefono.trim().length >= 7) {
+                const cleanPhone = data.telefono.replace(/[^0-9]/g, '');
                 url = `https://wa.me/57${cleanPhone}?text=${encoded}`;
             } else {
                 url = `https://api.whatsapp.com/send?text=${encoded}`;
@@ -299,58 +312,208 @@ document.addEventListener('DOMContentLoaded', function() {
 </script>
 
 <!-- Modales para Cobro / Facturación de Maneos Activos -->
+<!-- Modales para Cobro y Devolución de Maneos Activos -->
 {% for m in maneos_activos %}
+<!-- MODAL COBRAR / FACTURAR -->
 <div class="modal fade" id="modalFacturar{{ m.id }}" tabindex="-1" aria-labelledby="modalFacturarLabel{{ m.id }}" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content border-0 shadow">
-            <div class="modal-header border-0 bg-light">
-                <h5 class="modal-title fw-bold text-brand-black" id="modalFacturarLabel{{ m.id }}">
-                    <i class="fa-solid fa-cash-register text-success me-2"></i>Cobrar / Facturar Maneo
-                </h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+        <div class="modal-content border-0 shadow-lg" style="background-color: #ffffff; border-radius: 20px; overflow: hidden;">
+            <div class="modal-header border-0 pb-0 pt-4 px-4 bg-white d-flex align-items-center justify-content-between">
+                <div class="d-flex align-items-center gap-3">
+                    <div class="rounded-circle d-flex align-items-center justify-content-center" style="width: 46px; height: 46px; background-color: #DCFCE7; color: #166534;">
+                        <i class="fa-solid fa-cash-register fs-5"></i>
+                    </div>
+                    <div>
+                        <h5 class="modal-title fw-bolder text-brand-black m-0 font-orbitron" id="modalFacturarLabel{{ m.id }}" style="font-size: 1.15rem;">
+                            Cobrar / Facturar Maneo
+                        </h5>
+                        <p class="text-muted small mb-0">Registra el pago e ingresa el dinero a caja</p>
+                    </div>
+                </div>
+                <button type="button" class="btn-close shadow-none" data-bs-dismiss="modal" aria-label="Cerrar"></button>
             </div>
+
             <form method="POST" action="{{ url_for('admin_bp.maneos_facturar', id=m.id) }}">
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <input type="hidden" name="origen" value="estado_cuenta">
                 <input type="hidden" name="cliente_id" value="{{ cliente.id }}">
 
                 <div class="modal-body p-4">
-                    <div class="bg-light p-3 rounded-3 mb-3">
-                        <div class="fw-bold text-brand-black fs-6">{{ m.producto.nombre }}</div>
-                        {% if m.variante %}
-                            <small class="text-muted d-block"><i class="fa-solid fa-code-branch me-1 text-brand-pink"></i>Subcat: {{ m.variante.nombre_variante }}</small>
-                        {% endif %}
-                        <small class="text-muted d-block">SKU: {{ m.producto.sku }}</small>
+                    <!-- Ficha del Producto y Local -->
+                    <div class="p-3 rounded-3 mb-3 border" style="background-color: #F8FAFC; border-color: #E2E8F0 !important;">
+                        <div class="d-flex justify-content-between align-items-start">
+                            <div>
+                                <span class="badge px-2 py-1 rounded-pill mb-1" style="background-color: #EFF6FF; color: #1D4ED8; font-size: 0.72rem;">
+                                    <i class="fa-solid fa-store me-1"></i> {{ cliente.nombre_o_razon_social }}
+                                </span>
+                                <h6 class="fw-bold text-brand-black m-0 fs-6">{{ m.producto.nombre }}</h6>
+                                {% if m.variante %}
+                                    <small class="text-muted d-block mt-1">
+                                        <i class="fa-solid fa-code-branch me-1 text-brand-pink"></i>Subcat: <strong>{{ m.variante.nombre_variante }}</strong>
+                                    </small>
+                                {% endif %}
+                                <small class="text-muted" style="font-size: 0.75rem;">SKU: {{ m.producto.sku }}</small>
+                            </div>
+                            <div class="text-end">
+                                <span class="badge bg-white border text-secondary px-2 py-1 rounded-pill" style="font-size: 0.75rem;">
+                                    Prestadas: <strong>{{ m.cantidad }}</strong> uds
+                                </span>
+                            </div>
+                        </div>
                     </div>
 
-                    <div class="row g-2 mb-3">
+                    <div class="row g-3 mb-3">
                         <div class="col-6">
-                            <label class="form-label fw-bold">Cantidad a Cobrar <span class="text-danger">*</span></label>
-                            <input type="number" name="cantidad_vendida" class="form-control" value="{{ m.cantidad }}" min="1" max="{{ m.cantidad }}" required>
-                            <small class="text-muted" style="font-size:0.75rem;">Total prestadas: {{ m.cantidad }}</small>
+                            <label class="form-label fw-bold text-brand-black small mb-1">
+                                Cantidad a Cobrar <span class="text-danger">*</span>
+                            </label>
+                            <input type="number" 
+                                   name="cantidad_vendida" 
+                                   id="cobroCant{{ m.id }}" 
+                                   class="form-control border shadow-sm input-calc-cobro bg-white" 
+                                   data-id="{{ m.id }}"
+                                   value="{{ m.cantidad }}" 
+                                   min="1" 
+                                   max="{{ m.cantidad }}" 
+                                   required>
+                            <small class="text-muted" style="font-size: 0.72rem;">Máx: {{ m.cantidad }} uds</small>
                         </div>
                         <div class="col-6">
-                            <label class="form-label fw-bold">Precio Unitario ($) <span class="text-danger">*</span></label>
-                            <input type="number" step="any" name="precio_venta" class="form-control" value="{{ '%.0f'|format(m.valor_unitario_calculado) }}" required>
-                            <small class="text-muted" style="font-size:0.75rem;">Valor acordado</small>
+                            <label class="form-label fw-bold text-brand-black small mb-1">
+                                Precio Unitario ($) <span class="text-danger">*</span>
+                            </label>
+                            <input type="number" 
+                                   step="any" 
+                                   name="precio_venta" 
+                                   id="cobroPrecio{{ m.id }}" 
+                                   class="form-control border shadow-sm input-calc-cobro bg-white" 
+                                   data-id="{{ m.id }}"
+                                   value="{{ '%.0f'|format(m.valor_unitario_calculado) }}" 
+                                   required>
+                            <small class="text-muted" style="font-size: 0.72rem;">Precio acordado</small>
                         </div>
                     </div>
 
                     <div class="mb-3">
-                        <label class="form-label fw-bold">Método de Pago Recibido</label>
-                        <select name="metodo_pago" class="form-select">
-                            <option value="efectivo">Efectivo</option>
-                            <option value="nequi">Nequi</option>
-                            <option value="daviplata">Daviplata</option>
-                            <option value="tarjeta">Tarjeta / Datáfono</option>
-                            <option value="transferencia">Transferencia Bancaria</option>
+                        <label class="form-label fw-bold text-brand-black small mb-1">Método de Pago Recibido</label>
+                        <select name="metodo_pago" class="form-select border shadow-sm bg-white">
+                            <option value="efectivo">💵 Efectivo en Caja</option>
+                            <option value="nequi">🟣 Nequi</option>
+                            <option value="bancolombia">🟡 Bancolombia</option>
+                            <option value="daviplata">🔴 Daviplata</option>
+                            <option value="tarjeta">💳 Tarjeta / Datáfono</option>
+                            <option value="transferencia">🏦 Transferencia Bancaria</option>
                         </select>
                     </div>
+
+                    <!-- Resumen del Cobro Dinámico -->
+                    <div class="p-3 rounded-3 d-flex justify-content-between align-items-center" style="background: linear-gradient(180deg, #F0FDF4 0%, #DCFCE7 100%); border: 1px solid #BBF7D0;">
+                        <div>
+                            <small class="text-success fw-bold text-uppercase d-block" style="font-size: 0.7rem; letter-spacing: 0.5px;">Total a Ingresar</small>
+                            <span class="text-muted small">Impacto inmediato en caja</span>
+                        </div>
+                        <h4 class="fw-bolder text-success m-0 font-orbitron" id="cobroTotalPreview{{ m.id }}">
+                            ${{ '{:,.0f}'.format(m.subtotal_calculado) }}
+                        </h4>
+                    </div>
                 </div>
-                <div class="modal-footer border-0 bg-light">
-                    <button type="button" class="btn btn-light rounded-pill px-3" data-bs-dismiss="modal">Cancelar</button>
+
+                <div class="modal-footer border-0 pt-0 pb-4 px-4 bg-white d-flex justify-content-end gap-2">
+                    <button type="button" class="btn btn-light rounded-pill px-4 text-muted fw-bold border" data-bs-dismiss="modal">
+                        Cancelar
+                    </button>
                     <button type="submit" class="btn btn-success rounded-pill px-4 fw-bold shadow-sm">
                         <i class="fa-solid fa-check me-1"></i> Confirmar Cobro
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL DEVOLVER PRODUCTO INTACTO -->
+<div class="modal fade" id="modalDevolver{{ m.id }}" tabindex="-1" aria-labelledby="modalDevolverLabel{{ m.id }}" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg" style="background-color: #ffffff; border-radius: 20px; overflow: hidden;">
+            <div class="modal-header border-0 pb-0 pt-4 px-4 bg-white d-flex align-items-center justify-content-between">
+                <div class="d-flex align-items-center gap-3">
+                    <div class="rounded-circle d-flex align-items-center justify-content-center" style="width: 46px; height: 46px; background-color: #E0F2FE; color: #0284C7;">
+                        <i class="fa-solid fa-rotate-left fs-5"></i>
+                    </div>
+                    <div>
+                        <h5 class="modal-title fw-bolder text-brand-black m-0 font-orbitron" id="modalDevolverLabel{{ m.id }}" style="font-size: 1.15rem;">
+                            Devolver Unidades al Inventario
+                        </h5>
+                        <p class="text-muted small mb-0">Reingresa el producto físico al stock de tienda</p>
+                    </div>
+                </div>
+                <button type="button" class="btn-close shadow-none" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+            </div>
+
+            <form method="POST" action="{{ url_for('admin_bp.maneos_devolver', id=m.id) }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <input type="hidden" name="origen" value="estado_cuenta">
+                <input type="hidden" name="cliente_id" value="{{ cliente.id }}">
+
+                <div class="modal-body p-4">
+                    <!-- Ficha del Producto y Local -->
+                    <div class="p-3 rounded-3 mb-3 border" style="background-color: #F8FAFC; border-color: #E2E8F0 !important;">
+                        <div class="d-flex justify-content-between align-items-start">
+                            <div>
+                                <span class="badge px-2 py-1 rounded-pill mb-1" style="background-color: #EFF6FF; color: #1D4ED8; font-size: 0.72rem;">
+                                    <i class="fa-solid fa-store me-1"></i> {{ cliente.nombre_o_razon_social }}
+                                </span>
+                                <h6 class="fw-bold text-brand-black m-0 fs-6">{{ m.producto.nombre }}</h6>
+                                {% if m.variante %}
+                                    <small class="text-muted d-block mt-1">
+                                        <i class="fa-solid fa-code-branch me-1 text-brand-pink"></i>Subcat: <strong>{{ m.variante.nombre_variante }}</strong>
+                                    </small>
+                                {% endif %}
+                                <small class="text-muted" style="font-size: 0.75rem;">SKU: {{ m.producto.sku }}</small>
+                            </div>
+                            <div class="text-end">
+                                <span class="badge bg-white border text-primary px-2 py-1 rounded-pill" style="font-size: 0.75rem;">
+                                    En Poder: <strong>{{ m.cantidad }}</strong> uds
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-bold text-brand-black small mb-1">
+                            ¿Cuántas unidades devuelve el local? <span class="text-danger">*</span>
+                        </label>
+                        <div class="input-group input-group-lg shadow-sm rounded-3 overflow-hidden border">
+                            <input type="number" 
+                                   name="cantidad_devuelta" 
+                                   class="form-control border-0 text-center fw-bold fs-4 bg-white" 
+                                   min="1" 
+                                   max="{{ m.cantidad }}" 
+                                   value="{{ m.cantidad }}" 
+                                   required>
+                            <span class="input-group-text border-0 bg-light text-muted fw-bold">/ {{ m.cantidad }} uds</span>
+                        </div>
+                        <small class="text-muted d-block mt-1" style="font-size: 0.75rem;">
+                            Si se devuelven menos de {{ m.cantidad }} uds, las restantes continuarán pendientes en la cuenta del local.
+                        </small>
+                    </div>
+
+                    <div class="alert p-3 rounded-3 mb-0" style="background: #F0FDF4; border: 1px solid #BBF7D0;">
+                        <div class="d-flex align-items-center gap-2">
+                            <i class="fa-solid fa-circle-check text-success fs-5"></i>
+                            <div class="small text-muted">
+                                Las unidades devueltas <strong>reingresarán inmediatamente al inventario</strong> y se descontarán de la deuda activa de este local.
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="modal-footer border-0 pt-0 pb-4 px-4 bg-white d-flex justify-content-end gap-2">
+                    <button type="button" class="btn btn-light rounded-pill px-4 text-muted fw-bold border" data-bs-dismiss="modal">
+                        Cancelar
+                    </button>
+                    <button type="submit" class="btn btn-primary rounded-pill px-4 fw-bold shadow-sm" style="background-color: #0284C7; border-color: #0284C7;">
+                        <i class="fa-solid fa-rotate-left me-1"></i> Confirmar Devolución
                     </button>
                 </div>
             </form>
@@ -360,6 +523,14 @@ document.addEventListener('DOMContentLoaded', function() {
 {% endfor %}
 
 <style>
+.modal-content {
+    background-color: #ffffff !important;
+    color: #0f172a !important;
+    border-radius: 20px !important;
+}
+.modal-header, .modal-footer {
+    background-color: #ffffff !important;
+}
 @media print {
     .btn, nav, .card-header, #estadoCuentaTabs {
         display: none !important;
@@ -370,4 +541,25 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 }
 </style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Calculadora dinámica en tiempo real para modales de cobro
+    document.querySelectorAll('.input-calc-cobro').forEach(function(input) {
+        input.addEventListener('input', function() {
+            const maneoId = this.dataset.id;
+            const cantEl = document.getElementById('cobroCant' + maneoId);
+            const precioEl = document.getElementById('cobroPrecio' + maneoId);
+            const previewEl = document.getElementById('cobroTotalPreview' + maneoId);
+
+            if (cantEl && precioEl && previewEl) {
+                const cant = parseFloat(cantEl.value) || 0;
+                const precio = parseFloat(precioEl.value) || 0;
+                const total = Math.round(cant * precio);
+                previewEl.textContent = '$' + total.toLocaleString('es-CO');
+            }
+        });
+    });
+});
+</script>
 {% endblock %}

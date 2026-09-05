@@ -63,7 +63,26 @@ def migrar_datos():
                 continue
                 
             # Extraer dicts y mapearlos directo al motor de PostgreSQL
-            data_to_insert = [dict(row._mapping) for row in result]
+            data_to_insert = []
+            for row in result:
+                d = dict(row._mapping)
+                for col in table_pg.columns:
+                    if not col.nullable and (col.name not in d or d[col.name] is None):
+                        if col.default is not None and hasattr(col.default, 'arg'):
+                            val = col.default.arg
+                            d[col.name] = val() if callable(val) else val
+                        elif col.server_default is not None and hasattr(col.server_default, 'arg'):
+                            # try text literal
+                            text_arg = str(col.server_default.arg).strip("'\"")
+                            d[col.name] = text_arg
+                        elif col.name == 'metodo_pago':
+                            d['metodo_pago'] = 'efectivo'
+                        elif col.name == 'modalidad':
+                            d['modalidad'] = 'de_una'
+                        elif col.name == 'cliente_id' and table.name == 'abonos_bodega':
+                            # En facturas_bodega el cliente es 1
+                            d['cliente_id'] = 1
+                data_to_insert.append(d)
             
             # Insertar toda la carga masiva manteniendo las Primary Keys (IDs) exactas.
             conn_postgres.execute(table_pg.insert(), data_to_insert)

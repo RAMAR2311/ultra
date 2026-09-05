@@ -28,9 +28,23 @@
                     </div>
                 </div>
 
-                <div class="mb-3">
-                    <label class="form-label fw-bold">Correo Electrónico <span class="text-muted">(Opcional)</span></label>
-                    <input type="email" name="email" class="form-control bg-light border-0" placeholder="contacto@empresa.com" value="{{ cliente.email or '' }}">
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label fw-bold">Zona Comercial / Sector</label>
+                        <input type="text" name="zona" list="zonasComunes" class="form-control bg-light border-0" placeholder="Ej: Centro, Norte, San José..." value="{{ cliente.zona or '' }}">
+                        <datalist id="zonasComunes">
+                            <option value="Centro">
+                            <option value="Norte">
+                            <option value="San José">
+                            <option value="Sur">
+                            <option value="Occidente">
+                            <option value="Oriente">
+                        </datalist>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label fw-bold">Correo Electrónico <span class="text-muted">(Opcional)</span></label>
+                        <input type="email" name="email" class="form-control bg-light border-0" placeholder="contacto@empresa.com" value="{{ cliente.email or '' }}">
+                    </div>
                 </div>
 
                 <div class="mb-4">

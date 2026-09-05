@@ -1,11 +1,26 @@
 from flask import Blueprint, request, jsonify, flash, redirect, render_template, abort, url_for
 from flask_login import login_required, current_user
-from models import db, Product, ProductVariant, Sale, SaleDetail, SalePayment, Expense, obtener_hora_bogota
+from models import db, Product, ProductVariant, Sale, SaleDetail, SalePayment, Expense, obtener_hora_bogota, ArqueoCaja
 from decorators import admin_required
 from decimal import Decimal
 from datetime import datetime, timedelta
 from sqlalchemy import or_
 from sqlalchemy.orm import joinedload
+import unicodedata
+import re
+
+def normalizar_texto(texto):
+    """Normaliza texto eliminando acentos, tildes y diacríticos y convirtiendo a minúsculas."""
+    if not texto:
+        return ''
+    return ''.join(
+        c for c in unicodedata.normalize('NFD', str(texto))
+        if unicodedata.category(c) != 'Mn'
+    ).lower()
+
+def comodin_vocales(texto):
+    """Reemplaza vocales (con o sin tilde) por el comodín SQL '_' para coincidencia flexible en BD."""
+    return re.sub(r'[aeiouáéíóúüÁÉÍÓÚÜ]', '_', str(texto))
 
 sales_bp = Blueprint('sales_bp', __name__)
 
@@ -49,6 +64,13 @@ def procesar_venta():
                     fecha_venta_obj = datetime.combine(fecha_seleccionada, fecha_venta_obj.time())
             except ValueError:
                 pass # Fallback silencioso a la hora actual si el formato falla
+
+        # Validar si la caja para la jornada seleccionada ya fue cerrada
+        caja_cerrada = ArqueoCaja.query.filter_by(fecha_arqueo=fecha_venta_obj.date()).first()
+        if caja_cerrada:
+            return jsonify({
+                'error': f'La caja del día {fecha_venta_obj.date().strftime("%Y-%m-%d")} ya se encuentra cerrada. No es posible registrar nuevas ventas.'
+            }), 400
 
         nueva_venta = Sale(
             vendedor_id=current_user.id,
@@ -189,6 +211,20 @@ def procesar_venta():
             db.session.add(pago)
             total_pagos += monto_pago
 
+        # Sincronización y tolerancia inteligente a redondeos de centavos (evita rechazos por $0.01)
+        diferencia = monto_total - total_pagos
+
+        if len(pagos_data) == 1:
+            # En pago único, el monto del pago se ajusta al monto total exacto de la venta
+            if nueva_venta.pagos:
+                nueva_venta.pagos[0].monto = monto_total
+                total_pagos = monto_total
+        elif abs(diferencia) <= Decimal('0.50'):
+            # En pagos mixtos, diferencias ínfimas por redondeo se absorben en el último pago
+            if nueva_venta.pagos:
+                nueva_venta.pagos[-1].monto += diferencia
+                total_pagos = monto_total
+
         # Validar que la suma de pagos cubra el total de la venta
         if total_pagos != monto_total:
             raise ValueError(f"La suma de los pagos (${total_pagos}) no coincide con el total de la venta (${monto_total}). Diferencia: ${monto_total - total_pagos}.")
@@ -216,30 +252,101 @@ def procesar_venta():
 def api_search_products():
     query = request.args.get('q', '').strip()
     
-    if len(query) < 2:
+    if not query:
         return jsonify([])
     
-    productos = Product.query.filter_by(tipo_inventario='tienda').filter(
-        or_(
-            Product.sku.ilike(f'%{query}%'),
-            Product.nombre.ilike(f'%{query}%')
+    is_admin = (current_user.rol == 'admin')
+    query_norm = normalizar_texto(query)
+    
+    # 1. Búsqueda exacta de SKU o código de barras (prioridad máxima para pistolas lectoras)
+    exacto = Product.query.filter(
+        Product.tipo_inventario == 'tienda',
+        Product.sku.ilike(query)
+    ).first()
+    
+    # 2. Búsqueda por palabras/términos ignorando mayúsculas y tildes
+    tokens = [t for t in query.split() if len(t) > 0]
+    tokens_norm = [normalizar_texto(t) for t in tokens]
+    
+    # Filtro preliminar en SQL con comodín de vocales para optimizar lectura en BD
+    base_query = Product.query.filter(Product.tipo_inventario == 'tienda')
+    for token in tokens:
+        wildcard_v = comodin_vocales(token)
+        base_query = base_query.filter(
+            or_(
+                Product.sku.ilike(f'%{token}%'),
+                Product.nombre.ilike(f'%{token}%'),
+                Product.nombre.ilike(f'%{wildcard_v}%'),
+                Product.variantes.any(ProductVariant.nombre_variante.ilike(f'%{token}%')),
+                Product.variantes.any(ProductVariant.nombre_variante.ilike(f'%{wildcard_v}%'))
+            )
         )
-    ).limit(10).all()
+    
+    candidatos = base_query.limit(40).all()
+    
+    # Si la búsqueda SQL no trajo suficientes por caracteres especiales, incorporar catálogo de tienda
+    if len(candidatos) < 5:
+        todos_tienda = Product.query.filter_by(tipo_inventario='tienda').all()
+        for p in todos_tienda:
+            if p not in candidatos:
+                candidatos.append(p)
+                
+    # Filtrado estricto en memoria normalizando 100% tildes, diacríticos y mayúsculas
+    productos_filtrados = []
+    for p in candidatos:
+        p_nombre_norm = normalizar_texto(p.nombre)
+        p_sku_norm = normalizar_texto(p.sku)
+        variantes_norms = [normalizar_texto(v.nombre_variante) for v in p.variantes]
+        
+        # Cada token buscado debe estar presente en el nombre, sku o alguna variante
+        coincide_todo = True
+        for tn in tokens_norm:
+            en_nombre = (tn in p_nombre_norm)
+            en_sku = (tn in p_sku_norm)
+            en_variante = any(tn in vn for vn in variantes_norms)
+            if not (en_nombre or en_sku or en_variante):
+                coincide_todo = False
+                break
+                
+        if coincide_todo:
+            productos_filtrados.append(p)
+    
+    # Asegurar que la coincidencia exacta de SKU vaya de primera si existe
+    if exacto:
+        if exacto in productos_filtrados:
+            productos_filtrados.remove(exacto)
+        productos_filtrados.insert(0, exacto)
     
     results = []
-    for p in productos:
-        # Preparar data de la misma manera que el endpoint de escaner exacto
+    for p in productos_filtrados[:20]:
         variantes_data = []
+        matched_variant_id = None
         if p.variantes:
             for v in p.variantes:
+                v_norm = normalizar_texto(v.nombre_variante)
+                if any(tn in v_norm for tn in tokens_norm):
+                    if not matched_variant_id:
+                        matched_variant_id = v.id
+                
+                v_costo = float(v.precio_costo) if v.precio_costo is not None else float(p.precio_costo or 0)
+                v_minimo = float(v.precio_minimo) if v.precio_minimo is not None else float(p.precio_minimo or 0)
+                v_sugerido = float(v.precio_sugerido) if v.precio_sugerido is not None else float(p.precio_sugerido or 0)
+                v_limite = v_costo if is_admin else v_minimo
+                
                 variantes_data.append({
                     'id': v.id,
                     'nombre': v.nombre_variante,
                     'stock': v.cantidad_stock,
-                    'precio_costo': float(v.precio_costo) if v.precio_costo else None,
-                    'precio_minimo': float(v.precio_minimo) if v.precio_minimo else None,
-                    'precio_sugerido': float(v.precio_sugerido) if v.precio_sugerido else None
+                    'precio_costo': v_costo,
+                    'precio_minimo': v_minimo,
+                    'precio_sugerido': v_sugerido,
+                    'precio_limite': v_limite
                 })
+        
+        p_costo = float(p.precio_costo or 0)
+        p_minimo = float(p.precio_minimo or 0)
+        p_sugerido = float(p.precio_sugerido or 0)
+        p_limite = p_costo if is_admin else p_minimo
         
         results.append({
             'id': p.id,
@@ -247,10 +354,12 @@ def api_search_products():
             'sku': p.sku,
             'tipo_inventario': p.tipo_inventario,
             'cantidad_stock': p.total_stock,
-            'precio_minimo': float(p.precio_minimo),
-            'precio_sugerido': float(p.precio_sugerido),
-            'precio_costo': float(p.precio_costo),
-            'variantes': variantes_data
+            'precio_minimo': p_minimo,
+            'precio_sugerido': p_sugerido,
+            'precio_costo': p_costo,
+            'precio_limite': p_limite,
+            'variantes': variantes_data,
+            'matched_variant_id': matched_variant_id
         })
     
     return jsonify(results)
@@ -259,23 +368,55 @@ def api_search_products():
 @sales_bp.route('/api/producto/<path:sku>', methods=['GET'])
 @login_required
 def api_buscar_producto(sku):
-    producto = Product.query.filter(Product.sku == sku, Product.tipo_inventario == 'tienda').first()
-    auto_select_variant = None
+    sku_clean = sku.strip()
+    is_admin = (current_user.rol == 'admin')
+    
+    # 1. Búsqueda exacta
+    producto = Product.query.filter(Product.sku == sku_clean, Product.tipo_inventario == 'tienda').first()
+    
+    # 2. Si no encuentra exacto, intentar case-insensitive
+    if not producto:
+        producto = Product.query.filter(Product.sku.ilike(sku_clean), Product.tipo_inventario == 'tienda').first()
+        
+    # 3. Si aún no, buscar ignorando tildes y mayúsculas en nombre o SKU
+    if not producto:
+        sku_norm = normalizar_texto(sku_clean)
+        todos_tienda = Product.query.filter_by(tipo_inventario='tienda').all()
+        for p in todos_tienda:
+            if normalizar_texto(p.sku) == sku_norm or sku_norm in normalizar_texto(p.nombre):
+                producto = p
+                break
     
     if not producto:
-        return jsonify({'error': 'Código SKU no encontrado en el sistema'}), 404
+        return jsonify({'error': f"Código o producto '{sku_clean}' no encontrado en la tienda"}), 404
         
+    variantes_data = []
+    for v in producto.variantes:
+        v_costo = float(v.precio_costo) if v.precio_costo is not None else float(producto.precio_costo or 0)
+        v_minimo = float(v.precio_minimo) if v.precio_minimo is not None else float(producto.precio_minimo or 0)
+        v_sugerido = float(v.precio_sugerido) if v.precio_sugerido is not None else float(producto.precio_sugerido or 0)
+        v_limite = v_costo if is_admin else v_minimo
+        variantes_data.append({
+            'id': v.id,
+            'nombre': v.nombre_variante,
+            'stock': v.cantidad_stock,
+            'precio_minimo': v_minimo,
+            'precio_limite': v_limite,
+            'precio_sugerido': v_sugerido,
+            'precio_costo': v_costo
+        })
+
     return jsonify({
         'id': producto.id,
         'nombre': producto.nombre,
         'sku': producto.sku,
         'tipo_inventario': producto.tipo_inventario,
         'cantidad_stock': producto.total_stock,
-        'precio_minimo': float(producto.precio_minimo),
-        'precio_limite': float(producto.precio_costo) if current_user.rol == 'admin' else float(producto.precio_minimo),
-        'precio_sugerido': float(producto.precio_sugerido),
-        'variantes': [{"id": v.id, "nombre": v.nombre_variante, "stock": v.cantidad_stock, "precio_minimo": float(v.precio_minimo or producto.precio_minimo), "precio_limite": float(v.precio_costo or producto.precio_costo) if current_user.rol == 'admin' else float(v.precio_minimo or producto.precio_minimo), "precio_sugerido": float(v.precio_sugerido or producto.precio_sugerido)} for v in producto.variantes],
-        'auto_select_variant': auto_select_variant
+        'precio_minimo': float(producto.precio_minimo or 0),
+        'precio_limite': float(producto.precio_costo or 0) if is_admin else float(producto.precio_minimo or 0),
+        'precio_sugerido': float(producto.precio_sugerido or 0),
+        'variantes': variantes_data,
+        'auto_select_variant': None
     })
 
 # Ruta para la Impresión del formato Térmico (Ticket)
@@ -349,9 +490,19 @@ def historial():
             elif v.metodo_pago == 'transferencia':
                 total_transferencia_legacy += v.monto_total
 
+    # Métricas consolidadas de alto impacto
+    total_general = total_efectivo + total_nequi + total_bancolombia + total_daviplata + total_transferencia_legacy
+    total_digital = total_nequi + total_bancolombia + total_daviplata + total_transferencia_legacy
+    total_operaciones = len(ventas)
+    ticket_promedio = (total_general / Decimal(total_operaciones)) if total_operaciones > 0 else Decimal('0')
+
     # Envío al Engine de HTML
     return render_template('sales/historial.html', 
                            ventas=ventas, 
+                           total_general=total_general,
+                           total_digital=total_digital,
+                           total_operaciones=total_operaciones,
+                           ticket_promedio=ticket_promedio,
                            total_efectivo=total_efectivo,
                            total_nequi=total_nequi,
                            total_bancolombia=total_bancolombia,
@@ -412,6 +563,12 @@ def ventas_hoy():
 @admin_required
 def eliminar_venta(sale_id):
     venta = Sale.query.get_or_404(sale_id)
+    
+    # Validar si la caja de la fecha de la venta ya está cerrada
+    caja_cerrada = ArqueoCaja.query.filter_by(fecha_arqueo=venta.fecha_venta.date()).first()
+    if caja_cerrada:
+        flash(f'No se puede anular la venta #{venta.id} porque la caja del día {venta.fecha_venta.date().strftime("%Y-%m-%d")} ya fue cerrada.', 'danger')
+        return redirect(url_for('sales_bp.historial'))
     
     try:
         # Revertir Stock

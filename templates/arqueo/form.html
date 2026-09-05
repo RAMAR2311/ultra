@@ -1,137 +1,693 @@
 {% extends "base.html" %}
 
+{% block title %}Arqueo y Cierre de Caja Diario{% endblock %}
+
+{% block extra_css %}
+<style>
+    /* Layout Asimétrico y Estilos del Arqueo */
+    .arqueo-header {
+        background: #ffffff;
+        border-radius: 16px;
+        padding: 1.25rem 1.5rem;
+    }
+    
+    .kpi-card-arqueo {
+        border-radius: 14px;
+        transition: transform 0.18s ease, box-shadow 0.18s ease;
+        border: none;
+    }
+    .kpi-card-arqueo:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 8px 18px rgba(0,0,0,0.08) !important;
+    }
+
+    /* Tirilla Digital */
+    .tirilla-scroll {
+        max-height: 48vh;
+        overflow-y: auto;
+        border-radius: 12px;
+        border: 1px solid #edf2f7;
+    }
+    .tirilla-scroll thead th {
+        position: sticky;
+        top: 0;
+        background-color: #f8fafc;
+        z-index: 5;
+        font-size: 0.78rem;
+        letter-spacing: 0.5px;
+    }
+
+    /* Badges de métodos de pago */
+    .badge-pago-efectivo {
+        background-color: #dcfce7;
+        color: #15803d;
+        border: 1px solid #bbf7d0;
+    }
+    .badge-pago-digital {
+        background-color: #e0f2fe;
+        color: #0369a1;
+        border: 1px solid #bae6fd;
+    }
+    .badge-pago-mixto {
+        background-color: #fef3c7;
+        color: #b45309;
+        border: 1px solid #fde68a;
+    }
+
+    /* Columna Derecha Sticky */
+    .sticky-panel-arqueo {
+        position: sticky;
+        top: 85px;
+    }
+
+    /* Widget de Diferencia Dinámica */
+    .diff-box {
+        border-radius: 14px;
+        padding: 1.2rem;
+        text-align: center;
+        transition: all 0.25s ease;
+        border: 2px solid transparent;
+    }
+    .diff-title {
+        font-family: 'Orbitron', sans-serif;
+        font-size: 0.85rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+    }
+    .diff-value {
+        font-family: 'Orbitron', monospace, sans-serif !important;
+        font-size: 2.1rem;
+        font-weight: 900;
+        line-height: 1.2;
+        letter-spacing: 0.5px;
+    }
+    
+    .diff-neutral {
+        background-color: #f8fafc;
+        color: #64748b;
+        border-color: #cbd5e1;
+    }
+    .diff-cuadrada {
+        background-color: #ecfdf5;
+        color: #065f46;
+        border-color: #a7f3d0;
+    }
+    .diff-faltante {
+        background-color: #fef2f2;
+        color: #991b1b;
+        border-color: #fecaca;
+    }
+    .diff-sobrante {
+        background-color: #fffbeb;
+        color: #92400e;
+        border-color: #fde68a;
+    }
+
+    /* Desglose Digital mini cards */
+    .mini-canal-card {
+        border-radius: 10px;
+        padding: 0.65rem 0.85rem;
+        background: #ffffff;
+        border: 1px solid #e2e8f0;
+        transition: transform 0.15s ease;
+    }
+    .mini-canal-card:hover {
+        transform: translateY(-2px);
+    }
+</style>
+{% endblock %}
+
 {% block content %}
-<div class="row justify-content-center">
-    <div class="col-md-8">
-        <h2 class="fw-bold text-center mb-4" style="color: #A3D8DE;">
-            <i class="fa-solid fa-cash-register me-2"></i> Nuevo Arqueo de Caja
-        </h2>
-
-        <!-- Seleccionador de Fecha -->
-        <div class="card card-custom p-4 mb-4 border-0 shadow-sm">
-            <form id="fechaForm" action="{{ url_for('arqueo_bp.nuevo') }}" method="GET" class="d-flex align-items-center">
-                <label for="fecha" class="fw-bold me-3 text-brand-black">Fecha del Arqueo:</label>
-                <input type="date" id="fecha" name="fecha" value="{{ fecha }}" class="form-control w-auto me-3" onchange="this.form.submit()" required>
-                <button type="submit" class="btn btn-outline-secondary rounded-pill px-4" style="display:none;">Consultar</button>
-            </form>
-        </div>
-
-        {% if arqueo_existente %}
-        <div class="alert alert-warning text-center rounded-pill">
-            <i class="fa-solid fa-triangle-exclamation me-1"></i> La caja del día <strong>{{ fecha }}</strong> ya fue cerrada por <strong>{{ arqueo_existente.cajero.nombre }}</strong>. No se puede volver a cerrar.
-            <a href="{{ url_for('arqueo_bp.reporte', fecha_inicio=fecha, fecha_fin=fecha) }}" class="fw-bold text-dark ms-2">Ver Reporte</a>
-        </div>
-        {% else %}
-
-        <form action="{{ url_for('arqueo_bp.nuevo') }}?fecha={{ fecha }}" method="POST">
-            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-
-            <div class="row g-4">
-                <!-- Columna Izquierda: Datos del Sistema -->
-                <div class="col-12 col-md-6">
-                    <div class="card card-custom p-4 h-100 border-0 shadow-sm" style="background-color: #fafbfc;">
-                        <h5 class="fw-bold text-muted mb-3"><i class="fa-solid fa-calculator me-2"></i> Datos del Sistema (Automáticos)</h5>
-                        
-                        <div class="mb-3">
-                            <label class="form-label text-muted mb-1">Total Ventas en Efectivo</label>
-                            <div class="input-group">
-                                <span class="input-group-text bg-white">$</span>
-                                <input type="text" id="total_efectivo_visual" class="form-control fw-bold" value="{{ (total_efectivo)|cop }}" readonly disabled>
-                            </div>
-                        </div>
-
-                        <div class="mb-3">
-                            <label class="form-label text-muted mb-1">Total Ventas por Medios Digitales</label>
-                            <div class="input-group">
-                                <span class="input-group-text bg-white">$</span>
-                                <input type="text" id="total_transferencia_visual" class="form-control fw-bold" value="{{ (total_transferencia)|cop }}" readonly disabled>
-                            </div>
-                        </div>
-
-                        <!-- Venta Total del Día -->
-                        <div class="alert mt-3 rounded-3 p-3 text-center" style="background-color: #d4edda; color: #155724; border: 1px solid #b1dfbb;">
-                            <span class="d-block mb-1 fw-semibold" style="font-size: 0.85rem;"><i class="fa-solid fa-chart-line me-1"></i> Venta + Banco</span>
-                                ${{ ((total_efectivo|int + total_transferencia|int) - (gastos_automaticos or 0))|cop }}
-                            </span>
-                            <span class="d-block mt-1 opacity-75" style="font-size: 0.7rem;">(Efectivo + Bancos) - Gastos</span>
-                        </div>
-
-                        <div class="alert mt-3 rounded-3 p-3 text-center" style="background-color: #F9C8D3; color: #4a4a4a; border: 1px solid #ebaebc;">
-                            <span class="d-block mb-1 opacity-75 fw-semibold" style="font-size: 0.9rem;">Efectivo Esperado en Caja</span>
-                            <span class="fs-3 fw-bold align-middle d-flex justify-content-center align-items-center">
-                                $ <span id="efectivo_esperado" class="ms-1">0</span>
-                            </span>
-                            <span class="d-block mt-1 opacity-75" style="font-size: 0.7rem;">(Base + Efectivo) - Gastos</span>
-                        </div>
-
-                    </div>
-                </div>
-
-                <!-- Columna Derecha: Ingresos de Cajero -->
-                <div class="col-12 col-md-6">
-                    <div class="card card-custom p-4 h-100 border-0 shadow-sm">
-                        <h5 class="fw-bold text-brand-black mb-3"><i class="fa-solid fa-user-pen me-2"></i> Tu Ingreso Manual</h5>
-                        
-                        <div class="mb-3">
-                            <label for="base_inicial" class="form-label fw-semibold">Base Inicial (Efectivo inicio de caja) <span class="text-danger">*</span></label>
-                            <div class="input-group">
-                                <span class="input-group-text border-end-0 bg-white"><i class="fa-solid fa-sack-dollar text-muted"></i></span>
-                                <input type="number" step="1" min="0" id="base_inicial" name="base_inicial" class="form-control border-start-0" required>
-                            </div>
-                            <div class="form-text">Dinero en caja desde la apertura.</div>
-                        </div>
-
-                        <div class="mb-3">
-                            <label for="gastos_del_dia" class="form-label fw-semibold">Gastos del Día</label>
-                            <div class="input-group">
-                                <span class="input-group-text border-end-0 bg-white"><i class="fa-solid fa-money-bill-transfer text-danger"></i></span>
-                                <input type="number" step="1" min="0" id="gastos_del_dia" name="gastos_del_dia" class="form-control border-start-0 bg-light" value="{{ gastos_automaticos|int if gastos_automaticos else 0 }}" readonly>
-                            </div>
-                            <small class="form-text text-muted">Valor calculado automáticamente desde el módulo de Gastos Diarios de hoy.</small>
-                        </div>
-
-                        <div class="mb-4">
-                            <label for="observaciones_gastos" class="form-label fw-semibold">Observación u Detalle del Gasto</label>
-                            <textarea id="observaciones_gastos" name="observaciones_gastos" rows="2" class="form-control"></textarea>
-                        </div>
-                    </div>
-                </div>
+<div class="container-fluid px-0 pb-5">
+    
+    <!-- Encabezado Superior con Selector de Fecha -->
+    <div class="arqueo-header shadow-sm border mb-4">
+        <div class="d-flex flex-wrap justify-content-between align-items-center gap-3">
+            <div>
+                <h2 class="fw-bold text-brand-black m-0">
+                    <i class="fa-solid fa-calculator text-brand-blue me-2"></i>Arqueo y Cierre de Caja Diario
+                </h2>
+                <small class="text-muted">Conciliación financiera y auditoría del efectivo físico vs sistema</small>
             </div>
+            
+            <div class="d-flex align-items-center gap-2">
+                <form id="formFechaArqueo" action="{{ url_for('arqueo_bp.nuevo') }}" method="GET" class="d-flex align-items-center gap-2">
+                    <label for="inputFecha" class="small fw-bold text-muted text-uppercase mb-0 d-none d-md-inline">Fecha:</label>
+                    <input type="date" 
+                           id="inputFecha" 
+                           name="fecha" 
+                           value="{{ fecha }}" 
+                           class="form-control form-control-sm bg-light border fw-bold shadow-none" 
+                           style="width: 160px; cursor: pointer;"
+                           onchange="this.form.submit()">
+                </form>
 
-            <div class="d-flex justify-content-center mt-5">
-                <button type="submit" class="btn btn-lg rounded-pill px-5 fw-bold text-dark w-100 shadow-sm" style="background-color: #A3D8DE;">
-                    <i class="fa-solid fa-lock me-2"></i> Cerrar Caja y Guardar Arqueo
+                <a href="{{ url_for('arqueo_bp.reporte', fecha=fecha) }}" class="btn btn-sm btn-outline-secondary rounded-pill px-3 shadow-2xs">
+                    <i class="fa-solid fa-print me-1"></i> Reporte Imprimible
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Alerta de Estado: Caja Cerrada vs Abierta -->
+    {% if caja_cerrada %}
+    <div class="alert alert-warning border-0 shadow-sm d-flex flex-wrap justify-content-between align-items-center mb-4 p-3 rounded-4" style="background-color: #fffbeb; border-left: 5px solid #f59e0b !important;">
+        <div class="d-flex align-items-center gap-3">
+            <div class="rounded-circle bg-warning bg-opacity-25 p-2 text-warning-emphasis fs-4">
+                <i class="fa-solid fa-lock"></i>
+            </div>
+            <div>
+                <h6 class="fw-bold text-dark mb-1">Caja del Día Cerrada (Solo Lectura)</h6>
+                <p class="mb-0 small text-muted">
+                    Esta jornada fue archivada por <strong>{{ arqueo.cajero.nombre if arqueo.cajero else 'Cajero' }}</strong> 
+                    el <strong>{{ arqueo.fecha_cierre.strftime('%d/%m/%Y a las %I:%M %p') if arqueo.fecha_cierre else (arqueo.fecha_creacion.strftime('%d/%m/%Y a las %I:%M %p') if arqueo.fecha_creacion else '') }}</strong>.
+                    Los datos se encuentran inmutables para garantizar la transparencia contable.
+                </p>
+            </div>
+        </div>
+        
+        <div class="d-flex align-items-center gap-2 mt-2 mt-md-0">
+            {% if current_user.rol == 'admin' %}
+            <form action="{{ url_for('arqueo_bp.eliminar', id=arqueo.id) }}" method="POST" onsubmit="return confirm('⚠️ ¿Estás seguro de anular este cierre de caja?\n\nAl reabrir la caja, los campos volverán a estar editables para que el cajero corrija su conteo.');">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <button type="submit" class="btn btn-outline-danger btn-sm rounded-pill px-3 shadow-2xs fw-bold">
+                    <i class="fa-solid fa-lock-open me-1"></i> Reabrir Caja (Admin)
                 </button>
+            </form>
+            {% endif %}
+            <a href="{{ url_for('arqueo_bp.reporte', fecha=fecha) }}" target="_blank" class="btn btn-dark btn-sm rounded-pill px-3 shadow-2xs">
+                <i class="fa-solid fa-receipt me-1"></i> Imprimir Tirilla
+            </a>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Layout Asimétrico 70% (Izquierda) - 30% (Derecha Sticky) -->
+    <div class="row g-4">
+        
+        <!-- COLUMNA IZQUIERDA (70%): Auditoría Operativa, Desgloses y Tirilla -->
+        <div class="col-lg-8">
+            
+            <!-- 3 KPI Cards Superiores -->
+            <div class="row g-3 mb-4">
+                <div class="col-md-4">
+                    <div class="card kpi-card-arqueo bg-success text-white p-3 shadow-sm h-100" style="background: linear-gradient(135deg, #16a34a 0%, #15803d 100%) !important;">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <small class="text-white-50 fw-bold text-uppercase d-block mb-1">Efectivo en Sistema</small>
+                                <h3 class="fw-bolder m-0">${{ total_efectivo|cop }}</h3>
+                            </div>
+                            <div class="rounded-circle bg-white bg-opacity-20 p-3 fs-4">
+                                <i class="fa-solid fa-money-bill-wave"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-md-4">
+                    <div class="card kpi-card-arqueo text-white p-3 shadow-sm h-100" style="background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%) !important;">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <small class="text-white-50 fw-bold text-uppercase d-block mb-1">Dinero Digital / Bancos</small>
+                                <h3 class="fw-bolder m-0">${{ total_digital|cop }}</h3>
+                            </div>
+                            <div class="rounded-circle bg-white bg-opacity-20 p-3 fs-4">
+                                <i class="fa-solid fa-mobile-screen-button"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-md-4">
+                    <div class="card kpi-card-arqueo bg-dark text-white p-3 shadow-sm h-100" style="background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%) !important;">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <small class="text-white-50 fw-bold text-uppercase d-block mb-1">Venta Total Bruta</small>
+                                <h3 class="fw-bolder m-0">${{ (total_efectivo + total_digital)|cop }}</h3>
+                            </div>
+                            <div class="rounded-circle bg-white bg-opacity-20 p-3 fs-4">
+                                <i class="fa-solid fa-sack-dollar"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
-        </form>
-        {% endif %}
+
+            <!-- Desglose Multicanal de Billeteras Digitales -->
+            <div class="card card-custom p-3 border-0 shadow-sm mb-4 bg-white">
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <h6 class="fw-bold text-brand-black small text-uppercase m-0">
+                        <i class="fa-solid fa-wallet text-brand-blue me-2"></i>Desglose de Billeteras Digitales & Bancos
+                    </h6>
+                    <span class="badge bg-light text-muted border small">{{ desglose_digital.values()|sum|cop }}</span>
+                </div>
+                
+                <div class="row g-2">
+                    <div class="col-4 col-md-2">
+                        <div class="mini-canal-card text-center">
+                            <span class="d-block small text-muted fw-semibold">📱 Nequi</span>
+                            <strong class="text-dark fs-6">${{ desglose_digital.nequi|cop }}</strong>
+                        </div>
+                    </div>
+                    <div class="col-4 col-md-2">
+                        <div class="mini-canal-card text-center">
+                            <span class="d-block small text-muted fw-semibold">🏦 Bancolombia</span>
+                            <strong class="text-dark fs-6">${{ desglose_digital.bancolombia|cop }}</strong>
+                        </div>
+                    </div>
+                    <div class="col-4 col-md-2">
+                        <div class="mini-canal-card text-center">
+                            <span class="d-block small text-muted fw-semibold">📱 Daviplata</span>
+                            <strong class="text-dark fs-6">${{ desglose_digital.daviplata|cop }}</strong>
+                        </div>
+                    </div>
+                    <div class="col-4 col-md-2">
+                        <div class="mini-canal-card text-center">
+                            <span class="d-block small text-muted fw-semibold">💳 Datáfono</span>
+                            <strong class="text-dark fs-6">${{ desglose_digital.datafono|cop }}</strong>
+                        </div>
+                    </div>
+                    <div class="col-4 col-md-2">
+                        <div class="mini-canal-card text-center">
+                            <span class="d-block small text-muted fw-semibold">⏳ Crédito</span>
+                            <strong class="text-dark fs-6">${{ desglose_digital.credito|cop }}</strong>
+                        </div>
+                    </div>
+                    <div class="col-4 col-md-2">
+                        <div class="mini-canal-card text-center">
+                            <span class="d-block small text-muted fw-semibold">🌐 Otros</span>
+                            <strong class="text-dark fs-6">${{ desglose_digital.otros|cop }}</strong>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tirilla Digital de Ventas del Día -->
+            <div class="card card-custom p-0 border-0 shadow-sm mb-4 overflow-hidden">
+                <div class="card-header bg-white border-bottom pt-3 pb-2 px-3 d-flex justify-content-between align-items-center">
+                    <div>
+                        <h6 class="fw-bold text-brand-black m-0">
+                            <i class="fa-solid fa-receipt text-muted me-2"></i>Tirilla Digital de Ventas del Día
+                        </h6>
+                        <small class="text-muted">{{ ventas|length }} tickets facturados</small>
+                    </div>
+                    <span class="badge bg-light text-dark border fw-semibold">
+                        Total: ${{ (total_efectivo + total_digital)|cop }}
+                    </span>
+                </div>
+
+                <div class="tirilla-scroll p-0">
+                    <table class="table table-hover align-middle mb-0">
+                        <thead>
+                            <tr class="text-secondary">
+                                <th class="ps-3 py-2">TICKET</th>
+                                <th>HORA</th>
+                                <th>MEDIO DE PAGO</th>
+                                <th>PRODUCTOS VENDIDOS</th>
+                                <th class="text-end pe-3">TOTAL</th>
+                            </tr>
+                        </thead>
+                        <tbody style="font-size: 0.88rem;">
+                            {% for v in ventas %}
+                            <tr>
+                                <td class="ps-3 fw-bold font-monospace text-muted">
+                                    #{{ "{:05d}".format(v.id) }}
+                                </td>
+                                <td class="text-muted small">
+                                    {{ v.fecha_venta.strftime('%I:%M %p') }}
+                                </td>
+                                <td>
+                                    {% if v.pagos and v.pagos|length == 1 %}
+                                        {% set pago = v.pagos[0] %}
+                                        {% if pago.metodo_pago|lower == 'efectivo' %}
+                                            <span class="badge badge-pago-efectivo rounded-pill px-2 py-1 small">
+                                                <i class="fa-solid fa-money-bill-wave me-1"></i> Efectivo
+                                            </span>
+                                        {% else %}
+                                            <span class="badge badge-pago-digital rounded-pill px-2 py-1 small">
+                                                <i class="fa-solid fa-mobile-screen-button me-1"></i> {{ pago.metodo_pago|title }}
+                                            </span>
+                                        {% endif %}
+                                    {% elif v.pagos and v.pagos|length > 1 %}
+                                        <span class="badge badge-pago-mixto rounded-pill px-2 py-1 small mb-1">
+                                            <i class="fa-solid fa-arrows-split-up-and-left me-1"></i> Mixto ({{ v.pagos|length }})
+                                        </span>
+                                        <div class="small text-muted" style="font-size: 0.72rem;">
+                                            {% for p in v.pagos %}
+                                                <div>{{ p.metodo_pago|title }}: ${{ p.monto|cop }}</div>
+                                            {% endfor %}
+                                        </div>
+                                    {% else %}
+                                        {% if (v.metodo_pago or 'efectivo')|lower == 'efectivo' %}
+                                            <span class="badge badge-pago-efectivo rounded-pill px-2 py-1 small">
+                                                <i class="fa-solid fa-money-bill-wave me-1"></i> Efectivo
+                                            </span>
+                                        {% else %}
+                                            <span class="badge badge-pago-digital rounded-pill px-2 py-1 small">
+                                                <i class="fa-solid fa-mobile-screen-button me-1"></i> {{ v.metodo_pago|title }}
+                                            </span>
+                                        {% endif %}
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <ul class="list-unstyled mb-0" style="font-size: 0.82rem;">
+                                        {% for det in v.detalles %}
+                                        <li class="text-truncate" style="max-width: 250px;">
+                                            <span class="fw-bold text-dark">{{ det.cantidad }}x</span> 
+                                            {{ det.nombre_manual if det.nombre_manual else (det.producto.nombre if det.producto else 'Item') }}
+                                        </li>
+                                        {% endfor %}
+                                    </ul>
+                                </td>
+                                <td class="text-end pe-3 fw-bold text-dark">
+                                    ${{ v.monto_total|cop }}
+                                </td>
+                            </tr>
+                            {% else %}
+                            <tr>
+                                <td colspan="5" class="text-center text-muted py-5">
+                                    <i class="fa-solid fa-basket-shopping fs-2 mb-2 text-black-50 opacity-50"></i>
+                                    <div>No se registraron ventas para la fecha seleccionada.</div>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Tabla de Gastos del Día (Salidas de Caja Chica) -->
+            <div class="card card-custom p-0 border-0 shadow-sm overflow-hidden">
+                <div class="card-header bg-white border-bottom pt-3 pb-2 px-3 d-flex justify-content-between align-items-center">
+                    <div>
+                        <h6 class="fw-bold text-danger m-0">
+                            <i class="fa-solid fa-money-bill-transfer me-2"></i>Gastos Diarios del Turno (Salidas de Caja)
+                        </h6>
+                        <small class="text-muted">Gastos en efectivo pagados con dinero de caja</small>
+                    </div>
+                    <span class="badge bg-danger bg-opacity-10 text-danger border border-danger-subtle fw-semibold">
+                        Total Gastos: ${{ total_gastos|cop }}
+                    </span>
+                </div>
+
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0">
+                        <thead class="table-light text-secondary" style="font-size: 0.8rem;">
+                            <tr>
+                                <th class="ps-3 py-2">HORA</th>
+                                <th>CATEGORÍA / CONCEPTO</th>
+                                <th>MÉTODO DE PAGO</th>
+                                <th class="text-end pe-3">VALOR</th>
+                            </tr>
+                        </thead>
+                        <tbody style="font-size: 0.86rem;">
+                            {% for g in gastos %}
+                            <tr>
+                                <td class="ps-3 text-muted">{{ g.fecha_gasto.strftime('%I:%M %p') if g.fecha_gasto else '-' }}</td>
+                                <td>
+                                    <span class="fw-semibold text-dark">{{ g.descripcion or g.categoria or 'Gasto' }}</span>
+                                    <small class="text-muted d-block" style="font-size: 0.72rem;">{{ g.tipo_gasto }}</small>
+                                </td>
+                                <td>
+                                    <span class="badge {{ 'badge-pago-efectivo' if (g.metodo_pago or 'efectivo') == 'efectivo' else 'badge-pago-digital' }} rounded-pill px-2 py-1 small">
+                                        {{ (g.metodo_pago or 'efectivo')|title }}
+                                    </span>
+                                </td>
+                                <td class="text-end pe-3 fw-bold text-danger">
+                                    -${{ g.monto|cop }}
+                                </td>
+                            </tr>
+                            {% else %}
+                            <tr>
+                                <td colspan="4" class="text-center text-muted py-4 small">
+                                    <i class="fa-regular fa-circle-check text-success me-1"></i> No se registraron salidas de dinero en efectivo hoy.
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- COLUMNA DERECHA (30% STICKY): Conciliación, Conteo Físico y Cierre -->
+        <div class="col-lg-4">
+            <div class="sticky-panel-arqueo">
+                
+                <!-- BLOQUE 1: Reporte Teórico del Sistema (Solo Lectura) -->
+                <div class="card card-custom p-3 border-0 shadow-sm mb-3 bg-white">
+                    <h6 class="fw-bold text-brand-black small text-uppercase mb-3 pb-2 border-bottom">
+                        <i class="fa-solid fa-server text-brand-blue me-2"></i>Reporte del Sistema
+                    </h6>
+
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <span class="small text-muted fw-semibold">Efectivo Sistema:</span>
+                        <strong class="text-success fs-6">${{ total_efectivo|cop }}</strong>
+                    </div>
+
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <span class="small text-muted fw-semibold">Dinero Digital:</span>
+                        <strong class="text-primary fs-6">${{ total_digital|cop }}</strong>
+                    </div>
+
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <span class="small text-muted fw-semibold">Gastos en Efectivo:</span>
+                        <strong class="text-danger fs-6">-${{ total_gastos|cop }}</strong>
+                    </div>
+
+                    <div class="pt-2 border-top d-flex justify-content-between align-items-center">
+                        <span class="small fw-bold text-dark text-uppercase">Total Recaudado Neto:</span>
+                        <strong class="text-dark fs-5" id="lblTotalNeto">${{ total_neto|cop }}</strong>
+                    </div>
+                </div>
+
+                <!-- BLOQUE 2: Conciliación y Conteo Físico -->
+                <div class="card card-custom p-4 border-0 shadow-sm bg-white">
+                    <h6 class="fw-bold text-brand-black small text-uppercase mb-3 pb-2 border-bottom">
+                        <i class="fa-solid fa-scale-balanced text-brand-blue me-2"></i>Conteo Físico y Cuadre
+                    </h6>
+
+                    <form id="formCierreCaja" action="{{ url_for('arqueo_bp.nuevo') }}" method="POST">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <input type="hidden" name="fecha" value="{{ fecha }}">
+
+                        <!-- 1. Base Inicial -->
+                        <div class="mb-3">
+                            <label class="form-label fw-bold text-brand-black small mb-1">
+                                1. Base Inicial (Apertura de Caja) <span class="text-danger">*</span>
+                            </label>
+                            <div class="input-group input-group-sm">
+                                <span class="input-group-text bg-light text-muted border">$</span>
+                                <input type="number" 
+                                       step="any" 
+                                       min="0" 
+                                       id="input_base_inicial" 
+                                       name="base_inicial" 
+                                       class="form-control text-end fw-bold fs-6" 
+                                       placeholder="0" 
+                                       value="{{ "{:.0f}".format(base_inicial) }}" 
+                                       required 
+                                       {{ 'disabled' if caja_cerrada else '' }}>
+                            </div>
+                            <small class="text-muted" style="font-size: 0.72rem;">Efectivo con el que abrió caja en la mañana.</small>
+                        </div>
+
+                        <!-- 2. Gastos en Efectivo (Salidas de caja chica) -->
+                        <div class="mb-3">
+                            <label class="form-label fw-bold text-brand-black small mb-1">
+                                2. Gastos del Día (Salidas en Efectivo)
+                            </label>
+                            <div class="input-group input-group-sm">
+                                <span class="input-group-text bg-light text-danger border">-$</span>
+                                <input type="number" 
+                                       id="input_gastos_dia" 
+                                       name="gastos_del_dia" 
+                                       class="form-control text-end fw-bold text-danger bg-light" 
+                                       value="{{ "{:.0f}".format(total_gastos) }}" 
+                                       readonly>
+                            </div>
+                            <small class="text-muted" style="font-size: 0.72rem;">Precargado automáticamente desde los gastos diarios.</small>
+                        </div>
+
+                        <!-- 3. Efectivo Físico Contado -->
+                        <div class="mb-3">
+                            <label class="form-label fw-bold text-brand-black small mb-1">
+                                3. Efectivo Físico Contado (En Cajón) <span class="text-danger">*</span>
+                            </label>
+                            <div class="input-group shadow-sm">
+                                <span class="input-group-text bg-white text-success fw-bold fs-4">$</span>
+                                <input type="number" 
+                                       step="any" 
+                                       min="0" 
+                                       id="input_efectivo_fisico" 
+                                       name="efectivo_fisico" 
+                                       class="form-control form-control-lg text-end fw-bolder text-success fs-3 bg-white" 
+                                       placeholder="0" 
+                                       style="height: 58px;" 
+                                       value="{{ "{:.0f}".format(efectivo_fisico) if efectivo_fisico is not none else '' }}" 
+                                       required 
+                                       {{ 'disabled' if caja_cerrada else '' }} 
+                                       autofocus>
+                            </div>
+                            <small class="text-muted" style="font-size: 0.72rem;">Suma total de billetes y monedas contados en el cajón.</small>
+                        </div>
+
+                        <!-- WIDGET DINÁMICO DE DIFERENCIA EN TIEMPO REAL -->
+                        <div class="diff-box diff-neutral mb-3" id="widgetDiferencia">
+                            <div class="diff-title" id="lblDiffTitle">Ingrese Efectivo Físico</div>
+                            <div class="diff-value" id="lblDiffValue">$0</div>
+                            <small class="d-block mt-1 opacity-75" id="lblDiffSub">Esperado en caja: ${{ efectivo_esperado|cop }}</small>
+                        </div>
+
+                        <!-- Observaciones / Justificación de Descuadre -->
+                        <div class="mb-3" id="contObservaciones">
+                            <label class="form-label fw-bold small text-brand-black mb-1">
+                                Observaciones o Justificación <span class="text-danger d-none" id="obsAsterisco">*</span>
+                            </label>
+                            <textarea name="observaciones_diferencia" 
+                                      id="txtObservaciones" 
+                                      rows="2" 
+                                      class="form-control small" 
+                                      placeholder="Explique novedades, diferencias o motivos del descuadre..." 
+                                      {{ 'disabled' if caja_cerrada else '' }}>{{ observaciones }}</textarea>
+                        </div>
+
+                        <!-- Botón de Acción Principal -->
+                        <div class="d-grid gap-2 pt-2 border-top">
+                            {% if caja_cerrada %}
+                                <a href="{{ url_for('arqueo_bp.reporte', fecha=fecha) }}" target="_blank" class="btn btn-secondary py-3 fw-bold rounded-3 shadow-sm">
+                                    <i class="fa-solid fa-print me-2"></i> Imprimir Reporte de Cierre
+                                </a>
+                            {% else %}
+                                <button type="submit" class="btn btn-blue py-3 fw-bold rounded-3 shadow-sm text-uppercase" id="btnGuardarArqueo">
+                                    <i class="fa-solid fa-lock me-2"></i> Guardar y Cerrar Caja
+                                </button>
+                            {% endif %}
+                        </div>
+
+                    </form>
+                </div>
+
+            </div>
+        </div>
+
     </div>
 </div>
 
 <script>
-document.addEventListener("DOMContentLoaded", function() {
-    const totalEfectivo = parseInt("{{ total_efectivo|int if total_efectivo else 0 }}", 10) || 0;
-    
-    const inputBaseInicial = document.getElementById("base_inicial");
-    const inputGastos = document.getElementById("gastos_del_dia");
-    const spanEsperado = document.getElementById("efectivo_esperado");
+    document.addEventListener('DOMContentLoaded', function() {
+        const inputBase = document.getElementById('input_base_inicial');
+        const inputGastos = document.getElementById('input_gastos_dia');
+        const inputFisico = document.getElementById('input_efectivo_fisico');
+        
+        const sysEfectivo = parseFloat("{{ total_efectivo }}") || 0;
+        const sysDigital = parseFloat("{{ total_digital }}") || 0;
 
-    const formatoCOP = (num) => Math.round(num).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+        const widgetDiff = document.getElementById('widgetDiferencia');
+        const lblTitle = document.getElementById('lblDiffTitle');
+        const lblValue = document.getElementById('lblDiffValue');
+        const lblSub = document.getElementById('lblDiffSub');
+        const txtObs = document.getElementById('txtObservaciones');
+        const obsAsterisco = document.getElementById('obsAsterisco');
+        const btnGuardar = document.getElementById('btnGuardarArqueo');
 
-    function calcularEsperado() {
-        if(!inputBaseInicial || !spanEsperado) return;
-        const base = parseFloat(inputBaseInicial.value) || 0;
-        const gastos = parseFloat(inputGastos.value) || 0;
+        const cajaCerrada = "{{ 'true' if caja_cerrada else 'false' }}" === "true";
 
-        const formula = (base + totalEfectivo) - gastos;
-        spanEsperado.textContent = formatoCOP(formula);
-    }
+        function formatCOP(valor) {
+            return new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 }).format(valor || 0);
+        }
 
-    if(inputBaseInicial) {
-        inputBaseInicial.addEventListener("input", calcularEsperado);
-        inputGastos.addEventListener("input", calcularEsperado);
-        calcularEsperado(); // Cálculo inicial
-    }
-});
+        function calcularDiferenciaEnVivo() {
+            const base = parseFloat(inputBase.value) || 0;
+            const gastos = parseFloat(inputGastos.value) || 0;
+            const fisicoRaw = inputFisico.value;
+            const fisico = parseFloat(fisicoRaw);
+
+            // Fórmula: Efectivo Esperado = Base + Efectivo Sistema - Gastos en Efectivo
+            const esperado = (base + sysEfectivo) - gastos;
+            lblSub.textContent = `Esperado en caja: ${formatCOP(esperado)}`;
+
+            // Si está cerrada, solo mostramos el valor archivado
+            if (cajaCerrada) {
+                const difArchivada = parseFloat("{{ diferencia if diferencia is not none else 0 }}") || 0;
+                aplicarEstadoDiferencia(difArchivada);
+                return;
+            }
+
+            if (fisicoRaw === '' || isNaN(fisico)) {
+                widgetDiff.className = 'diff-box diff-neutral';
+                lblTitle.textContent = "Ingrese Efectivo Físico";
+                lblValue.textContent = "$0";
+                txtObs.removeAttribute('required');
+                if (obsAsterisco) obsAsterisco.classList.add('d-none');
+                return;
+            }
+
+            const diferencia = fisico - esperado;
+            aplicarEstadoDiferencia(diferencia);
+        }
+
+        function aplicarEstadoDiferencia(diferencia) {
+            widgetDiff.className = 'diff-box';
+
+            if (Math.abs(diferencia) < 1) {
+                // Caja Cuadrada
+                widgetDiff.classList.add('diff-cuadrada');
+                lblTitle.innerHTML = '<i class="fa-solid fa-circle-check me-1"></i> ¡Caja Cuadrada!';
+                lblValue.textContent = "$0";
+                txtObs.removeAttribute('required');
+                if (obsAsterisco) obsAsterisco.classList.add('d-none');
+            } else if (diferencia < 0) {
+                // Faltante en Caja
+                widgetDiff.classList.add('diff-faltante');
+                lblTitle.innerHTML = '<i class="fa-solid fa-triangle-exclamation me-1"></i> Faltante en Caja';
+                lblValue.textContent = '-' + formatCOP(Math.abs(diferencia));
+                txtObs.setAttribute('required', 'required');
+                if (obsAsterisco) obsAsterisco.classList.remove('d-none');
+            } else {
+                // Sobrante en Caja
+                widgetDiff.classList.add('diff-sobrante');
+                lblTitle.innerHTML = '<i class="fa-solid fa-circle-exclamation me-1"></i> Sobrante en Caja';
+                lblValue.textContent = '+' + formatCOP(diferencia);
+                txtObs.setAttribute('required', 'required');
+                if (obsAsterisco) obsAsterisco.classList.remove('d-none');
+            }
+        }
+
+        if (!cajaCerrada) {
+            inputBase.addEventListener('input', calcularDiferenciaEnVivo);
+            inputFisico.addEventListener('input', calcularDiferenciaEnVivo);
+
+            document.getElementById('formCierreCaja').addEventListener('submit', function(e) {
+                const base = parseFloat(inputBase.value) || 0;
+                const gastos = parseFloat(inputGastos.value) || 0;
+                const fisico = parseFloat(inputFisico.value) || 0;
+                const esperado = (base + sysEfectivo) - gastos;
+                const diferencia = fisico - esperado;
+
+                if (Math.abs(diferencia) >= 1 && txtObs.value.trim() === '') {
+                    e.preventDefault();
+                    txtObs.focus();
+                    alert(`⚠️ Hay un descuadre en caja de ${formatCOP(diferencia)}.\n\nEs obligatorio ingresar una observación justificando la diferencia antes de cerrar.`);
+                    return;
+                }
+
+                if (!confirm(`¿Confirmas el cierre definitivo de caja para el día {{ fecha }}?\n\n- Efectivo esperado: ${formatCOP(esperado)}\n- Efectivo contado: ${formatCOP(fisico)}\n- Diferencia: ${formatCOP(diferencia)}\n\nUna vez cerrada, la jornada quedará bloqueada en modo solo lectura.`)) {
+                    e.preventDefault();
+                    return;
+                }
+
+                if (btnGuardar) {
+                    btnGuardar.disabled = true;
+                    btnGuardar.innerHTML = '<i class="fa-solid fa-spinner fa-spin me-2"></i> Cerrando Caja...';
+                }
+            });
+        }
+
+        // Ejecución inicial al cargar la página
+        calcularDiferenciaEnVivo();
+    });
 </script>
 {% endblock %}

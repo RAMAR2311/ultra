@@ -3,17 +3,25 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Ticket de Compra #{{ venta.id }} - KOBA</title>
-    <!-- Incluir solo la fuente base "Roboto Mono" (Letra de ticketera 80mm) -->
-    <link href="https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@400;700&display=swap" rel="stylesheet">
+    <title>Ticket de Compra #{{ venta.id }} - ULTRA TECH</title>
+    <!-- Google Fonts: Orbitron, Montserrat y Roboto Mono -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&family=Orbitron:ital,wght@0,700;0,900;1,700;1,900&family=Roboto+Mono:wght@400;700&display=swap" rel="stylesheet">
     <style>
+        /* =========================================================
+           TICKET DIGITAL (VISTA PANTALLA / NAVEGADOR / PDF)
+           Paleta Oficial ULTRA TECH: Fondo Blanco #FFFFFF / #F8F9FA,
+           Texto Oscuro #0F172A, Magenta Neón #FF007F
+           ========================================================= */
         body {
-            background-color: #555555; /* Fondo oscuro simulando el escritorio detrás del papel */
+            background-color: #F8F9FA;
             margin: 0;
             padding: 30px;
             display: flex;
             justify-content: center;
-            font-family: 'Roboto Mono', monospace, sans-serif;
+            font-family: 'Montserrat', -apple-system, BlinkMacSystemFont, sans-serif;
+            color: #0F172A;
         }
         
         .ticket {
@@ -21,29 +29,44 @@
             width: 100%;
             max-width: 380px; /* Ancho de impresora térmica 80mm */
             padding: 25px 20px;
-            box-shadow: 0 10px 25px rgba(0,0,0,0.3);
-            color: #1A1A1A; /* Negro de nuestra paleta */
+            box-shadow: 0 10px 30px rgba(0,0,0,0.06), 0 0 20px rgba(255, 0, 127, 0.12);
+            border: 1px solid #E2E8F0;
+            border-top: 4px solid #FF007F;
+            border-radius: 12px;
             box-sizing: border-box;
         }
 
         .header {
             text-align: center;
-            border-bottom: 2px dashed #1A1A1A;
+            border-bottom: 2px dashed #CBD5E1;
             padding-bottom: 15px;
             margin-bottom: 20px;
         }
 
         .logo {
-            font-size: 2.2rem;
+            font-family: 'Orbitron', monospace, sans-serif;
+            font-size: 2rem;
+            font-weight: 900;
+            font-style: italic;
+            margin: 0 0 4px 0;
+            letter-spacing: 1px;
+            color: #0F172A;
+        }
+
+        .subtitle-brand {
+            font-size: 0.72rem;
+            letter-spacing: 1px;
             font-weight: 700;
-            margin: 0 0 10px 0;
-            letter-spacing: -1.5px;
+            color: #64748B;
+            margin-bottom: 12px;
+            text-transform: uppercase;
         }
 
         .info {
-            font-size: 0.9rem;
+            font-size: 0.85rem;
             margin: 3px 0;
-            line-height: 1.5;
+            line-height: 1.4;
+            color: #334155;
         }
 
         .table-items {
@@ -55,22 +78,27 @@
 
         .table-items th {
             text-align: left;
-            border-bottom: 1px solid #1A1A1A;
+            border-bottom: 2px solid #FF007F;
+            color: #FF007F;
             padding-bottom: 8px;
             font-weight: 700;
+            font-size: 0.78rem;
+            letter-spacing: 0.5px;
         }
 
         .table-items td {
             padding: 10px 0;
             vertical-align: top;
+            border-bottom: 1px solid #F1F5F9;
+            color: #0F172A;
         }
 
-        .col-qty { width: 15%; text-align: center; }
-        .col-prod { width: 55%; padding-right: 10px; }
-        .col-sub { width: 30%; text-align: right; }
+        .col-qty { width: 15%; text-align: center; font-weight: 600; }
+        .col-prod { width: 55%; padding-right: 10px; font-weight: 500; }
+        .col-sub { width: 30%; text-align: right; font-family: 'Roboto Mono', monospace; font-weight: 600; }
 
         .totals {
-            border-top: 2px dashed #1A1A1A;
+            border-top: 2px dashed #CBD5E1;
             padding-top: 20px;
             margin-bottom: 25px;
         }
@@ -78,50 +106,106 @@
         .total-row {
             display: flex;
             justify-content: space-between;
-            font-size: 1.4rem;
-            font-weight: 700;
-            /* Branding Inyectado: Resalte estricto en Teal Koba (#008B8B) */
-            background-color: #008B8B;
+            align-items: center;
+            font-size: 1.35rem;
+            font-weight: 800;
+            background: linear-gradient(135deg, #FF007F 0%, #CC0052 100%);
             color: #FFFFFF;
-            padding: 12px 15px;
-            border-radius: 6px;
-            border: 1px solid #1A1A1A;
+            padding: 12px 16px;
+            border-radius: 8px;
+            box-shadow: 0 4px 15px rgba(255, 0, 127, 0.3);
+            font-family: 'Orbitron', sans-serif;
+            letter-spacing: 0.5px;
         }
 
         .footer {
             text-align: center;
-            font-size: 0.85rem;
-            margin-top: 30px;
+            font-size: 0.82rem;
+            color: #64748B;
+            margin-top: 25px;
+            line-height: 1.5;
         }
 
         .btn-print {
             display: block;
             width: 100%;
-            padding: 15px;
-            background-color: #008B8B; /* Teal Koba */
+            padding: 14px;
+            background: linear-gradient(135deg, #FF007F 0%, #CC0052 100%);
             color: #FFFFFF;
-            border: 2px solid #008B8B;
-            font-size: 1.1rem;
-            border-radius: 6px;
-            font-weight: bold;
+            border: none;
+            font-size: 1rem;
+            border-radius: 8px;
+            font-weight: 800;
+            font-family: 'Orbitron', sans-serif;
+            letter-spacing: 1px;
             cursor: pointer;
-            margin-top: 30px;
-            font-family: inherit;
-            transition: 0.2s;
+            margin-top: 25px;
+            transition: all 0.2s;
+            box-shadow: 0 4px 15px rgba(255, 0, 127, 0.25);
         }
 
         .btn-print:hover {
-            background-color: #FFFFFF;
-            color: #008B8B;
+            transform: translateY(-2px);
+            box-shadow: 0 6px 22px rgba(255, 0, 127, 0.45);
         }
 
-        /* MEDIA QUERY DE IMPRESIÓN RIGUROSA: Las reglas CSS aquí omiten UI inútil al imprimir en papel */
+        /* =========================================================
+           VERSIÓN MONOCROMÁTICA PARA IMPRESORAS TÉRMICAS (@media print)
+           Blanco y negro estricto, sans-serif limpia, alto contraste.
+           ========================================================= */
         @media print {
-            body { background-color: #FFFFFF; padding: 0; display: block; }
-            .ticket { box-shadow: none; max-width: 100%; padding: 0; margin: 0 auto; width: 80mm; border: none; }
-            .btn-print { display: none; }
-            .total-row { background-color: transparent !important; border: none !important; padding: 10px 0 !important; }
-            .total-row * { color: #1A1A1A !important; } /* Desactivar Azul para impresiones monocromas */
+            body {
+                background-color: #FFFFFF !important;
+                color: #000000 !important;
+                padding: 0 !important;
+                display: block !important;
+                font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif !important;
+            }
+            .ticket {
+                background-color: #FFFFFF !important;
+                color: #000000 !important;
+                box-shadow: none !important;
+                border: none !important;
+                max-width: 100% !important;
+                width: 80mm !important;
+                padding: 0 !important;
+                margin: 0 auto !important;
+                border-radius: 0 !important;
+            }
+            .header {
+                border-bottom: 2px dashed #000000 !important;
+            }
+            .logo span {
+                color: #000000 !important;
+                text-shadow: none !important;
+            }
+            .subtitle-brand, .info, .footer {
+                color: #000000 !important;
+            }
+            .table-items th {
+                border-bottom: 1px solid #000000 !important;
+                color: #000000 !important;
+            }
+            .table-items td {
+                border-bottom: 1px solid #CCCCCC !important;
+                color: #000000 !important;
+            }
+            .totals {
+                border-top: 2px dashed #000000 !important;
+            }
+            .total-row {
+                background: transparent !important;
+                color: #000000 !important;
+                border: 2px solid #000000 !important;
+                box-shadow: none !important;
+                padding: 8px 10px !important;
+            }
+            .total-row * {
+                color: #000000 !important;
+            }
+            .btn-print {
+                display: none !important;
+            }
         }
     </style>
 </head>
@@ -129,7 +213,12 @@
 
 <div class="ticket">
     <div class="header">
-        <h1 class="logo">KOBA</h1>
+        <h1 class="logo">
+            <span style="color: #0F172A;">ULTRA</span>
+            <span style="color: #FF007F; text-shadow: 0 0 10px rgba(255,0,127,0.35);">TECH</span>
+        </h1>
+        <div class="subtitle-brand">DE ACCESORIOS DE TELÉFONO</div>
+        
         <p class="info">Folio / Ticket: #{{ venta.id }}</p>
         <p class="info">Expedido: {{ venta.fecha_venta.strftime('%d/%m/%Y %H:%M') }}</p>
         <p class="info">Cajero Asignado: {{ venta.vendedor.nombre }}</p>
@@ -156,14 +245,13 @@
             {% for detalle in venta.detalles %}
             <tr>
                 <td class="col-qty">{{ detalle.cantidad_vendida }}</td>
-                <!-- Cortar la longitud del título si es gigantesco para no descuadrar la ticketera -->
                 <td class="col-prod">
                     {% if detalle.nombre_manual %}
                         {{ detalle.nombre_manual[:40] }}{% if detalle.nombre_manual|length > 40 %}...{% endif %}
                     {% else %}
                         {{ detalle.producto.nombre[:40] }}{% if detalle.producto.nombre|length > 40 %}...{% endif %}
                         {% if detalle.variante %}
-                            <br><small style="font-size: 0.75rem;">{{ detalle.variante.nombre_variante }}</small>
+                            <br><small style="font-size: 0.75rem; color: #64748B;">{{ detalle.variante.nombre_variante }}</small>
                         {% endif %}
                     {% endif %}
                 </td>
@@ -187,12 +275,12 @@
         
         {% if venta.pagos|length > 1 %}
         <!-- Desglose de pagos mixtos -->
-        <div style="margin-top: 15px; padding-top: 10px; border-top: 1px dashed #ccc;">
-            <p style="font-weight: 700; font-size: 0.9rem; margin-bottom: 8px; text-align: center;">DESGLOSE DE PAGOS:</p>
+        <div style="margin-top: 15px; padding-top: 10px; border-top: 1px dashed #CBD5E1;">
+            <p style="font-weight: 700; font-size: 0.85rem; margin-bottom: 8px; text-align: center; color: #64748B;">DESGLOSE DE PAGOS:</p>
             {% for pago in venta.pagos %}
             <div style="display: flex; justify-content: space-between; font-size: 0.85rem; padding: 3px 0;">
-                <span style="text-transform: capitalize;">{{ pago.metodo_pago }}:</span>
-                <span style="font-weight: 700;">${{ (pago.monto)|cop }}</span>
+                <span style="text-transform: capitalize; color: #475569;">{{ pago.metodo_pago }}:</span>
+                <span style="font-weight: 700; font-family: 'Roboto Mono', monospace; color: #0F172A;">${{ (pago.monto)|cop }}</span>
             </div>
             {% endfor %}
         </div>
@@ -200,9 +288,9 @@
     </div>
 
     <div class="footer">
-        <p style="font-size: 1rem; font-weight: bold;">¡Gracias por tu compra!</p>
-        <p>Políticas de Tienda: Devoluciones únicamente presentando ticket impreso o digital.</p>
-        <p>Soporte: ventas@koba.com</p>
+        <p style="font-size: 0.95rem; font-weight: bold; color: #0F172A; margin-bottom: 6px;">¡Gracias por tu compra!</p>
+        <p style="margin-bottom: 4px;">Políticas de Tienda: Devoluciones únicamente presentando ticket impreso o digital.</p>
+        <p>Soporte: ventas@ultratech.com</p>
     </div>
 
     <button class="btn-print" onclick="window.print()">
@@ -212,11 +300,10 @@
 
 <!-- Lógica de Auto-Impresión Reactiva -->
 <script>
-    // Evento silencioso que detona el pop-up de impresora nativo de Windows al renderizar
     window.onload = function() {
         setTimeout(() => {
             window.print();
-        }, 700); // 700ms de retraso para asegurar carga asíncrona de tipografías de Google
+        }, 700);
     };
 </script>
 

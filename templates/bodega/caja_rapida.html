@@ -199,18 +199,38 @@
         return Math.round(val).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
     }
 
-    // Buscador de productos
+    function normalizarTexto(str) {
+        if (!str) return '';
+        return str.toString()
+            .normalize("NFD")
+            .replace(/[\u0300-\u036f]/g, "")
+            .toLowerCase()
+            .trim();
+    }
+
+    // Buscador dinámico de productos e indexación
+    const bodegaCards = Array.from(document.querySelectorAll('.product-card-container'));
+    bodegaCards.forEach(card => {
+        const rawName = card.getAttribute('data-name') || '';
+        const rawSku = card.getAttribute('data-sku') || '';
+        let varsText = '';
+        try {
+            const pCard = card.querySelector('.product-card');
+            const vars = JSON.parse(pCard.dataset.variants || '[]');
+            varsText = vars.map(v => v.nombre).join(' ');
+        } catch (e) {}
+        card._searchIndex = normalizarTexto(`${rawName} ${rawSku} ${varsText}`);
+    });
+
     document.getElementById('productSearch').addEventListener('input', function(e) {
-        const query = e.target.value.toLowerCase();
-        const cards = document.querySelectorAll('.product-card-container');
-        cards.forEach(card => {
-            const name = card.getAttribute('data-name');
-            const sku = card.getAttribute('data-sku');
-            if (name.includes(query) || sku.includes(query)) {
-                card.style.display = '';
-            } else {
-                card.style.display = 'none';
+        const queryNorm = normalizarTexto(e.target.value);
+        const tokens = queryNorm.split(/\s+/).filter(Boolean);
+        bodegaCards.forEach(card => {
+            let match = true;
+            if (tokens.length > 0) {
+                match = tokens.every(token => card._searchIndex.includes(token));
             }
+            card.style.display = match ? '' : 'none';
         });
     });
 

@@ -3,14 +3,14 @@
 {% block content %}
 <div class="d-flex justify-content-between align-items-center mb-4">
     <div>
-        <h2 class="fw-bold text-brand-black m-0">
-            <i class="fa-solid {% if cliente %}fa-user-pen{% else %}fa-user-plus{% endif %} text-brand-blue me-2"></i>
-            {% if cliente %}Editar Cliente / Local: {{ cliente.nombre_o_razon_social }}{% else %}Registrar Nuevo Cliente / Local{% endif %}
+        <h2 class="fw-bold text-brand-black m-0 font-orbitron">
+            <i class="fa-solid {% if cliente %}fa-store{% else %}fa-plus-circle{% endif %} text-brand-blue me-2"></i>
+            {% if cliente %}Editar Local Maneo: {{ cliente.nombre_o_razon_social }}{% else %}Registrar Nuevo Local Maneo{% endif %}
         </h2>
-        <p class="text-muted small m-0 mt-1">Registra personas o locales comerciales para asociarlos a préstamos y maneos.</p>
+        <p class="text-muted small m-0 mt-1">Registra locales comerciales o negocios para asociarlos a préstamos y maneos.</p>
     </div>
     <a href="{{ url_for('clientes_bp.index') }}" class="btn btn-outline-secondary rounded-pill px-4">
-        <i class="fa-solid fa-arrow-left me-1"></i> Volver al Directorio
+        <i class="fa-solid fa-arrow-left me-1"></i> Volver a Directorio Locales Maneos
     </a>
 </div>
 
