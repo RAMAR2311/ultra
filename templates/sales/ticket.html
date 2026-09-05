@@ -4,6 +4,14 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Ticket de Compra #{{ venta.id }} - ULTRA TECH</title>
+    <!-- Open Graph Meta Tags para Previsualización Rica en WhatsApp / Redes Sociales -->
+    <meta property="og:type" content="website">
+    <meta property="og:title" content="ULTRA TECH - Recibo Digital #{{ venta.id }}">
+    <meta property="og:description" content="Comprobante de compra oficial de ULTRA TECH. Total: ${{ (venta.monto_total)|cop }} COP">
+    <meta property="og:image" content="{{ url_for('static', filename='img/icons/icon-512x512.png', _external=True) }}">
+    <meta property="og:url" content="{{ request.url }}">
+    <!-- Favicon -->
+    <link rel="icon" type="image/png" sizes="192x192" href="{{ url_for('static', filename='img/icons/icon-192x192.png') }}?v=5">
     <!-- Google Fonts: Orbitron, Montserrat y Roboto Mono -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -410,11 +418,17 @@
         </div>
         
         <p style="font-size: 0.85rem; color: #64748B; margin: 0 0 16px 0; line-height: 1.45;">
-            Ingresa el número celular del cliente. Generaremos la <strong>imagen oficial de la factura</strong> para enviarla por WhatsApp:
+            Ingresa los datos del cliente para enviarle su <strong>recibo digital interactivo</strong> con enlace directo:
         </p>
 
         <label style="display: block; font-size: 0.75rem; font-weight: 700; text-transform: uppercase; color: #475569; margin-bottom: 6px;">
-            Número Celular
+            Nombre del Cliente (Opcional)
+        </label>
+        <input type="text" id="waNombreCliente" placeholder="Ej: Johan Alvarez" 
+               style="width: 100%; padding: 10px 12px; border: 1px solid #CBD5E1; border-radius: 8px; font-size: 0.95rem; font-weight: 600; color: #0F172A; outline: none; box-sizing: border-box; margin-bottom: 12px;">
+
+        <label style="display: block; font-size: 0.75rem; font-weight: 700; text-transform: uppercase; color: #475569; margin-bottom: 6px;">
+            Número Celular de WhatsApp
         </label>
         
         <div style="display: flex; gap: 8px; margin-bottom: 16px;">
@@ -426,14 +440,10 @@
                    onkeydown="if(event.key === 'Enter') enviarWhatsAppConImagen();">
         </div>
 
-        <div id="waLoadingIndicator" style="display: none; text-align: center; margin-bottom: 14px; font-size: 0.85rem; font-weight: 600; color: #0F172A;">
-            <i class="fa-solid fa-spinner fa-spin me-1" style="color: #25D366;"></i> Generando imagen de alta resolución...
-        </div>
-
         <div style="display: flex; flex-direction: column; gap: 8px;">
             <button type="button" id="btnEnviarWA" onclick="enviarWhatsAppConImagen()" 
                     style="width: 100%; padding: 13px; background: linear-gradient(135deg, #25D366 0%, #128C7E 100%); color: #FFFFFF; border: none; border-radius: 8px; font-weight: 800; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; font-size: 0.95rem; box-shadow: 0 4px 12px rgba(37, 211, 102, 0.35);">
-                <i class="fa-brands fa-whatsapp" style="font-size: 1.25rem;"></i> Enviar Factura a WhatsApp
+                <i class="fa-brands fa-whatsapp" style="font-size: 1.25rem;"></i> Enviar Factura Digital a WhatsApp
             </button>
         </div>
     </div>
@@ -498,14 +508,16 @@
         }
     }
 
-    // Envío inteligente a WhatsApp con Imagen
-    async function enviarWhatsAppConImagen() {
-        const input = document.getElementById('waNumeroInput');
-        let raw = input ? input.value.replace(/\D/g, '') : '';
+    // Envío del Recibo Digital por WhatsApp con Enlace Directo y Tarjeta Interactiva
+    function enviarWhatsAppConImagen() {
+        const inputNum = document.getElementById('waNumeroInput');
+        const inputNombre = document.getElementById('waNombreCliente');
+        let raw = inputNum ? inputNum.value.replace(/\D/g, '') : '';
+        let nombre = inputNombre ? inputNombre.value.trim() : '';
         
         if (!raw) {
             alert('Por favor ingresa el número celular del cliente.');
-            if (input) input.focus();
+            if (inputNum) inputNum.focus();
             return;
         }
 
@@ -513,70 +525,21 @@
             raw = '57' + raw;
         }
 
-        const loading = document.getElementById('waLoadingIndicator');
-        const btnEnviar = document.getElementById('btnEnviarWA');
-        if (loading) loading.style.display = 'block';
-        if (btnEnviar) btnEnviar.disabled = true;
+        // URL absoluta del recibo digital
+        const enlaceRecibo = `${window.location.origin}/sales/recibo/${SALE_ID}`;
 
-        try {
-            const canvas = await generarCanvasTicket();
-            
-            canvas.toBlob(async (blob) => {
-                const file = new File([blob], `Factura_UltraTech_${SALE_ID}.png`, { type: 'image/png' });
-
-                // Detectar si es un dispositivo móvil real (Android / iPhone / iPad)
-                const esMovil = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
-
-                // Caso 1: Dispositivos móviles reales con soporte nativo de compartir
-                if (esMovil && navigator.canShare && navigator.canShare({ files: [file] })) {
-                    try {
-                        await navigator.share({
-                            files: [file],
-                            title: `Factura #${SALE_ID} - ULTRA TECH`,
-                            text: `Comprobante de compra Factura #${SALE_ID} - ULTRA TECH`
-                        });
-                        cerrarModalWhatsApp();
-                        if (btnEnviar) btnEnviar.disabled = false;
-                        return;
-                    } catch (shareErr) {
-                        console.log('Share cancelado o no completado:', shareErr);
-                    }
-                }
-
-                // Caso 2: Computador de Escritorio (PC / Laptop)
-                let copiado = false;
-                try {
-                    if (navigator.clipboard && navigator.clipboard.write) {
-                        await navigator.clipboard.write([
-                            new ClipboardItem({ 'image/png': blob })
-                        ]);
-                        copiado = true;
-                    }
-                } catch (clipErr) {
-                    console.warn('Portapapeles no soportado:', clipErr);
-                }
-
-                // Descargar automáticamente la imagen de respaldo
-                const link = document.createElement('a');
-                link.download = `Factura_UltraTech_${SALE_ID}.png`;
-                link.href = canvas.toDataURL('image/png');
-                link.click();
-
-                // Enviar el comprobante completo en texto estructurado por WhatsApp
-                // de modo que el cliente siempre tenga su factura detallada
-                const url = `https://wa.me/${raw}?text=${encodeURIComponent(mensajeTextoLimpio)}`;
-                window.open(url, '_blank');
-
-                cerrarModalWhatsApp();
-                if (btnEnviar) btnEnviar.disabled = false;
-            }, 'image/png');
-
-        } catch (err) {
-            console.error('Error al capturar imagen:', err);
-            alert('No se pudo generar la imagen. Abriremos el chat con el resumen en texto.');
-            enviarWhatsAppSoloTexto();
-            if (btnEnviar) btnEnviar.disabled = false;
+        // Construcción del mensaje idéntico al estándar solicitado:
+        // "Hola [Nombre]! Aquí tienes tu factura digital de ULTRA TECH: [Enlace]"
+        let mensaje;
+        if (nombre) {
+            mensaje = `Hola ${nombre}! Aquí tienes tu factura digital de ULTRA TECH: ${enlaceRecibo}`;
+        } else {
+            mensaje = `Hola! Aquí tienes tu factura digital de ULTRA TECH: ${enlaceRecibo}`;
         }
+
+        const url = `https://wa.me/${raw}?text=${encodeURIComponent(mensaje)}`;
+        window.open(url, '_blank');
+        cerrarModalWhatsApp();
     }
 
     // Texto limpio garantizado sin caracteres conflictivos

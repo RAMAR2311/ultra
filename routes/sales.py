@@ -435,9 +435,8 @@ def api_buscar_producto(sku):
         'auto_select_variant': None
     })
 
-# Ruta para la Impresión del formato Térmico (Ticket)
+# Ruta para la Visualización e Impresión del formato Térmico (Ticket / Recibo Digital Público)
 @sales_bp.route('/recibo/<int:sale_id>', methods=['GET'])
-@login_required # Proteger confidencialidad del cajero
 def imprimir_ticket(sale_id):
     # Regla: Retorna 404 si alguien ingresa un ID falso
     venta = Sale.query.get_or_404(sale_id)
