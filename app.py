@@ -210,6 +210,16 @@ def create_app():
         from flask import send_from_directory
         return send_from_directory('static', 'sw.js', mimetype='application/javascript')
 
+    @app.route('/manifest.json')
+    def manifest():
+        from flask import send_from_directory
+        return send_from_directory('static', 'manifest.json', mimetype='application/manifest+json')
+
+    @app.route('/offline')
+    def offline():
+        from flask import render_template
+        return render_template('offline.html')
+
     return app
 
 if __name__ == '__main__':

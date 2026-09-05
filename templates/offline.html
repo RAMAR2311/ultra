@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ULTRA TECH - Sin Conexión</title>
+    <link rel="icon" type="image/png" href="/static/img/icons/icon-192x192.png">
+    <meta name="theme-color" content="#FFFFFF">
+    <!-- Google Fonts: Orbitron & Montserrat -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700;800&family=Orbitron:wght@700;800;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        :root {
+            --brand-bg: #F8F9FA;
+            --brand-white: #FFFFFF;
+            --brand-primary: #FF007F;
+            --brand-secondary: #CC0052;
+            --brand-text: #0F172A;
+            --brand-muted: #64748B;
+            --brand-border: #E2E8F0;
+            --brand-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05), 0 8px 10px -6px rgba(0, 0, 0, 0.05);
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Montserrat', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background-color: var(--brand-bg);
+            color: var(--brand-text);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 1.5rem;
+        }
+
+        .offline-card {
+            background: var(--brand-white);
+            border: 1px solid var(--brand-border);
+            border-radius: 20px;
+            box-shadow: var(--brand-shadow);
+            padding: 2.5rem 2rem;
+            max-width: 480px;
+            width: 100%;
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .offline-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 6px;
+            background: linear-gradient(90deg, var(--brand-primary), var(--brand-secondary));
+        }
+
+        .brand-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            background: #FFF1F7;
+            color: var(--brand-primary);
+            padding: 0.4rem 1rem;
+            border-radius: 999px;
+            font-size: 0.8rem;
+            font-weight: 700;
+            letter-spacing: 0.05em;
+            text-transform: uppercase;
+            margin-bottom: 1.5rem;
+        }
+
+        .icon-container {
+            width: 84px;
+            height: 84px;
+            border-radius: 50%;
+            background: #FFF1F7;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 1.5rem;
+            color: var(--brand-primary);
+            font-size: 2.25rem;
+            box-shadow: 0 0 20px rgba(255, 0, 127, 0.18);
+        }
+
+        h1 {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 1.6rem;
+            font-weight: 800;
+            color: var(--brand-text);
+            margin-bottom: 0.75rem;
+            letter-spacing: -0.02em;
+        }
+
+        p {
+            color: var(--brand-muted);
+            font-size: 0.95rem;
+            line-height: 1.55;
+            margin-bottom: 1.75rem;
+        }
+
+        .btn-retry {
+            background: linear-gradient(135deg, var(--brand-primary) 0%, var(--brand-secondary) 100%);
+            color: #FFFFFF;
+            border: none;
+            padding: 0.85rem 1.75rem;
+            border-radius: 12px;
+            font-size: 0.95rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            text-decoration: none;
+            box-shadow: 0 4px 12px rgba(255, 0, 127, 0.25);
+        }
+
+        .btn-retry:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 18px rgba(255, 0, 127, 0.35);
+        }
+
+        .status-pill {
+            margin-top: 1.5rem;
+            font-size: 0.8rem;
+            color: var(--brand-muted);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.4rem;
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background-color: #EF4444;
+            animation: pulse 1.8s infinite;
+        }
+
+        @keyframes pulse {
+            0% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.4; transform: scale(1.2); }
+            100% { opacity: 1; transform: scale(1); }
+        }
+    </style>
+</head>
+<body>
+    <div class="offline-card">
+        <div class="brand-badge">
+            <i class="fas fa-bolt"></i> ULTRA TECH PWA
+        </div>
+        <div class="icon-container">
+            <i class="fas fa-wifi-slash"></i>
+        </div>
+        <h1>Sin Conexión a Internet</h1>
+        <p>
+            No pudimos sincronizar con el servidor de ULTRA TECH. Por favor verifica tu conexión Wi-Fi o datos móviles.
+        </p>
+        <button class="btn-retry" onclick="window.location.reload();">
+            <i class="fas fa-rotate-right"></i> Reintentar Conexión
+        </button>
+        <div class="status-pill">
+            <span class="status-dot"></span> Modo Fuera de Línea
+        </div>
+    </div>
+
+    <script>
+        // Si vuelve el internet, recargar automáticamente
+        window.addEventListener('online', () => {
+            window.location.reload();
+        });
+    </script>
+</body>
+</html>

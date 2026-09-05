@@ -4,16 +4,19 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}ULTRA TECH - CRM & POS{% endblock %}</title>
-    <!-- Favicon y PWA -->
-    <link rel="icon" type="image/png" href="{{ url_for('static', filename='img/icons/icon-192x192.png') }}?v=4">
-    <link rel="shortcut icon" type="image/png" href="{{ url_for('static', filename='img/icons/icon-192x192.png') }}?v=4">
-    <link rel="manifest" href="{{ url_for('static', filename='manifest.json') }}">
+    <!-- Favicon y PWA Manifest -->
+    <link rel="icon" type="image/png" sizes="192x192" href="{{ url_for('static', filename='img/icons/icon-192x192.png') }}?v=5">
+    <link rel="shortcut icon" type="image/png" sizes="192x192" href="{{ url_for('static', filename='img/icons/icon-192x192.png') }}?v=5">
+    <link rel="manifest" href="/manifest.json">
     
-    <!-- Meta tags para iOS y PWA -->
+    <!-- Meta tags PWA para Android, iOS y Navegadores Modernos -->
+    <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <meta name="apple-mobile-web-app-title" content="ULTRA TECH">
-    <link rel="apple-touch-icon" href="{{ url_for('static', filename='img/icons/icon-192x192.png') }}">
+    <meta name="application-name" content="ULTRA TECH">
+    <link rel="apple-touch-icon" sizes="192x192" href="{{ url_for('static', filename='img/icons/icon-192x192.png') }}">
+    <link rel="apple-touch-icon" sizes="512x512" href="{{ url_for('static', filename='img/icons/icon-512x512.png') }}">
     <meta name="theme-color" content="#FFFFFF">
 
     <!-- Google Fonts: Orbitron & Montserrat -->
@@ -438,8 +441,17 @@
                 {% endif %}
             </ul>
             
+            <!-- Botón Instalar App PWA (Visible en dispositivos compatibles) -->
+            <div class="px-3 pb-2 mt-auto d-none" id="pwa-install-container">
+                <button class="btn btn-outline-dark w-100 rounded-pill fw-bold d-flex align-items-center justify-content-center gap-2" 
+                        style="border-color: var(--brand-primary); color: var(--brand-primary); background-color: #FFF1F7;" 
+                        onclick="triggerPWAInstall()">
+                    <i class="fa-solid fa-download" style="color: var(--brand-primary);"></i> Instalar App PWA
+                </button>
+            </div>
+
             <!-- Interfaz de Desconexión / Fin de Turno al final del sidebar -->
-            <div class="px-3 pb-4 mt-auto">
+            <div class="px-3 pb-4">
                 <a class="btn btn-outline-danger w-100 rounded-pill fw-bold" href="{{ url_for('auth_bp.logout') }}">
                     <i class="fa-solid fa-sign-out-alt me-2"></i> Salir del Sistema
                 </a>
@@ -625,18 +637,58 @@
 
 
     <script>
-        // Registro del Service Worker para soporte PWA
+        // Registro del Service Worker para soporte PWA y Offline
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
                 navigator.serviceWorker.register('/sw.js')
                     .then(registration => {
-                        console.log('ServiceWorker registrado con éxito con el scope:', registration.scope);
+                        console.log('[PWA] Service Worker registrado exitosamente. Scope:', registration.scope);
+                        // Verificar si hay nueva versión disponible
+                        registration.addEventListener('updatefound', () => {
+                            const newWorker = registration.installing;
+                            newWorker.addEventListener('statechange', () => {
+                                if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                                    console.log('[PWA] Nueva versión disponible en segundo plano.');
+                                }
+                            });
+                        });
                     })
                     .catch(error => {
-                        console.log('Fallo el registro del ServiceWorker:', error);
+                        console.warn('[PWA] Error al registrar el Service Worker:', error);
                     });
             });
         }
+
+        // Manejador del evento de instalación nativa PWA (Android / Windows / Chrome)
+        let deferredPrompt;
+        window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault();
+            deferredPrompt = e;
+            const container = document.getElementById('pwa-install-container');
+            if (container) {
+                container.classList.remove('d-none');
+            }
+        });
+
+        function triggerPWAInstall() {
+            if (deferredPrompt) {
+                deferredPrompt.prompt();
+                deferredPrompt.userChoice.then((choiceResult) => {
+                    if (choiceResult.outcome === 'accepted') {
+                        console.log('[PWA] El usuario aceptó la instalación de ULTRA TECH');
+                    }
+                    deferredPrompt = null;
+                    const container = document.getElementById('pwa-install-container');
+                    if (container) container.classList.add('d-none');
+                });
+            }
+        }
+
+        window.addEventListener('appinstalled', () => {
+            console.log('[PWA] ULTRA TECH fue instalada satisfactoriamente');
+            const container = document.getElementById('pwa-install-container');
+            if (container) container.classList.add('d-none');
+        });
     </script>
 
     <!-- Bootstrap JS Bundle -->

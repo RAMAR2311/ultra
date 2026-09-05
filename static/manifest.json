@@ -1,21 +1,66 @@
 {
-    "name": "ULTRA TECH",
-    "short_name": "UltraTech",
-    "description": "Sistema de gestión y punto de venta web ULTRA TECH",
-    "start_url": "/",
+    "id": "/",
+    "name": "ULTRA TECH - CRM & POS",
+    "short_name": "ULTRA TECH",
+    "description": "Sistema integral de gestión de inventario, punto de venta y finanzas ULTRA TECH",
+    "start_url": "/?source=pwa",
+    "scope": "/",
     "display": "standalone",
-    "background_color": "#000000",
+    "orientation": "any",
+    "background_color": "#FFFFFF",
     "theme_color": "#FF007F",
+    "categories": [
+        "business",
+        "finance",
+        "productivity"
+    ],
     "icons": [
         {
             "src": "/static/img/icons/icon-192x192.png",
             "sizes": "192x192",
-            "type": "image/png"
+            "type": "image/png",
+            "purpose": "any"
+        },
+        {
+            "src": "/static/img/icons/icon-192x192.png",
+            "sizes": "192x192",
+            "type": "image/png",
+            "purpose": "maskable"
         },
         {
             "src": "/static/img/icons/icon-512x512.png",
             "sizes": "512x512",
-            "type": "image/png"
+            "type": "image/png",
+            "purpose": "any"
+        },
+        {
+            "src": "/static/img/icons/icon-512x512.png",
+            "sizes": "512x512",
+            "type": "image/png",
+            "purpose": "maskable"
+        }
+    ],
+    "shortcuts": [
+        {
+            "name": "Punto de Venta",
+            "short_name": "Ventas",
+            "description": "Registrar una nueva venta o factura",
+            "url": "/sales/",
+            "icons": [{ "src": "/static/img/icons/icon-192x192.png", "sizes": "192x192" }]
+        },
+        {
+            "name": "Arqueo de Caja",
+            "short_name": "Arqueo",
+            "description": "Consultar o realizar arqueo de caja",
+            "url": "/arqueo/",
+            "icons": [{ "src": "/static/img/icons/icon-192x192.png", "sizes": "192x192" }]
+        },
+        {
+            "name": "Locales Maneos",
+            "short_name": "Maneos",
+            "description": "Gestionar clientes y préstamos de mercancía",
+            "url": "/clientes/",
+            "icons": [{ "src": "/static/img/icons/icon-192x192.png", "sizes": "192x192" }]
         }
     ]
 }
