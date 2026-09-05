@@ -474,3 +474,31 @@ class ServerPayment(db.Model):
     def __init__(self, **kwargs):
         super(ServerPayment, self).__init__(**kwargs)
 
+class PriceApproval(db.Model):
+    """Modelo para solicitudes y aprobaciones remotas de precios en tiempo real."""
+    __tablename__ = 'price_approvals'
+
+    id = db.Column(db.Integer, primary_key=True)
+    vendedor_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False, index=True)
+    product_id = db.Column(db.Integer, db.ForeignKey('products.id'), nullable=True, index=True)
+    variant_id = db.Column(db.Integer, db.ForeignKey('product_variants.id'), nullable=True)
+    nombre_producto = db.Column(db.String(200), nullable=False)
+    precio_original = db.Column(db.Numeric(10, 2), nullable=False)
+    precio_solicitado = db.Column(db.Numeric(10, 2), nullable=False)
+    precio_aprobado = db.Column(db.Numeric(10, 2), nullable=True)
+    estado = db.Column(db.String(20), nullable=False, default='pendiente', index=True)  # 'pendiente', 'aprobado', 'rechazado', 'cancelada', 'utilizada'
+    admin_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
+    motivo = db.Column(db.String(255), nullable=True) # Justificación del vendedor
+    motivo_rechazo = db.Column(db.Text, nullable=True)
+    fecha_solicitud = db.Column(db.DateTime, default=obtener_hora_bogota, index=True)
+    fecha_resolucion = db.Column(db.DateTime, nullable=True)
+
+    vendedor = db.relationship('User', foreign_keys=[vendedor_id], backref='solicitudes_precio')
+    admin = db.relationship('User', foreign_keys=[admin_id], backref='aprobaciones_resueltas')
+    producto = db.relationship('Product', foreign_keys=[product_id], backref='aprobaciones_precio')
+    variante = db.relationship('ProductVariant', foreign_keys=[variant_id], backref='aprobaciones_precio')
+
+    def __init__(self, **kwargs):
+        super(PriceApproval, self).__init__(**kwargs)
+
+

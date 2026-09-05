@@ -1,6 +1,6 @@
 from flask import Blueprint, request, jsonify, flash, redirect, render_template, abort, url_for
 from flask_login import login_required, current_user
-from models import db, Product, ProductVariant, Sale, SaleDetail, SalePayment, Expense, obtener_hora_bogota, ArqueoCaja
+from models import db, Product, ProductVariant, Sale, SaleDetail, SalePayment, Expense, obtener_hora_bogota, ArqueoCaja, PriceApproval
 from decorators import admin_required
 from decimal import Decimal
 from datetime import datetime, timedelta
@@ -169,7 +169,22 @@ def procesar_venta():
                     db.session.add(ajuste)
 
                 if not es_obsequio and precio_venta_final < precio_limite_autorizado:
-                    raise ValueError(f"No autorizado: El precio ({precio_venta_final}) del producto '{producto.nombre}' está por debajo del límite permitido ({precio_limite_autorizado}).")
+                    # Si no es admin, verificar si cuenta con una aprobación remota activa
+                    if current_user.rol != 'admin':
+                        aprobacion = PriceApproval.query.filter(
+                            PriceApproval.vendedor_id == current_user.id,
+                            PriceApproval.product_id == (producto.id if producto else None),
+                            PriceApproval.variant_id == variant_id,
+                            PriceApproval.estado == 'aprobado',
+                            PriceApproval.precio_aprobado <= precio_venta_final
+                        ).order_by(PriceApproval.id.desc()).first()
+
+                        if not aprobacion:
+                            raise ValueError(f"No autorizado: El precio (${precio_venta_final:,.0f}) del producto '{producto.nombre}' está por debajo del mínimo permitido (${precio_limite_autorizado:,.0f}) y no cuenta con autorización remota aprobada por el administrador.")
+                        
+                        # Consumir la aprobación para que no sea reutilizable
+                        aprobacion.estado = 'utilizada'
+                        aprobacion.fecha_resolucion = obtener_hora_bogota()
 
                 detalle = SaleDetail(
                     sale_id=nueva_venta.id,

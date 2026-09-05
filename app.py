@@ -47,7 +47,7 @@ def create_app():
     # Inicializar Extensiones
     db.init_app(app)
     Migrate(app, db)
-    CSRFProtect(app)
+    csrf = CSRFProtect(app)
     
     login_manager = LoginManager()
     login_manager.login_view = 'auth_bp.login'
@@ -87,6 +87,11 @@ def create_app():
     # Registro de Blueprint Clientes y Locales (Maneos)
     from routes.clientes import clientes_bp
     app.register_blueprint(clientes_bp, url_prefix='/clientes')
+
+    # Registro de Blueprint Aprobaciones de Precios en Tiempo Real
+    from routes.aprobaciones import aprobaciones_bp
+    app.register_blueprint(aprobaciones_bp, url_prefix='/api')
+    csrf.exempt(aprobaciones_bp)
 
     # Context Processor Global: Estado de Pago del Servidor
     @app.context_processor

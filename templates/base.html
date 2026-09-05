@@ -277,9 +277,16 @@
                 <span class="navbar-brand-tech" style="color: var(--brand-primary); font-weight: 900; margin-left: 6px;">TECH</span>
             </a>
 
-            <!-- Badge Superior Servidor Zenic (Derecha) -->
+            <!-- Badge Superior Servidor Zenic y Notificaciones de Precios (Derecha) -->
             <div class="d-flex align-items-center">
                 {% if current_user.is_authenticated and current_user.rol == 'admin' %}
+                    <div id="admin_approval_badge_btn" style="display: none;" class="me-2">
+                        <span class="badge bg-danger rounded-pill px-2 px-md-3 py-1 shadow-sm d-flex align-items-center gap-1" style="font-size: 0.8rem;">
+                            <i class="fa-solid fa-bell fa-shake text-white"></i>
+                            <span id="admin_approval_count">0</span>
+                            <span class="d-none d-md-inline">solicitud(es)</span>
+                        </span>
+                    </div>
                     {% if pago_servidor.estado == 'pagado' or pago_servidor.estado == 'al_dia' %}
                     <button type="button" 
                             class="btn btn-sm px-2 px-md-3 py-1 rounded-pill fw-bold d-flex align-items-center gap-1 shadow-sm text-nowrap"
@@ -633,6 +640,255 @@
             });
         }
     </script>
+
+    {% if current_user.rol == 'admin' %}
+    <!-- Contenedor Flotante Global de Solicitudes de Autorización de Precios (Solo Admin) -->
+    <div id="admin_approval_widget_container" class="position-fixed bottom-0 end-0 p-3" style="z-index: 2060; max-width: 440px; width: 100%; pointer-events: none;"></div>
+
+    <script>
+        // ============================================================
+        // --- SISTEMA DE AUTORIZACIÓN REMOTA DE PRECIOS (ADMIN PANEL) -
+        // ============================================================
+        let adminKnownApprovalIds = new Set();
+        let adminSoundPermissionGranted = false;
+
+        // Registrar permiso de interacción para habilitar audio
+        document.addEventListener('click', () => { adminSoundPermissionGranted = true; }, { once: true });
+        document.addEventListener('keydown', () => { adminSoundPermissionGranted = true; }, { once: true });
+
+        function reproducirAlertaSonora() {
+            try {
+                const AudioCtx = window.AudioContext || window.webkitAudioContext;
+                if (!AudioCtx) return;
+                const ctx = new AudioCtx();
+                const now = ctx.currentTime;
+                
+                // Oscilador 1 (Tono agudo tecnológico suave)
+                const osc = ctx.createOscillator();
+                const gain = ctx.createGain();
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(587.33, now); // Re 5
+                osc.frequency.exponentialRampToValueAtTime(880, now + 0.15); // La 5
+                
+                gain.gain.setValueAtTime(0.0001, now);
+                gain.gain.linearRampToValueAtTime(0.25, now + 0.04);
+                gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.35);
+                
+                osc.connect(gain);
+                gain.connect(ctx.destination);
+                
+                osc.start(now);
+                osc.stop(now + 0.35);
+            } catch (e) {
+                // AudioContext restringido por el navegador
+            }
+        }
+
+        const formatoCOP_Global = (num) => "$" + Math.round(num || 0).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+
+        async function cargarAprobacionesPendientesAdmin() {
+            try {
+                const resp = await fetch('/api/aprobaciones/pendientes');
+                if (!resp.ok) return;
+                const data = await resp.json();
+                
+                const badgeContainer = document.getElementById('admin_approval_badge_btn');
+                const badgeCount = document.getElementById('admin_approval_count');
+                const container = document.getElementById('admin_approval_widget_container');
+                if (!container) return;
+
+                if (!data || data.length === 0) {
+                    if (badgeContainer) badgeContainer.style.display = 'none';
+                    container.innerHTML = '';
+                    adminKnownApprovalIds.clear();
+                    return;
+                }
+
+                // Actualizar badge superior
+                if (badgeContainer && badgeCount) {
+                    badgeCount.textContent = data.length;
+                    badgeContainer.style.display = 'block';
+                }
+
+                // Detectar si hay nuevas solicitudes para disparar sonido
+                let hayNuevas = false;
+                data.forEach(item => {
+                    if (!adminKnownApprovalIds.has(item.id)) {
+                        hayNuevas = true;
+                        adminKnownApprovalIds.add(item.id);
+                    }
+                });
+
+                if (hayNuevas) {
+                    reproducirAlertaSonora();
+                }
+
+                // Renderizar tarjetas si no están en el DOM
+                data.forEach(item => {
+                    let card = document.getElementById(`card_aprobacion_${item.id}`);
+                    if (!card) {
+                        card = document.createElement('div');
+                        card.id = `card_aprobacion_${item.id}`;
+                        card.className = 'card border-0 shadow-lg mb-3 admin-approval-card';
+                        card.style.cssText = 'pointer-events: auto; border-radius: 16px; overflow: hidden; border-top: 4px solid var(--brand-primary) !important; background: #ffffff; box-shadow: 0 10px 30px rgba(15,23,42,0.18) !important; animation: fadeInSlideUp 0.35s ease-out;';
+                        
+                        const varianteHtml = item.variante ? `<span class="badge bg-light text-secondary border fw-normal">${item.variante}</span>` : '';
+                        const motivoHtml = item.motivo ? `<div class="mb-2 p-2 rounded-3 text-muted small" style="background: #F1F5F9; font-size: 0.78rem;"><i class="fa-solid fa-comment-dots me-1 text-primary"></i>"${item.motivo}"</div>` : '';
+
+                        card.innerHTML = `
+                            <div class="card-header bg-white border-0 pb-1 pt-3 px-3 d-flex justify-content-between align-items-center">
+                                <span class="badge rounded-pill px-2 py-1 fw-bold" style="background: rgba(255, 0, 127, 0.12); color: var(--brand-primary); font-size: 0.75rem;">
+                                    <i class="fa-solid fa-hand-holding-dollar me-1"></i> Autorización de Precio
+                                </span>
+                                <small class="text-muted" style="font-size: 0.72rem;"><i class="fa-regular fa-clock me-1"></i>${item.fecha}</small>
+                            </div>
+                            <div class="card-body px-3 py-2">
+                                <div class="d-flex align-items-center gap-2 mb-2">
+                                    <i class="fa-solid fa-user-tag text-muted"></i>
+                                    <span class="small text-muted">Vendedor:</span>
+                                    <strong class="small text-dark">${item.vendedor}</strong>
+                                </div>
+                                <div class="fw-bold text-brand-black mb-2" style="font-size: 0.92rem;">
+                                    ${item.producto} ${varianteHtml}
+                                </div>
+                                
+                                <div class="p-2 rounded-3 mb-2" style="background: #F8FAFC; border: 1px solid #E2E8F0; font-size: 0.82rem;">
+                                    <div class="d-flex justify-content-between text-muted mb-1">
+                                        <span>Precio Mínimo Permitido:</span>
+                                        <strong class="text-dark">${formatoCOP_Global(item.precio_original)}</strong>
+                                    </div>
+                                    <div class="d-flex justify-content-between text-brand-pink fw-bold">
+                                        <span>Precio Solicitado:</span>
+                                        <strong class="fs-6" style="color: var(--brand-primary);">${formatoCOP_Global(item.precio_solicitado)}</strong>
+                                    </div>
+                                </div>
+                                
+                                ${motivoHtml}
+                                
+                                <div class="mt-2">
+                                    <div class="input-group input-group-sm mb-2 shadow-sm rounded-3 overflow-hidden">
+                                        <span class="input-group-text bg-white text-muted border-end-0" style="font-size: 0.78rem;">Autorizar: $</span>
+                                        <input type="number" step="1" class="form-control fw-bold text-end border-start-0" id="input_precio_autorizado_${item.id}" value="${Math.round(item.precio_solicitado)}" title="Puedes ajustar una contraoferta si deseas autorizar un monto diferente">
+                                    </div>
+                                    
+                                    <div id="seccion_rechazo_${item.id}" style="display: none;" class="mb-2">
+                                        <input type="text" class="form-control form-control-sm rounded-3" id="input_motivo_rechazo_${item.id}" placeholder="Motivo del rechazo (opcional)">
+                                    </div>
+                                    
+                                    <div class="d-flex gap-2 justify-content-end">
+                                        <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill px-3 fw-semibold" id="btn_toggle_rechazo_${item.id}" onclick="toggleOpcionRechazo(${item.id})">
+                                            <i class="fa-solid fa-xmark me-1 text-danger"></i> Rechazar
+                                        </button>
+                                        <button type="button" class="btn btn-sm btn-pink rounded-pill px-3 fw-bold shadow-sm" id="btn_aprobar_${item.id}" onclick="resolverAprobacionAdmin(${item.id}, 'aprobar')">
+                                            <i class="fa-solid fa-check me-1"></i> Aprobar
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        `;
+                        container.appendChild(card);
+                    }
+                });
+
+                // Eliminar del DOM aquellas tarjetas que ya no estén pendientes
+                const currentIds = new Set(data.map(d => d.id));
+                const cardsEnDom = container.querySelectorAll('.admin-approval-card');
+                cardsEnDom.forEach(c => {
+                    const cardId = parseInt(c.id.replace('card_aprobacion_', ''));
+                    if (!currentIds.has(cardId)) {
+                        c.remove();
+                        adminKnownApprovalIds.delete(cardId);
+                    }
+                });
+
+            } catch (err) {
+                console.error('Error al consultar aprobaciones pendientes:', err);
+            }
+        }
+
+        function toggleOpcionRechazo(id) {
+            const sec = document.getElementById(`seccion_rechazo_${id}`);
+            const btn = document.getElementById(`btn_toggle_rechazo_${id}`);
+            if (!sec || !btn) return;
+            
+            if (sec.style.display === 'none') {
+                sec.style.display = 'block';
+                btn.className = 'btn btn-sm btn-danger rounded-pill px-3 fw-bold';
+                btn.innerHTML = '<i class="fa-solid fa-ban me-1"></i> Confirmar Rechazo';
+            } else {
+                // Confirmado el rechazo
+                resolverAprobacionAdmin(id, 'rechazar');
+            }
+        }
+
+        async function resolverAprobacionAdmin(id, accion) {
+            const btnAprobar = document.getElementById(`btn_aprobar_${id}`);
+            const btnRechazar = document.getElementById(`btn_toggle_rechazo_${id}`);
+            if (btnAprobar) btnAprobar.disabled = true;
+            if (btnRechazar) btnRechazar.disabled = true;
+
+            try {
+                if (accion === 'aprobar') {
+                    const inputPrecio = document.getElementById(`input_precio_autorizado_${id}`);
+                    const precioAprobado = inputPrecio ? parseFloat(inputPrecio.value) : null;
+                    
+                    const resp = await fetch(`/api/aprobaciones/${id}/aprobar`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ precio_aprobado: precioAprobado })
+                    });
+                    const resData = await resp.json();
+                    if (!resp.ok) {
+                        alert(resData.error || 'Error al aprobar solicitud');
+                        if (btnAprobar) btnAprobar.disabled = false;
+                        if (btnRechazar) btnRechazar.disabled = false;
+                        return;
+                    }
+                } else {
+                    const inputMotivo = document.getElementById(`input_motivo_rechazo_${id}`);
+                    const motivoRechazo = inputMotivo ? inputMotivo.value.trim() : '';
+
+                    const resp = await fetch(`/api/aprobaciones/${id}/rechazar`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ motivo_rechazo: motivoRechazo })
+                    });
+                    const resData = await resp.json();
+                    if (!resp.ok) {
+                        alert(resData.error || 'Error al rechazar solicitud');
+                        if (btnAprobar) btnAprobar.disabled = false;
+                        if (btnRechazar) btnRechazar.disabled = false;
+                        return;
+                    }
+                }
+
+                // Animación de salida de la tarjeta
+                const card = document.getElementById(`card_aprobacion_${id}`);
+                if (card) {
+                    card.style.transition = 'all 0.3s ease';
+                    card.style.opacity = '0';
+                    card.style.transform = 'translateY(20px)';
+                    setTimeout(() => card.remove(), 300);
+                }
+                adminKnownApprovalIds.delete(id);
+                setTimeout(cargarAprobacionesPendientesAdmin, 400);
+
+            } catch (err) {
+                console.error(err);
+                alert('Error al procesar la respuesta');
+                if (btnAprobar) btnAprobar.disabled = false;
+                if (btnRechazar) btnRechazar.disabled = false;
+            }
+        }
+
+        // Iniciar Polling del Administrador cada 4.5 segundos
+        document.addEventListener('DOMContentLoaded', () => {
+            cargarAprobacionesPendientesAdmin();
+            setInterval(cargarAprobacionesPendientesAdmin, 4500);
+        });
+    </script>
+    {% endif %}
+
     {% endif %}
 
 

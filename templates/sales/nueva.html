@@ -316,8 +316,89 @@
     </div>
 </div>
 
+<!-- Modal Solicitud de Aprobación de Precio Remoto -->
+<div class="modal fade" id="modalAprobacionPrecio" tabindex="-1" data-bs-backdrop="static" data-bs-keyboard="false" aria-labelledby="modalAprobacionPrecioLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg" style="border-radius: 20px; overflow: hidden;">
+            <div class="modal-header text-white" style="background: linear-gradient(135deg, #0F172A 0%, #1E293B 100%); border-bottom: 3px solid var(--brand-primary);">
+                <h5 class="modal-title fw-bold text-white d-flex align-items-center gap-2" id="modalAprobacionPrecioLabel">
+                    <i class="fa-solid fa-shield-halved" style="color: var(--brand-primary);"></i> Aprobación de Precio Requerida
+                </h5>
+            </div>
+            <div class="modal-body p-4 bg-white">
+                <!-- Estado 1: Formulario / Resumen de Solicitud -->
+                <div id="aprobacion_estado_inicial">
+                    <p class="text-muted small mb-3">
+                        El precio que deseas cobrar está por debajo del límite autorizado para este producto. Requiere autorización remota de un administrador.
+                    </p>
+
+                    <div class="p-3 rounded-3 mb-3" style="background-color: #F8FAFC; border: 1px solid #E2E8F0;">
+                        <div class="fw-bold text-brand-black mb-2" id="aprob_producto_nombre">Nombre Producto</div>
+                        <div class="d-flex justify-content-between text-muted small py-1 border-bottom">
+                            <span>Precio Mínimo Permitido:</span>
+                            <span class="fw-bold text-dark" id="aprob_precio_original">$0</span>
+                        </div>
+                        <div class="d-flex justify-content-between small py-1 mt-1">
+                            <span class="fw-bold" style="color: var(--brand-primary);">Precio Solicitado (Oferta):</span>
+                            <span class="fw-bolder fs-5" style="color: var(--brand-primary);" id="aprob_precio_solicitado">$0</span>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label small fw-bold text-secondary mb-1">Motivo / Justificación:</label>
+                        <input type="text" class="form-control form-control-sm border shadow-sm rounded-3" id="aprob_motivo_input" placeholder="Ej: Cliente frecuente, lleva 3 unidades...">
+                    </div>
+
+                    <div class="d-flex gap-2 justify-content-end">
+                        <button type="button" class="btn btn-outline-secondary rounded-pill px-3 fw-bold" onclick="cancelarYRestaurarPrecio()">
+                            Cancelar
+                        </button>
+                        <button type="button" class="btn btn-pink rounded-pill px-4 fw-bold shadow-sm" id="btn_enviar_solicitud_aprob" onclick="enviarSolicitudAprobacion()">
+                            <i class="fa-solid fa-paper-plane me-1"></i> Solicitar Autorización
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Estado 2: Esperando al Administrador (Polling Activo) -->
+                <div id="aprobacion_estado_espera" style="display: none;" class="text-center py-3">
+                    <div class="spinner-border text-primary mb-3" style="width: 3.5rem; height: 3.5rem; color: var(--brand-primary) !important;" role="status">
+                        <span class="visually-hidden">Cargando...</span>
+                    </div>
+                    <h5 class="fw-bold text-brand-black mb-1">Esperando Respuesta del Administrador</h5>
+                    <p class="text-muted small mb-3">
+                        La solicitud fue enviada al panel del administrador en tiempo real.
+                    </p>
+                    <div class="badge bg-light text-primary border rounded-pill px-3 py-2 mb-3">
+                        <i class="fa-solid fa-arrows-rotate fa-spin me-1"></i> Comprobando cada 3 segundos...
+                    </div>
+                    <div>
+                        <button type="button" class="btn btn-outline-danger btn-sm rounded-pill px-4 fw-bold" onclick="cancelarSolicitudEnEspera()">
+                            <i class="fa-solid fa-xmark me-1"></i> Cancelar Solicitud
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Estado 3: Solicitud Rechazada -->
+                <div id="aprobacion_estado_rechazo" style="display: none;" class="text-center py-3">
+                    <div class="mb-3 text-danger fs-1">
+                        <i class="fa-solid fa-circle-xmark"></i>
+                    </div>
+                    <h5 class="fw-bold text-danger mb-1">Solicitud Rechazada</h5>
+                    <p class="text-muted small mb-3" id="aprob_motivo_rechazo">
+                        El administrador denegó la rebaja de precio.
+                    </p>
+                    <button type="button" class="btn btn-dark rounded-pill px-4 fw-bold" onclick="cancelarYRestaurarPrecio()">
+                        Aceptar y volver al precio original
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
 <!-- Motor Javascript Vanilla Ultrarápido y Dinámico -->
 <script>
+    const IS_ADMIN = {{ 'true' if current_user.rol == 'admin' else 'false' }};
     let carrito = [];
     let pagosMixtos = []; // Array de {metodo_pago, monto}
     const csrf_token = "{{ csrf_token() }}";
@@ -359,6 +440,181 @@
             toast.style.transform = 'translateX(25px)';
             setTimeout(() => toast.remove(), 250);
         }, 2600);
+    }
+
+    // ====================================================
+    // --- GESTIÓN DE APROBACIÓN REMOTA DE PRECIOS (POS) ---
+    // ====================================================
+    let modalAprobacionBs = null;
+    let pollingAprobacionInterval = null;
+    let contextoAprobacion = null; // { index, item, nuevoPrecio, solicitudId }
+
+    function getModalAprobacion() {
+        if (!modalAprobacionBs) {
+            const el = document.getElementById('modalAprobacionPrecio');
+            if (el && window.bootstrap) {
+                modalAprobacionBs = new bootstrap.Modal(el);
+            }
+        }
+        return modalAprobacionBs;
+    }
+
+    function abrirModalAprobacion(index, item, nuevoPrecio) {
+        contextoAprobacion = {
+            index: index,
+            item: item,
+            nuevoPrecio: nuevoPrecio,
+            solicitudId: null
+        };
+
+        const prodNombre = item.nombre + (item.variantes && item.variantes.length > 0 ? ` (${item.variantes.find(v => v.id == item.variant_id)?.nombre || ''})` : '');
+        document.getElementById('aprob_producto_nombre').textContent = prodNombre;
+        document.getElementById('aprob_precio_original').textContent = formatoCOP(item.precio_limite);
+        document.getElementById('aprob_precio_solicitado').textContent = formatoCOP(nuevoPrecio);
+        document.getElementById('aprob_motivo_input').value = '';
+
+        document.getElementById('aprobacion_estado_inicial').style.display = 'block';
+        document.getElementById('aprobacion_estado_espera').style.display = 'none';
+        document.getElementById('aprobacion_estado_rechazo').style.display = 'none';
+
+        const modal = getModalAprobacion();
+        if (modal) modal.show();
+    }
+
+    function cancelarYRestaurarPrecio() {
+        detenerPollingAprobacion();
+        const modal = getModalAprobacion();
+        if (modal) modal.hide();
+        contextoAprobacion = null;
+        renderizarCarrito();
+    }
+
+    async function enviarSolicitudAprobacion() {
+        if (!contextoAprobacion) return;
+        const btn = document.getElementById('btn_enviar_solicitud_aprob');
+        if (btn) {
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin me-1"></i> Enviando...';
+        }
+
+        const motivo = document.getElementById('aprob_motivo_input').value.trim();
+
+        try {
+            const resp = await fetch('/api/precio/solicitar', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': csrf_token
+                },
+                body: JSON.stringify({
+                    product_id: contextoAprobacion.item.id,
+                    variant_id: contextoAprobacion.item.variant_id || null,
+                    precio_solicitado: contextoAprobacion.nuevoPrecio,
+                    motivo: motivo
+                })
+            });
+
+            const data = await resp.json();
+            if (!resp.ok) {
+                posToast(data.error || 'Error al enviar solicitud', 'danger');
+                if (btn) {
+                    btn.disabled = false;
+                    btn.innerHTML = '<i class="fa-solid fa-paper-plane me-1"></i> Solicitar Autorización';
+                }
+                return;
+            }
+
+            contextoAprobacion.solicitudId = data.approval_id;
+
+            // Cambiar a vista de espera con spinner
+            document.getElementById('aprobacion_estado_inicial').style.display = 'none';
+            document.getElementById('aprobacion_estado_espera').style.display = 'block';
+
+            iniciarPollingAprobacion(data.approval_id);
+
+        } catch (err) {
+            console.error(err);
+            posToast('Error de red al conectar con el servidor', 'danger');
+        } finally {
+            if (btn) {
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fa-solid fa-paper-plane me-1"></i> Solicitar Autorización';
+            }
+        }
+    }
+
+    function iniciarPollingAprobacion(approvalId) {
+        detenerPollingAprobacion();
+        pollingAprobacionInterval = setInterval(async () => {
+            if (!contextoAprobacion || contextoAprobacion.solicitudId !== approvalId) {
+                detenerPollingAprobacion();
+                return;
+            }
+
+            try {
+                const res = await fetch(`/api/precio/estado/${approvalId}`);
+                if (!res.ok) return;
+                const info = await res.json();
+
+                if (info.estado === 'aprobado') {
+                    detenerPollingAprobacion();
+                    const item = contextoAprobacion.item;
+                    item.precio_final = info.precio_aprobado;
+                    item.aprobado = true;
+                    item.precio_aprobado = info.precio_aprobado;
+                    item.aprobacion_id = info.id;
+
+                    const modal = getModalAprobacion();
+                    if (modal) modal.hide();
+
+                    if (info.precio_aprobado > contextoAprobacion.nuevoPrecio) {
+                        posToast(`Aprobado con contraoferta: ${formatoCOP(info.precio_aprobado)}`, 'info');
+                    } else {
+                        posToast(`¡Precio de ${formatoCOP(info.precio_aprobado)} autorizado por Administrador!`, 'success');
+                    }
+
+                    contextoAprobacion = null;
+                    renderizarCarrito();
+
+                } else if (info.estado === 'rechazado') {
+                    detenerPollingAprobacion();
+                    document.getElementById('aprobacion_estado_espera').style.display = 'none';
+                    document.getElementById('aprobacion_estado_rechazo').style.display = 'block';
+                    document.getElementById('aprob_motivo_rechazo').textContent = info.motivo_rechazo ? `Motivo: ${info.motivo_rechazo}` : 'El administrador rechazó la rebaja de precio.';
+                } else if (info.estado === 'cancelado') {
+                    detenerPollingAprobacion();
+                    cancelarYRestaurarPrecio();
+                }
+            } catch (e) {
+                console.error('Error polling aprobacion:', e);
+            }
+        }, 3000);
+    }
+
+    function detenerPollingAprobacion() {
+        if (pollingAprobacionInterval) {
+            clearInterval(pollingAprobacionInterval);
+            pollingAprobacionInterval = null;
+        }
+    }
+
+    async function cancelarSolicitudEnEspera() {
+        if (!contextoAprobacion || !contextoAprobacion.solicitudId) {
+            cancelarYRestaurarPrecio();
+            return;
+        }
+        try {
+            await fetch(`/api/precio/cancelar/${contextoAprobacion.solicitudId}`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': csrf_token
+                }
+            });
+        } catch (e) {
+            console.error(e);
+        }
+        cancelarYRestaurarPrecio();
     }
 
     // Inicializar fecha de venta con la fecha de hoy (Solo Admin)
@@ -1017,6 +1273,9 @@
 
         if (campo === 'variant_id') {
             item.variant_id = parseInt(valor);
+            item.aprobado = false;
+            item.precio_aprobado = null;
+            item.aprobacion_id = null;
             const varSel = item.variantes.find(v => v.id == item.variant_id);
             if (varSel) {
                 if (item.cantidad > varSel.stock) {
@@ -1035,12 +1294,28 @@
                 renderizarCarrito();
                 return;
             }
-            if (!item.es_obsequio && nuevoPrecio < item.precio_limite) {
-                posToast(`Precio inferior al mínimo autorizado (${formatoCOP(item.precio_limite)}).`, 'danger');
+            if (nuevoPrecio < 0) {
+                posToast('El precio no puede ser negativo.', 'warning');
                 renderizarCarrito();
                 return;
             }
-            item.precio_final = nuevoPrecio;
+
+            // Si es obsequio o manual o admin, se permite directo
+            if (item.es_obsequio || item.es_manual || IS_ADMIN) {
+                item.precio_final = nuevoPrecio;
+            } else if (nuevoPrecio < item.precio_limite) {
+                // Verificar si ya tiene una aprobación autorizada que cubra este precio
+                if (item.aprobado && item.precio_aprobado !== undefined && nuevoPrecio >= item.precio_aprobado) {
+                    item.precio_final = nuevoPrecio;
+                } else {
+                    // Abrir modal de solicitud de aprobación remota
+                    abrirModalAprobacion(index, item, nuevoPrecio);
+                    return;
+                }
+            } else {
+                // Precio dentro del límite autorizado
+                item.precio_final = nuevoPrecio;
+            }
         }
         
         renderizarCarrito();
@@ -1138,9 +1413,10 @@
             tr.innerHTML = `
                 <td>
                     <div class="fw-bold text-brand-black">${item.nombre}</div>
-                    <div class="d-flex align-items-center gap-2 mt-1">
+                    <div class="d-flex align-items-center gap-2 mt-1 flex-wrap">
                         ${skuLabel}
                         ${item.es_obsequio ? '<span class="badge bg-success bg-opacity-10 text-success ms-1"><i class="fa-solid fa-gift me-1"></i>Obsequio</span>' : ''}
+                        ${item.aprobado ? '<span class="badge bg-success text-white rounded-pill px-2 py-1 shadow-sm" style="font-size: 0.7rem;" title="Precio rebajado autorizado por Administrador"><i class="fa-solid fa-shield-check me-1"></i>Autorizado Admin</span>' : ''}
                     </div>
                     ${variantHtml}
                 </td>
@@ -1161,7 +1437,7 @@
                     ` : `
                     <div class="input-group input-group-sm">
                         <span class="input-group-text bg-light border-end-0">$</span>
-                        <input type="number" step="1" class="form-control text-end border-start-0 pe-2 fw-bold" value="${Math.round(item.precio_final)}" onchange="actualizarItem(${index}, 'precio_final', this.value)" ${precioInputState}>
+                        <input type="number" step="1" class="form-control text-end pe-2 fw-bold ${item.aprobado ? 'border-success text-success bg-success bg-opacity-10' : 'border-start-0'}" value="${Math.round(item.precio_final)}" onchange="actualizarItem(${index}, 'precio_final', this.value)" ${precioInputState}>
                         <button class="btn btn-outline-secondary dropdown-toggle dropdown-toggle-split" type="button" data-bs-toggle="dropdown" aria-expanded="false" ${precioInputState}>
                             <span class="visually-hidden">Opciones</span>
                         </button>
@@ -1236,6 +1512,21 @@
             skuInputEl.focus();
             return;
         }
+
+        // Validación estricta para vendedores
+        if (!IS_ADMIN) {
+            for (let i = 0; i < carrito.length; i++) {
+                const it = carrito[i];
+                if (!it.es_obsequio && !it.es_manual && it.precio_final < it.precio_limite) {
+                    if (!it.aprobado || (it.precio_aprobado !== undefined && it.precio_final < it.precio_aprobado)) {
+                        posToast(`"${it.nombre}" tiene un precio (${formatoCOP(it.precio_final)}) por debajo del límite autorizado sin aprobación.`, 'danger');
+                        abrirModalAprobacion(i, it, it.precio_final);
+                        return;
+                    }
+                }
+            }
+        }
+
         procesarPago(null);
     });
 
