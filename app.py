@@ -97,6 +97,7 @@ def create_app():
     @app.context_processor
     def inject_pago_servidor():
         import urllib.parse
+        from datetime import datetime
         from itsdangerous import URLSafeTimedSerializer
         from flask import request
         from models import ServerPayment, obtener_hora_bogota
@@ -111,16 +112,85 @@ def create_app():
             anio_actual = ahora.year
             mes_actual = ahora.month
             dia_actual = ahora.day
-            mes_nombre = MESES_ESPANOL[mes_actual - 1]
 
-            pago_existente = ServerPayment.query.filter_by(
-                anio=anio_actual,
-                mes=mes_actual,
-                estado='pagado'
-            ).first()
+            monto = app.config.get('VALOR_MENSUALIDAD_SERVIDOR', '60.000')
+            dia_vencimiento = 15
+            dia_preventivo = 8  # Aviso preventivo 7 días antes (del 8 al 14)
+
+            # Regla de fecha de cobro: 
+            # Cobro los días 15 de cada mes a partir del 15 de octubre de 2026.
+            # Antes de esa fecha (ej: septiembre 2026), el primer corte aplicable es el 15 de Octubre de 2026
+            # y el sistema se encuentra en estado "al día".
+            if anio_actual < 2026 or (anio_actual == 2026 and mes_actual < 10):
+                mes_cobro = 10
+                anio_cobro = 2026
+                pago_existente = ServerPayment.query.filter_by(
+                    anio=anio_cobro,
+                    mes=mes_cobro,
+                    estado='pagado'
+                ).first()
+                estado = 'pagado' if pago_existente else 'al_dia'
+                dias_restantes = (datetime(2026, 10, 15) - datetime(anio_actual, mes_actual, dia_actual)).days
+                dias_gabela = 0
+            else:
+                # A partir de octubre 2026:
+                pago_mes_actual = ServerPayment.query.filter_by(
+                    anio=anio_actual,
+                    mes=mes_actual,
+                    estado='pagado'
+                ).first()
+
+                # Si el mes actual ya fue pagado y ya pasó el día 15, proyectar el cobro al mes siguiente
+                if pago_mes_actual and dia_actual > dia_vencimiento:
+                    if mes_actual == 12:
+                        mes_cobro = 1
+                        anio_cobro = anio_actual + 1
+                    else:
+                        mes_cobro = mes_actual + 1
+                        anio_cobro = anio_actual
+
+                    pago_existente = ServerPayment.query.filter_by(
+                        anio=anio_cobro,
+                        mes=mes_cobro,
+                        estado='pagado'
+                    ).first()
+                    estado = 'pagado' if pago_existente else 'al_dia'
+                    dias_restantes = 0
+                    dias_gabela = 0
+                else:
+                    mes_cobro = mes_actual
+                    anio_cobro = anio_actual
+                    pago_existente = pago_mes_actual
+
+                    if pago_existente:
+                        estado = 'pagado'
+                        dias_restantes = 0
+                        dias_gabela = 0
+                    elif 1 <= dia_actual < dia_preventivo:
+                        estado = 'al_dia'
+                        dias_restantes = dia_vencimiento - dia_actual
+                        dias_gabela = 0
+                    elif dia_preventivo <= dia_actual < dia_vencimiento:
+                        estado = 'preventivo'
+                        dias_restantes = dia_vencimiento - dia_actual
+                        dias_gabela = 0
+                    elif dia_actual == dia_vencimiento:
+                        estado = 'hoy'
+                        dias_restantes = 0
+                        dias_gabela = 0
+                    elif dia_vencimiento < dia_actual <= (dia_vencimiento + 5):
+                        estado = 'gabela'
+                        dias_restantes = 0
+                        dias_gabela = (dia_vencimiento + 5) - dia_actual + 1
+                    else:
+                        estado = 'vencido'
+                        dias_restantes = 0
+                        dias_gabela = 0
+
+            mes_nombre = MESES_ESPANOL[mes_cobro - 1]
 
             serializer = URLSafeTimedSerializer(app.config['SECRET_KEY'])
-            token = serializer.dumps({'anio': anio_actual, 'mes': mes_actual}, salt='server-payment-salt')
+            token = serializer.dumps({'anio': anio_cobro, 'mes': mes_cobro}, salt='server-payment-salt')
 
             try:
                 url_confirmacion = url_for('servidor_bp.confirmar_pago', token=token, _external=True)
@@ -128,49 +198,18 @@ def create_app():
                 base_url = request.host_url.rstrip('/') if request else 'http://localhost:5000'
                 url_confirmacion = f"{base_url}/servidor/confirmar-pago?token={token}"
 
-            monto = app.config.get('VALOR_MENSUALIDAD_SERVIDOR', '60.000')
-
-            # Regla de fecha de cobro: A partir del 15 de octubre de 2026, el cobro vence los días 15 de cada mes.
-            # Antes de esa fecha (ej: septiembre 2026), vencía el día 30.
-            if anio_actual > 2026 or (anio_actual == 2026 and mes_actual >= 10):
-                dia_vencimiento = 15
-                dia_preventivo = 8   # Aviso preventivo 7 días antes (del 8 al 14)
-            else:
-                dia_vencimiento = 30
-                dia_preventivo = 22  # Aviso preventivo del 22 al 29
-
             mensaje_wa = (
-                f"Hola, adjunto el comprobante de pago de la mensualidad del servidor Zenic (${monto} COP) para {mes_nombre} {anio_actual}.\n\n"
+                f"Hola, adjunto el comprobante de pago de la mensualidad del servidor Zenic (${monto} COP) para {mes_nombre} {anio_cobro}.\n\n"
                 f"Para confirmar mi pago en el sistema con 1 solo clic, toca aquí:\n"
                 f"{url_confirmacion}"
             )
 
             whatsapp_url = f"https://wa.me/573115643557?text={urllib.parse.quote(mensaje_wa)}"
 
-            # Evaluación de estado del calendario según el día de vencimiento (30 o 15)
-            dias_restantes = 0
-            dias_gabela = 0
-
-            if pago_existente:
-                estado = 'pagado'
-            elif 1 <= dia_actual < dia_preventivo:
-                estado = 'al_dia'
-            elif dia_preventivo <= dia_actual < dia_vencimiento:
-                estado = 'preventivo'
-                dias_restantes = dia_vencimiento - dia_actual
-            elif dia_actual == dia_vencimiento:
-                estado = 'hoy'
-                dias_restantes = 0
-            elif dia_vencimiento < dia_actual <= (dia_vencimiento + 5):
-                estado = 'gabela'
-                dias_gabela = (dia_vencimiento + 5) - dia_actual + 1
-            else:
-                estado = 'vencido'
-
             pago_servidor = {
                 'estado': estado,
                 'mes_nombre': mes_nombre,
-                'anio': anio_actual,
+                'anio': anio_cobro,
                 'dia_vencimiento': dia_vencimiento,
                 'monto': monto,
                 'dias_restantes': dias_restantes,
