@@ -26,7 +26,7 @@ def create_app():
             result = sock.connect_ex(('127.0.0.1', 5432))
             sock.close()
             if result == 0:
-                db_url = 'postgresql://postgres:admin123@localhost:5432/KOBA'
+                db_url = 'postgresql://postgres:admin123@localhost:5432/ultra'
             else:
                 instance_path = os.path.join(app.root_path, 'instance')
                 os.makedirs(instance_path, exist_ok=True)
