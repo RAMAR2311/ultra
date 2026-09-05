@@ -1,6 +1,6 @@
 from flask import Blueprint, render_template, abort, request, redirect, url_for, flash
 from flask_login import login_required, current_user
-from models import db, Product, ProductVariant, Sale, User, Maneo, Cliente, SaleDetail, SalePayment, StockAdjustment, Expense, ArqueoCaja, ProviderPayment, FacturaBodega, AbonoBodega, obtener_hora_bogota
+from models import db, Product, ProductVariant, Sale, User, Maneo, Cliente, SaleDetail, SalePayment, StockAdjustment, Expense, ArqueoCaja, ProviderPayment, FacturaBodega, AbonoBodega, PriceApproval, obtener_hora_bogota
 from sqlalchemy.sql import func
 from werkzeug.security import generate_password_hash
 from decorators import admin_required
@@ -242,6 +242,16 @@ def dashboard():
     pagos_proveedores_periodo = sum((p.monto_abonado or 0) for p in pagos_prov_en_rango)
     conteo_pagos_prov = len(pagos_prov_en_rango)
 
+    # 8. Aprobaciones de Precios del Periodo y Estado Global
+    aprobaciones_en_rango = PriceApproval.query.filter(
+        PriceApproval.fecha_solicitud >= inicio_filtro,
+        PriceApproval.fecha_solicitud <= fin_filtro
+    ).all()
+    total_aprobaciones_periodo = len(aprobaciones_en_rango)
+    aprobadas_periodo = sum(1 for a in aprobaciones_en_rango if a.estado in ('aprobado', 'utilizada'))
+    rechazadas_periodo = sum(1 for a in aprobaciones_en_rango if a.estado == 'rechazado')
+    pendientes_activas = PriceApproval.query.filter_by(estado='pendiente').count()
+
     return render_template('admin/dashboard.html',
                            filtro_tipo=filtro_tipo,
                            fecha_dia=fecha_dia_str,
@@ -282,8 +292,80 @@ def dashboard():
                            # Tarjeta 7: Proveedores
                            pagos_proveedores_periodo=pagos_proveedores_periodo,
                            conteo_pagos_prov=conteo_pagos_prov,
+                           # Tarjeta 8: Aprobaciones de Precios
+                           total_aprobaciones_periodo=total_aprobaciones_periodo,
+                           aprobadas_periodo=aprobadas_periodo,
+                           rechazadas_periodo=rechazadas_periodo,
+                           pendientes_activas=pendientes_activas,
                            # Retrocompatibilidad
                            nombre_mes=meses_nombres.get(mes, 'Mes Actual'))
+
+@admin_bp.route('/aprobaciones')
+@login_required
+@admin_required
+def aprobaciones():
+    """Vista completa de Historial y Auditoría de Aprobaciones de Precios."""
+    estado_filtro = request.args.get('estado', 'todos')
+    vendedor_id = request.args.get('vendedor_id', type=int)
+    buscar = request.args.get('buscar', '').strip()
+    fecha_inicio_str = request.args.get('fecha_inicio', '')
+    fecha_fin_str = request.args.get('fecha_fin', '')
+
+    query = PriceApproval.query
+
+    if estado_filtro and estado_filtro != 'todos':
+        query = query.filter(PriceApproval.estado == estado_filtro)
+
+    if vendedor_id:
+        query = query.filter(PriceApproval.vendedor_id == vendedor_id)
+
+    if buscar:
+        query = query.filter(
+            db.or_(
+                PriceApproval.nombre_producto.ilike(f'%{buscar}%'),
+                PriceApproval.motivo.ilike(f'%{buscar}%'),
+                PriceApproval.vendedor.has(User.nombre.ilike(f'%{buscar}%'))
+            )
+        )
+
+    if fecha_inicio_str:
+        try:
+            f_ini = datetime.strptime(fecha_inicio_str, '%Y-%m-%d')
+            query = query.filter(PriceApproval.fecha_solicitud >= f_ini)
+        except ValueError:
+            pass
+
+    if fecha_fin_str:
+        try:
+            f_fin = datetime.strptime(fecha_fin_str, '%Y-%m-%d').replace(hour=23, minute=59, second=59)
+            query = query.filter(PriceApproval.fecha_solicitud <= f_fin)
+        except ValueError:
+            pass
+
+    solicitudes = query.order_by(PriceApproval.fecha_solicitud.desc()).all()
+
+    # Métricas globales para los KPIs
+    total_solicitudes = PriceApproval.query.count()
+    total_aprobadas = PriceApproval.query.filter(PriceApproval.estado.in_(['aprobado', 'utilizada'])).count()
+    total_rechazadas = PriceApproval.query.filter_by(estado='rechazado').count()
+    total_pendientes = PriceApproval.query.filter_by(estado='pendiente').count()
+
+    vendedores = User.query.filter(User.rol != 'eliminado').order_by(User.nombre).all()
+
+    return render_template(
+        'admin/aprobaciones_historial.html',
+        solicitudes=solicitudes,
+        total_solicitudes=total_solicitudes,
+        total_aprobadas=total_aprobadas,
+        total_rechazadas=total_rechazadas,
+        total_pendientes=total_pendientes,
+        vendedores=vendedores,
+        estado_filtro=estado_filtro,
+        vendedor_id=vendedor_id,
+        buscar=buscar,
+        fecha_inicio=fecha_inicio_str,
+        fecha_fin=fecha_fin_str
+    )
 
 @admin_bp.route('/maneos')
 @login_required

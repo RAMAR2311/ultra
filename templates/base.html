@@ -377,6 +377,14 @@
                     <li class="nav-item">
                         <a class="nav-link text-brand-black rounded-3 px-3 py-2 fw-semibold border-bottom" href="/admin/maneos"><i class="fa-solid fa-handshake text-primary me-2" style="width:20px; text-align:center;"></i> Maneos</a>
                     </li>
+                    <li class="nav-item">
+                        <a class="nav-link text-brand-black rounded-3 px-3 py-2 fw-semibold border-bottom d-flex align-items-center justify-content-between" href="{{ url_for('admin_bp.aprobaciones') }}">
+                            <div>
+                                <i class="fa-solid fa-stamp text-danger me-2" style="width:20px; text-align:center;"></i> Aprobaciones de Precios
+                            </div>
+                            <span class="badge bg-danger rounded-pill px-2 py-1 small" id="sidebar_approval_badge" style="display: none;">0</span>
+                        </a>
+                    </li>
                     <li class="nav-item mt-2">
                         <a class="nav-link text-brand-black rounded-3 px-3 py-2 fw-bold bg-light border" href="/arqueo/nuevo"><i class="fa-solid fa-calculator text-brand-blue me-2" style="width:20px; text-align:center;"></i> Arqueo de Caja</a>
                     </li>
@@ -698,20 +706,26 @@
                 
                 const badgeContainer = document.getElementById('admin_approval_badge_btn');
                 const badgeCount = document.getElementById('admin_approval_count');
+                const sidebarBadge = document.getElementById('sidebar_approval_badge');
                 const container = document.getElementById('admin_approval_widget_container');
                 if (!container) return;
 
                 if (!data || data.length === 0) {
                     if (badgeContainer) badgeContainer.style.display = 'none';
+                    if (sidebarBadge) sidebarBadge.style.display = 'none';
                     container.innerHTML = '';
                     adminKnownApprovalIds.clear();
                     return;
                 }
 
-                // Actualizar badge superior
+                // Actualizar badge superior y lateral
                 if (badgeContainer && badgeCount) {
                     badgeCount.textContent = data.length;
                     badgeContainer.style.display = 'block';
+                }
+                if (sidebarBadge) {
+                    sidebarBadge.textContent = data.length;
+                    sidebarBadge.style.display = 'inline-block';
                 }
 
                 // Detectar si hay nuevas solicitudes para disparar sonido

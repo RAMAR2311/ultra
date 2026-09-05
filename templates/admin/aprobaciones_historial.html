@@ -1,0 +1,517 @@
+{% extends "base.html" %}
+
+{% block content %}
+<!-- Cabecera Principal -->
+<div class="d-flex flex-wrap justify-content-between align-items-center mb-4 gap-3">
+    <div>
+        <div class="d-flex align-items-center gap-2 mb-1">
+            <span class="badge rounded-pill px-3 py-1 fw-bold" style="background: rgba(255, 0, 127, 0.12); color: var(--brand-primary); font-size: 0.8rem;">
+                <i class="fa-solid fa-shield-halved me-1"></i> Panel de Auditoría y Control
+            </span>
+        </div>
+        <h2 class="fw-bold text-brand-black mb-1">
+            <i class="fa-solid fa-stamp text-danger me-2"></i>Historial de Aprobaciones de Precios
+        </h2>
+        <p class="text-muted mb-0">Auditoría en tiempo real y registro de autorizaciones de precios especiales solicitadas por los vendedores.</p>
+    </div>
+    <div class="d-flex align-items-center gap-2">
+        <a href="{{ url_for('admin_bp.dashboard') }}" class="btn btn-outline-secondary rounded-pill px-4 fw-bold shadow-sm">
+            <i class="fa-solid fa-arrow-left me-1"></i> Volver al Dashboard
+        </a>
+        <a href="/sales/nueva" class="btn btn-blue rounded-pill px-4 fw-bold shadow-sm">
+            <i class="fa-solid fa-cash-register me-1"></i> Ir a Caja
+        </a>
+    </div>
+</div>
+
+<!-- Tarjetas de Resumen Global (KPIs) -->
+<div class="row g-3 mb-4">
+    <!-- Total Solicitudes -->
+    <div class="col-6 col-lg-3">
+        <div class="card border-0 shadow-sm rounded-4 p-3 h-100" style="background: #FFFFFF; border-left: 4px solid var(--brand-blue) !important;">
+            <div class="d-flex justify-content-between align-items-center mb-1">
+                <span class="text-muted small fw-bold text-uppercase">Total Histórico</span>
+                <i class="fa-solid fa-folder-tree text-muted"></i>
+            </div>
+            <h3 class="fw-bolder mb-0 text-brand-black">{{ total_solicitudes }}</h3>
+            <span class="text-muted small">solicitudes tramitadas</span>
+        </div>
+    </div>
+
+    <!-- Aprobadas / Utilizadas -->
+    <div class="col-6 col-lg-3">
+        <div class="card border-0 shadow-sm rounded-4 p-3 h-100" style="background: #FFFFFF; border-left: 4px solid #10B981 !important;">
+            <div class="d-flex justify-content-between align-items-center mb-1">
+                <span class="text-muted small fw-bold text-uppercase">Autorizadas</span>
+                <i class="fa-solid fa-circle-check text-success"></i>
+            </div>
+            <h3 class="fw-bolder mb-0 text-success">{{ total_aprobadas }}</h3>
+            <span class="text-muted small">aprobadas o concretadas</span>
+        </div>
+    </div>
+
+    <!-- Rechazadas -->
+    <div class="col-6 col-lg-3">
+        <div class="card border-0 shadow-sm rounded-4 p-3 h-100" style="background: #FFFFFF; border-left: 4px solid #EF4444 !important;">
+            <div class="d-flex justify-content-between align-items-center mb-1">
+                <span class="text-muted small fw-bold text-uppercase">Rechazadas</span>
+                <i class="fa-solid fa-circle-xmark text-danger"></i>
+            </div>
+            <h3 class="fw-bolder mb-0 text-danger">{{ total_rechazadas }}</h3>
+            <span class="text-muted small">por margen o políticas</span>
+        </div>
+    </div>
+
+    <!-- Pendientes en Espera -->
+    <div class="col-6 col-lg-3">
+        <div class="card border-0 shadow-sm rounded-4 p-3 h-100" style="background: #FFFFFF; border-left: 4px solid #F59E0B !important;">
+            <div class="d-flex justify-content-between align-items-center mb-1">
+                <span class="text-muted small fw-bold text-uppercase">Pendientes</span>
+                <i class="fa-solid fa-clock-rotate-left text-warning"></i>
+            </div>
+            <h3 class="fw-bolder mb-0 text-warning">{{ total_pendientes }}</h3>
+            <span class="text-muted small">en espera de resolución</span>
+        </div>
+    </div>
+</div>
+
+<!-- Filtros de Búsqueda -->
+<div class="card border-0 shadow-sm rounded-4 p-3 mb-4" style="background: #FFFFFF;">
+    <form method="GET" action="{{ url_for('admin_bp.aprobaciones') }}" class="row g-2 align-items-end">
+        <!-- Buscador por texto -->
+        <div class="col-md-3">
+            <label class="form-label small fw-bold text-muted mb-1"><i class="fa-solid fa-magnifying-glass me-1"></i>Producto o Vendedor</label>
+            <input type="text" name="buscar" value="{{ buscar }}" class="form-control form-control-sm rounded-pill px-3 bg-light border-0" placeholder="Buscar por nombre...">
+        </div>
+
+        <!-- Estado -->
+        <div class="col-md-2">
+            <label class="form-label small fw-bold text-muted mb-1"><i class="fa-solid fa-filter me-1"></i>Estado</label>
+            <select name="estado" class="form-select form-select-sm rounded-pill bg-light border-0 fw-semibold">
+                <option value="todos" {% if estado_filtro == 'todos' %}selected{% endif %}>Todos los estados</option>
+                <option value="pendiente" {% if estado_filtro == 'pendiente' %}selected{% endif %}>⏳ Pendientes</option>
+                <option value="aprobado" {% if estado_filtro == 'aprobado' %}selected{% endif %}>✅ Aprobadas</option>
+                <option value="utilizada" {% if estado_filtro == 'utilizada' %}selected{% endif %}>🛒 Concretadas (Ventas)</option>
+                <option value="rechazado" {% if estado_filtro == 'rechazado' %}selected{% endif %}>❌ Rechazadas</option>
+                <option value="cancelada" {% if estado_filtro == 'cancelada' %}selected{% endif %}>⚪ Canceladas</option>
+            </select>
+        </div>
+
+        <!-- Vendedor -->
+        <div class="col-md-2">
+            <label class="form-label small fw-bold text-muted mb-1"><i class="fa-solid fa-user me-1"></i>Vendedor</label>
+            <select name="vendedor_id" class="form-select form-select-sm rounded-pill bg-light border-0 fw-semibold">
+                <option value="">Todos los vendedores</option>
+                {% for v in vendedores %}
+                <option value="{{ v.id }}" {% if vendedor_id == v.id %}selected{% endif %}>{{ v.nombre }}</option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <!-- Fecha Desde -->
+        <div class="col-md-2">
+            <label class="form-label small fw-bold text-muted mb-1"><i class="fa-regular fa-calendar me-1"></i>Desde</label>
+            <input type="date" name="fecha_inicio" value="{{ fecha_inicio }}" class="form-control form-control-sm rounded-pill px-3 bg-light border-0">
+        </div>
+
+        <!-- Fecha Hasta -->
+        <div class="col-md-2">
+            <label class="form-label small fw-bold text-muted mb-1"><i class="fa-regular fa-calendar me-1"></i>Hasta</label>
+            <input type="date" name="fecha_fin" value="{{ fecha_fin }}" class="form-control form-control-sm rounded-pill px-3 bg-light border-0">
+        </div>
+
+        <!-- Botones de Acción -->
+        <div class="col-md-1 d-flex gap-1">
+            <button type="submit" class="btn btn-sm btn-blue rounded-pill fw-bold w-100 py-1" title="Filtrar resultados">
+                <i class="fa-solid fa-filter"></i>
+            </button>
+            {% if buscar or (estado_filtro and estado_filtro != 'todos') or vendedor_id or fecha_inicio or fecha_fin %}
+            <a href="{{ url_for('admin_bp.aprobaciones') }}" class="btn btn-sm btn-outline-secondary rounded-pill fw-bold py-1" title="Limpiar filtros">
+                <i class="fa-solid fa-rotate-left"></i>
+            </a>
+            {% endif %}
+        </div>
+    </form>
+</div>
+
+<!-- Tabla de Registros -->
+<div class="card border-0 shadow-sm rounded-4 overflow-hidden" style="background: #FFFFFF;">
+    <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0" style="font-size: 0.88rem;">
+            <thead class="bg-light text-muted border-bottom" style="font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.5px;">
+                <tr>
+                    <th class="ps-4 py-3"># ID</th>
+                    <th class="py-3">Fecha y Hora</th>
+                    <th class="py-3">Vendedor</th>
+                    <th class="py-3">Producto / Variante</th>
+                    <th class="py-3 text-end">Precio Base</th>
+                    <th class="py-3 text-end">Precio Solicitado</th>
+                    <th class="py-3 text-end">Precio Autorizado</th>
+                    <th class="py-3 text-center">Estado</th>
+                    <th class="py-3">Resolutor / Admin</th>
+                    <th class="pe-4 py-3 text-center">Acciones / Detalle</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% if solicitudes %}
+                    {% for sol in solicitudes %}
+                    <tr id="row_solicitud_{{ sol.id }}">
+                        <!-- ID -->
+                        <td class="ps-4 fw-bold text-muted">
+                            #{{ sol.id }}
+                        </td>
+
+                        <!-- Fecha y Hora -->
+                        <td class="text-nowrap">
+                            <div class="fw-semibold text-brand-black">{{ sol.fecha_solicitud.strftime('%d/%m/%Y') }}</div>
+                            <small class="text-muted"><i class="fa-regular fa-clock me-1"></i>{{ sol.fecha_solicitud.strftime('%I:%M %p') }}</small>
+                        </td>
+
+                        <!-- Vendedor -->
+                        <td>
+                            <div class="d-flex align-items-center gap-2">
+                                <div class="rounded-circle d-flex align-items-center justify-content-center fw-bold" style="width: 32px; height: 32px; background: #F1F5F9; color: var(--brand-blue); font-size: 0.8rem;">
+                                    {{ sol.vendedor.nombre[:2].upper() if sol.vendedor and sol.vendedor.nombre else 'VE' }}
+                                </div>
+                                <div>
+                                    <strong class="d-block text-brand-black" style="font-size: 0.86rem;">{{ sol.vendedor.nombre if sol.vendedor else 'Vendedor' }}</strong>
+                                    <small class="text-muted">{{ sol.vendedor.rol | capitalize if sol.vendedor else '' }}</small>
+                                </div>
+                            </div>
+                        </td>
+
+                        <!-- Producto y Variante -->
+                        <td>
+                            <div class="fw-bold text-brand-black">{{ sol.nombre_producto }}</div>
+                            {% if sol.variante %}
+                            <span class="badge bg-light text-secondary border fw-normal" style="font-size: 0.72rem;">
+                                <i class="fa-solid fa-code-branch me-1"></i>{{ sol.variante.nombre_variante }}
+                            </span>
+                            {% endif %}
+                            {% if sol.motivo %}
+                            <div class="small text-muted fst-italic mt-1" style="max-width: 260px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="{{ sol.motivo }}">
+                                <i class="fa-solid fa-comment-dots text-primary me-1"></i>"{{ sol.motivo }}"
+                            </div>
+                            {% endif %}
+                        </td>
+
+                        <!-- Precio Base -->
+                        <td class="text-end text-muted text-nowrap">
+                            ${{ sol.precio_original | cop }}
+                        </td>
+
+                        <!-- Precio Solicitado -->
+                        <td class="text-end text-nowrap">
+                            <span class="fw-bold" style="color: var(--brand-primary);">${{ sol.precio_solicitado | cop }}</span>
+                            {% set dif = sol.precio_original - sol.precio_solicitado %}
+                            {% if dif > 0 %}
+                            <div class="small text-danger" style="font-size: 0.72rem;">
+                                -${{ dif | cop }}
+                            </div>
+                            {% endif %}
+                        </td>
+
+                        <!-- Precio Autorizado -->
+                        <td class="text-end text-nowrap">
+                            {% if sol.precio_aprobado is not none %}
+                            <span class="fw-bold text-success" style="font-size: 0.95rem;">${{ sol.precio_aprobado | cop }}</span>
+                            {% if sol.precio_aprobado > sol.precio_solicitado %}
+                            <div class="small text-muted" style="font-size: 0.7rem;">(Contraoferta)</div>
+                            {% endif %}
+                            {% else %}
+                            <span class="text-muted">—</span>
+                            {% endif %}
+                        </td>
+
+                        <!-- Estado -->
+                        <td class="text-center text-nowrap">
+                            {% if sol.estado == 'pendiente' %}
+                            <span class="badge rounded-pill bg-warning text-dark px-3 py-1 fw-bold">
+                                <i class="fa-solid fa-clock fa-spin me-1"></i> Pendiente
+                            </span>
+                            {% elif sol.estado == 'aprobado' %}
+                            <span class="badge rounded-pill px-3 py-1 fw-bold" style="background: rgba(16, 185, 129, 0.15); color: #059669;">
+                                <i class="fa-solid fa-circle-check me-1"></i> Aprobada
+                            </span>
+                            {% elif sol.estado == 'utilizada' %}
+                            <span class="badge rounded-pill bg-success text-white px-3 py-1 fw-bold">
+                                <i class="fa-solid fa-bag-shopping me-1"></i> Venta Realizada
+                            </span>
+                            {% elif sol.estado == 'rechazado' %}
+                            <span class="badge rounded-pill px-3 py-1 fw-bold" style="background: rgba(239, 68, 68, 0.15); color: #DC2626;">
+                                <i class="fa-solid fa-circle-xmark me-1"></i> Rechazada
+                            </span>
+                            {% elif sol.estado == 'cancelada' %}
+                            <span class="badge rounded-pill bg-secondary text-white px-3 py-1 fw-bold">
+                                <i class="fa-solid fa-ban me-1"></i> Cancelada
+                            </span>
+                            {% else %}
+                            <span class="badge bg-light text-muted border rounded-pill px-3 py-1">{{ sol.estado }}</span>
+                            {% endif %}
+                        </td>
+
+                        <!-- Resolutor / Admin -->
+                        <td>
+                            {% if sol.admin %}
+                            <div class="small fw-semibold text-brand-black">{{ sol.admin.nombre }}</div>
+                            <small class="text-muted" style="font-size: 0.72rem;">{{ sol.fecha_resolucion.strftime('%d/%m %I:%M %p') if sol.fecha_resolucion else '' }}</small>
+                            {% if sol.motivo_rechazo %}
+                            <div class="small text-danger fst-italic mt-1" style="max-width: 200px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="{{ sol.motivo_rechazo }}">
+                                <i class="fa-solid fa-triangle-exclamation me-1"></i>"{{ sol.motivo_rechazo }}"
+                            </div>
+                            {% endif %}
+                            {% else %}
+                            <span class="text-muted small">—</span>
+                            {% endif %}
+                        </td>
+
+                        <!-- Acciones / Detalle -->
+                        <td class="pe-4 text-center text-nowrap">
+                            {% if sol.estado == 'pendiente' %}
+                            <div class="btn-group btn-group-sm">
+                                <button type="button" class="btn btn-success px-3 fw-bold rounded-start-pill" onclick="abrirModalResolucion({{ sol.id }}, '{{ sol.nombre_producto | replace("'", "\\'") }}', {{ sol.precio_original }}, {{ sol.precio_solicitado }})">
+                                    <i class="fa-solid fa-check me-1"></i> Resolver
+                                </button>
+                            </div>
+                            {% else %}
+                            <button type="button" class="btn btn-sm btn-light border rounded-pill px-3 text-muted fw-semibold" onclick="verDetalleCompleto({{ sol.id }}, '{{ sol.nombre_producto | replace("'", "\\'") }}', '{{ sol.vendedor.nombre if sol.vendedor else "Vendedor" }}', {{ sol.precio_original }}, {{ sol.precio_solicitado }}, {{ sol.precio_aprobado if sol.precio_aprobado is not none else 'null' }}, '{{ sol.estado }}', '{{ (sol.motivo or "") | replace("'", "\\'") }}', '{{ (sol.motivo_rechazo or "") | replace("'", "\\'") }}', '{{ sol.admin.nombre if sol.admin else "—" }}', '{{ sol.fecha_solicitud.strftime("%d/%m/%Y %I:%M %p") if sol.fecha_solicitud else "" }}')">
+                                <i class="fa-solid fa-eye me-1"></i> Detalle
+                            </button>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                {% else %}
+                    <tr>
+                        <td colspan="10" class="text-center py-5">
+                            <div class="py-4">
+                                <i class="fa-solid fa-clipboard-question fs-1 text-muted opacity-50 mb-3 d-block"></i>
+                                <h5 class="fw-bold text-muted mb-1">No se encontraron solicitudes de aprobación</h5>
+                                <p class="text-muted small mb-3">No hay registros que coincidan con los criterios de búsqueda aplicados.</p>
+                                {% if buscar or (estado_filtro and estado_filtro != 'todos') or vendedor_id or fecha_inicio or fecha_fin %}
+                                <a href="{{ url_for('admin_bp.aprobaciones') }}" class="btn btn-sm btn-blue rounded-pill px-4 fw-bold">
+                                    <i class="fa-solid fa-rotate-left me-1"></i> Restablecer Filtros
+                                </a>
+                                {% endif %}
+                            </div>
+                        </td>
+                    </tr>
+                {% endif %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Modal para Resolución Directa de Solicitud Pendiente -->
+<div class="modal fade" id="modalResolverSolicitud" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
+            <div class="modal-header text-white border-0 py-3" style="background: var(--brand-gradient);">
+                <div class="d-flex align-items-center gap-2">
+                    <i class="fa-solid fa-hand-holding-dollar fs-5"></i>
+                    <h5 class="modal-title fw-bold m-0">Resolver Aprobación de Precio</h5>
+                </div>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-4">
+                <input type="hidden" id="modal_solicitud_id">
+                <div class="mb-3">
+                    <span class="text-muted small fw-semibold">Producto / Variante</span>
+                    <h5 class="fw-bold text-brand-black mb-0" id="modal_nombre_producto">—</h5>
+                </div>
+
+                <div class="p-3 rounded-3 mb-3" style="background: #F8FAFC; border: 1px solid #E2E8F0;">
+                    <div class="d-flex justify-content-between text-muted small mb-1">
+                        <span>Precio Base Sugerido:</span>
+                        <strong class="text-dark" id="modal_precio_base">$0</strong>
+                    </div>
+                    <div class="d-flex justify-content-between text-muted small">
+                        <span>Precio Solicitado por Vendedor:</span>
+                        <strong class="text-danger" id="modal_precio_solicitado">$0</strong>
+                    </div>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label small fw-bold text-dark">Precio Autorizado ($COP) / Contraoferta:</label>
+                    <div class="input-group">
+                        <span class="input-group-text bg-white border-end-0 fw-bold">$</span>
+                        <input type="number" id="modal_input_precio_autorizado" class="form-control border-start-0 fw-bold fs-5 text-success" step="500">
+                    </div>
+                    <small class="text-muted">Puedes autorizar el precio solicitado o definir una contraoferta mayor.</small>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label small fw-bold text-dark">Motivo de Rechazo (Opcional):</label>
+                    <input type="text" id="modal_input_motivo_rechazo" class="form-control" placeholder="Ej. Margen insuficiente para esta referencia">
+                </div>
+            </div>
+            <div class="modal-footer border-0 pt-0 px-4 pb-4 gap-2">
+                <button type="button" class="btn btn-outline-danger rounded-pill px-3 fw-bold" onclick="ejecutarAccionModal('rechazar')">
+                    <i class="fa-solid fa-xmark me-1"></i> Rechazar
+                </button>
+                <button type="button" class="btn btn-success rounded-pill px-4 fw-bold flex-grow-1" onclick="ejecutarAccionModal('aprobar')">
+                    <i class="fa-solid fa-check me-1"></i> Aprobar Precio
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Detalle Completo de Auditoría -->
+<div class="modal fade" id="modalDetalleAuditoria" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
+            <div class="modal-header border-0 pb-0 pt-4 px-4">
+                <h5 class="modal-title fw-bold text-brand-black">
+                    <i class="fa-solid fa-receipt me-2 text-primary"></i>Detalle de Solicitud #<span id="det_id"></span>
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body px-4 py-3">
+                <div class="mb-3">
+                    <span class="text-muted small">Producto</span>
+                    <h5 class="fw-bold text-brand-black mb-0" id="det_producto"></h5>
+                </div>
+                <div class="row g-2 mb-3">
+                    <div class="col-6">
+                        <div class="p-2 rounded-3 bg-light">
+                            <span class="text-muted small d-block">Vendedor</span>
+                            <strong class="text-dark" id="det_vendedor"></strong>
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <div class="p-2 rounded-3 bg-light">
+                            <span class="text-muted small d-block">Fecha</span>
+                            <strong class="text-dark small" id="det_fecha"></strong>
+                        </div>
+                    </div>
+                </div>
+                <div class="row g-2 mb-3">
+                    <div class="col-4">
+                        <div class="p-2 rounded-3 bg-light text-center">
+                            <span class="text-muted small d-block">Base</span>
+                            <strong class="text-dark" id="det_base"></strong>
+                        </div>
+                    </div>
+                    <div class="col-4">
+                        <div class="p-2 rounded-3 bg-light text-center">
+                            <span class="text-muted small d-block">Solicitado</span>
+                            <strong class="text-danger" id="det_solicitado"></strong>
+                        </div>
+                    </div>
+                    <div class="col-4">
+                        <div class="p-2 rounded-3 bg-light text-center">
+                            <span class="text-muted small d-block">Autorizado</span>
+                            <strong class="text-success" id="det_autorizado"></strong>
+                        </div>
+                    </div>
+                </div>
+                <div class="mb-2">
+                    <span class="text-muted small d-block">Motivo del Vendedor:</span>
+                    <p class="text-dark bg-light p-2 rounded-3 small mb-0 fst-italic" id="det_motivo"></p>
+                </div>
+                <div class="mb-2" id="det_box_admin" style="display: none;">
+                    <span class="text-muted small d-block">Resolución Admin:</span>
+                    <p class="text-dark bg-light p-2 rounded-3 small mb-0" id="det_admin_info"></p>
+                </div>
+            </div>
+            <div class="modal-footer border-0 pt-0 px-4 pb-4">
+                <button type="button" class="btn btn-blue rounded-pill px-4 fw-bold w-100" data-bs-dismiss="modal">Cerrar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+let modalResolver = null;
+let modalDetalle = null;
+
+document.addEventListener('DOMContentLoaded', () => {
+    const elResolver = document.getElementById('modalResolverSolicitud');
+    if (elResolver) modalResolver = new bootstrap.Modal(elResolver);
+
+    const elDetalle = document.getElementById('modalDetalleAuditoria');
+    if (elDetalle) modalDetalle = new bootstrap.Modal(elDetalle);
+});
+
+function abrirModalResolucion(id, producto, base, solicitado) {
+    document.getElementById('modal_solicitud_id').value = id;
+    document.getElementById('modal_nombre_producto').textContent = producto;
+    document.getElementById('modal_precio_base').textContent = '$' + formatCOP(base);
+    document.getElementById('modal_precio_solicitado').textContent = '$' + formatCOP(solicitado);
+    document.getElementById('modal_input_precio_autorizado').value = solicitado;
+    document.getElementById('modal_input_motivo_rechazo').value = '';
+
+    if (modalResolver) modalResolver.show();
+}
+
+async function ejecutarAccionModal(accion) {
+    const id = document.getElementById('modal_solicitud_id').value;
+    if (!id) return;
+
+    try {
+        if (accion === 'aprobar') {
+            const precioAprobado = parseFloat(document.getElementById('modal_input_precio_autorizado').value);
+            if (!precioAprobado || precioAprobado <= 0) {
+                alert('Ingresa un precio autorizado válido mayor a 0');
+                return;
+            }
+
+            const resp = await fetch(`/api/aprobaciones/${id}/aprobar`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ precio_aprobado: precioAprobado })
+            });
+            const data = await resp.json();
+            if (!resp.ok) {
+                alert(data.error || 'Error al aprobar solicitud');
+                return;
+            }
+        } else {
+            const motivo = document.getElementById('modal_input_motivo_rechazo').value.trim();
+            const resp = await fetch(`/api/aprobaciones/${id}/rechazar`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ motivo: motivo })
+            });
+            const data = await resp.json();
+            if (!resp.ok) {
+                alert(data.error || 'Error al rechazar solicitud');
+                return;
+            }
+        }
+
+        if (modalResolver) modalResolver.hide();
+        window.location.reload();
+
+    } catch (err) {
+        console.error(err);
+        alert('Error de conexión al procesar la acción');
+    }
+}
+
+function verDetalleCompleto(id, producto, vendedor, base, solicitado, autorizado, estado, motivo, motivoRechazo, admin, fecha) {
+    document.getElementById('det_id').textContent = id;
+    document.getElementById('det_producto').textContent = producto;
+    document.getElementById('det_vendedor').textContent = vendedor;
+    document.getElementById('det_fecha').textContent = fecha;
+    document.getElementById('det_base').textContent = '$' + formatCOP(base);
+    document.getElementById('det_solicitado').textContent = '$' + formatCOP(solicitado);
+    document.getElementById('det_autorizado').textContent = autorizado !== null ? '$' + formatCOP(autorizado) : '—';
+    document.getElementById('det_motivo').textContent = motivo ? `"${motivo}"` : 'Sin motivo registrado';
+
+    const boxAdmin = document.getElementById('det_box_admin');
+    const adminInfo = document.getElementById('det_admin_info');
+    if (admin && admin !== '—') {
+        boxAdmin.style.display = 'block';
+        let texto = `Por: ${admin}`;
+        if (motivoRechazo) texto += ` | Motivo: "${motivoRechazo}"`;
+        adminInfo.textContent = texto;
+    } else {
+        boxAdmin.style.display = 'none';
+    }
+
+    if (modalDetalle) modalDetalle.show();
+}
+</script>
+{% endblock %}

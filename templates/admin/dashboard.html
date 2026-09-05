@@ -233,10 +233,10 @@
     </div>
 </div>
 
-<!-- FILA 2: Maneos, Alertas de Stock y Proveedores (3 Tarjetas) -->
+<!-- FILA 2: Maneos, Alertas de Stock, Proveedores y Aprobaciones (4 Tarjetas) -->
 <div class="row g-3">
     <!-- 5. Tarjeta: Maneos del Periodo -->
-    <div class="col-md-4">
+    <div class="col-lg-3 col-md-6">
         <div class="card card-custom h-100 p-4 border-0 shadow-sm">
             <div class="d-flex justify-content-between align-items-start mb-2">
                 <i class="fa-solid fa-handshake fs-1" style="color: var(--brand-blue);"></i>
@@ -261,7 +261,7 @@
     </div>
 
     <!-- 6. Tarjeta: Alertas de Stock -->
-    <div class="col-md-4">
+    <div class="col-lg-3 col-md-6">
         <div class="card card-custom h-100 p-4 border-0 shadow-sm">
             <div class="d-flex justify-content-between align-items-start mb-2">
                 <i class="fa-solid fa-triangle-exclamation fs-1 text-warning"></i>
@@ -284,7 +284,7 @@
     </div>
 
     <!-- 7. Tarjeta: Gestión de Proveedores -->
-    <div class="col-md-4">
+    <div class="col-lg-3 col-md-6">
         <div class="card card-custom h-100 p-4 border-0 shadow-sm" style="border-left: 4px solid var(--brand-blue) !important;">
             <div class="d-flex justify-content-between align-items-start mb-2">
                 <i class="fa-solid fa-truck-field fs-1 text-secondary"></i>
@@ -303,6 +303,31 @@
             <div class="mt-auto">
                 <a href="/proveedores" class="btn btn-blue w-100 rounded-pill py-2">
                     <i class="fa-solid fa-folder-open me-2"></i>Abrir Proveedores
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- 8. Tarjeta: Historial de Aprobaciones de Precios -->
+    <div class="col-lg-3 col-md-6">
+        <div class="card card-custom h-100 p-4 border-0 shadow-sm" style="border-left: 4px solid var(--brand-pink) !important;">
+            <div class="d-flex justify-content-between align-items-start mb-2">
+                <i class="fa-solid fa-stamp fs-1" style="color: var(--brand-pink);"></i>
+                <span class="badge bg-brand-blue rounded-pill">{{ badge_periodo }}</span>
+            </div>
+            <h6 class="text-muted fw-bold mb-1">Aprobaciones de Precios</h6>
+            <h2 class="fw-bolder mb-1" style="color: var(--brand-pink);">{{ total_aprobaciones_periodo }} solicitudes</h2>
+            <p class="text-muted small mb-2">
+                <i class="fa-solid fa-circle-check text-success me-1"></i> {{ aprobadas_periodo }} autorizadas en el periodo
+            </p>
+
+            <div class="text-muted small pt-2 border-top mb-3">
+                <span class="badge bg-warning text-dark me-1">{{ pendientes_activas }}</span> pendientes en tiempo real
+            </div>
+
+            <div class="mt-auto">
+                <a href="{{ url_for('admin_bp.aprobaciones') }}" class="btn btn-blue w-100 rounded-pill py-2">
+                    <i class="fa-solid fa-clock-rotate-left me-2"></i>Ver Historial
                 </a>
             </div>
         </div>
