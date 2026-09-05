@@ -265,41 +265,30 @@ def caja_rapida():
                         variante = ProductVariant.query.get(variant_id)
                         
                     if variante:
-                        if variante.cantidad_stock >= cantidad:
-                            stock_ant = variante.cantidad_stock
-                            variante.cantidad_stock -= cantidad
-                            # Also reflect total stock change in product if needed
-                            producto.cantidad_stock = sum([v.cantidad_stock for v in producto.variantes])
-                            
-                            ajuste = StockAdjustment(
-                                product_id=producto.id,
-                                admin_id=current_user.id,
-                                tipo_movimiento=f"Venta Bodega Rápida #{numero_factura} (Subcat: {variante.nombre_variante})",
-                                stock_anterior=stock_ant,
-                                stock_nuevo=variante.cantidad_stock
-                            )
-                            db.session.add(ajuste)
-                        else:
-                            flash(f'Stock insuficiente para la variante {variante.nombre_variante}.', 'danger')
-                            db.session.rollback()
-                            return redirect(url_for('bodega_bp.caja_rapida'))
+                        stock_ant = variante.cantidad_stock or 0
+                        variante.cantidad_stock = stock_ant - cantidad
+                        producto.cantidad_stock = sum([v.cantidad_stock for v in producto.variantes])
+                        
+                        ajuste = StockAdjustment(
+                            product_id=producto.id,
+                            admin_id=current_user.id,
+                            tipo_movimiento=f"Venta Bodega Rápida #{numero_factura} (Subcat: {variante.nombre_variante})",
+                            stock_anterior=stock_ant,
+                            stock_nuevo=variante.cantidad_stock
+                        )
+                        db.session.add(ajuste)
                     else:
-                        if producto.cantidad_stock >= cantidad:
-                            stock_ant = producto.cantidad_stock
-                            producto.cantidad_stock -= cantidad
-                            
-                            ajuste = StockAdjustment(
-                                product_id=producto.id,
-                                admin_id=current_user.id,
-                                tipo_movimiento=f"Venta Bodega Rápida #{numero_factura}",
-                                stock_anterior=stock_ant,
-                                stock_nuevo=producto.cantidad_stock
-                            )
-                            db.session.add(ajuste)
-                        else:
-                            flash(f'Stock insuficiente para el producto {producto.nombre}.', 'danger')
-                            db.session.rollback()
-                            return redirect(url_for('bodega_bp.caja_rapida'))
+                        stock_ant = producto.cantidad_stock or 0
+                        producto.cantidad_stock = stock_ant - cantidad
+                        
+                        ajuste = StockAdjustment(
+                            product_id=producto.id,
+                            admin_id=current_user.id,
+                            tipo_movimiento=f"Venta Bodega Rápida #{numero_factura}",
+                            stock_anterior=stock_ant,
+                            stock_nuevo=producto.cantidad_stock
+                        )
+                        db.session.add(ajuste)
                         
                     detalle = FacturaBodegaDetalle(
                         factura_id=nueva_fact.id,
@@ -450,15 +439,6 @@ def nueva_factura():
                         db.session.rollback()
                         flash(f'La subcategoría seleccionada no pertenece al producto {producto.nombre}.', 'danger')
                         return redirect(url_for('bodega_bp.nueva_factura'))
-                    if variante.cantidad_stock < cant:
-                        db.session.rollback()
-                        flash(f'No hay stock suficiente para la subcategoría: {variante.nombre_variante}. Stock actual: {variante.cantidad_stock}', 'danger')
-                        return redirect(url_for('bodega_bp.nueva_factura'))
-                else:
-                    if producto.cantidad_stock < cant:
-                        db.session.rollback()
-                        flash(f'No hay stock suficiente para el producto: {producto.nombre}. Stock actual: {producto.cantidad_stock}', 'danger')
-                        return redirect(url_for('bodega_bp.nueva_factura'))
                 
                 # 1. Crear el Detalle
                 detalle = FacturaBodegaDetalle(
@@ -470,10 +450,12 @@ def nueva_factura():
                 )
                 db.session.add(detalle)
                 
-                # 2. Descontar Stock y Registrar Historial de Ajuste
+                # 2. Descontar Stock y Registrar Historial de Ajuste (Permitiendo facturar sin stock)
                 if variante:
-                    stock_anterior = variante.cantidad_stock
-                    variante.cantidad_stock -= cant
+                    stock_anterior = variante.cantidad_stock or 0
+                    variante.cantidad_stock = stock_anterior - cant
+                    if producto.variantes:
+                        producto.cantidad_stock = sum([v.cantidad_stock for v in producto.variantes])
                     ajuste = StockAdjustment(
                         product_id=producto.id,
                         admin_id=current_user.id,
@@ -482,8 +464,8 @@ def nueva_factura():
                         stock_nuevo=variante.cantidad_stock
                     )
                 else:
-                    stock_anterior = producto.cantidad_stock
-                    producto.cantidad_stock -= cant
+                    stock_anterior = producto.cantidad_stock or 0
+                    producto.cantidad_stock = stock_anterior - cant
                     ajuste = StockAdjustment(
                         product_id=producto.id,
                         admin_id=current_user.id,
@@ -502,8 +484,8 @@ def nueva_factura():
             flash('Ocurrió un error en la base de datos al guardar la factura o afectar el stock.', 'danger')
 
     clientes = Cliente.query.order_by(Cliente.nombre_o_razon_social).all()
-    # Enviamos los productos disponibles a la vista, restringidos al inventario de bodega
-    productos_disp = Product.query.filter_by(tipo_inventario='bodega').filter(Product.cantidad_stock > 0).order_by(Product.nombre).all()
+    # Enviamos los productos disponibles a la vista, incluyendo productos con stock 0
+    productos_disp = Product.query.filter_by(tipo_inventario='bodega').order_by(Product.nombre).all()
     
     preselected_id = request.args.get('preselected_id', type=int)
     

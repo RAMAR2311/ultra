@@ -116,16 +116,20 @@
                         <div class="d-inline-flex align-items-center gap-2">
                             <!-- Botón Editar Correo / Contraseña / Perfil -->
                             <button type="button" 
-                                    class="btn btn-sm btn-outline-primary rounded-pill px-2 py-1 shadow-sm d-flex align-items-center gap-1" 
+                                    class="btn btn-sm btn-outline-primary rounded-pill px-2 py-1 shadow-sm d-flex align-items-center gap-1 btn-editar-personal" 
                                     title="Editar credenciales y perfil"
-                                    onclick="abrirModalEditar({{ vendedor.id }}, '{{ vendedor.nombre | replace("'", "\\'") }}', '{{ vendedor.email | replace("'", "\\'") }}', '{{ vendedor.telefono or "" }}', '{{ vendedor.rol }}')">
+                                    data-id="{{ vendedor.id }}"
+                                    data-nombre="{{ vendedor.nombre }}"
+                                    data-email="{{ vendedor.email }}"
+                                    data-telefono="{{ vendedor.telefono or '' }}"
+                                    data-rol="{{ vendedor.rol }}">
                                 <i class="fa-solid fa-user-pen"></i>
                                 <span class="small fw-semibold">Editar</span>
                             </button>
 
                             <!-- Botón Eliminar (solo si no es el usuario actual) -->
                             {% if vendedor.id != current_user.id %}
-                            <form action="{{ url_for('admin_bp.eliminar_vendedor', id=vendedor.id) }}" method="POST" class="d-inline m-0" onsubmit="return confirm('¿Estás seguro de que deseas eliminar este usuario? Esta acción no se puede deshacer.');">
+                            <form action="{{ url_for('admin_bp.eliminar_vendedor', id=vendedor.id) }}" method="POST" class="d-inline m-0 form-eliminar-usuario">
                                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
                                 <button type="submit" class="btn btn-sm btn-outline-danger rounded-circle shadow-sm" title="Dar de baja usuario" style="width: 31px; height: 31px; padding: 0;">
                                     <i class="fa-solid fa-trash-can"></i>
@@ -274,10 +278,34 @@ document.addEventListener('DOMContentLoaded', () => {
     if (elModal) {
         modalEditar = new bootstrap.Modal(elModal);
     }
+
+    // Delegación de eventos para botones de editar
+    document.addEventListener('click', (e) => {
+        const btn = e.target.closest('.btn-editar-personal');
+        if (!btn) return;
+
+        const id = btn.dataset.id;
+        const nombre = btn.dataset.nombre || '';
+        const email = btn.dataset.email || '';
+        const telefono = btn.dataset.telefono || '';
+        const rol = btn.dataset.rol || 'vendedor';
+
+        abrirModalEditar(id, nombre, email, telefono, rol);
+    });
+
+    // Confirmación para eliminar usuario
+    document.addEventListener('submit', (e) => {
+        if (e.target.matches('.form-eliminar-usuario')) {
+            if (!confirm('¿Estás seguro de que deseas eliminar este usuario? Esta acción no se puede deshacer.')) {
+                e.preventDefault();
+            }
+        }
+    });
 });
 
 function abrirModalEditar(id, nombre, email, telefono, rol) {
     const form = document.getElementById('formEditarPersonal');
+    if (!form) return;
     form.action = `/admin/vendedores/${id}/editar`;
 
     document.getElementById('edit_nombre').value = nombre;

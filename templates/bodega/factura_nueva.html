@@ -193,27 +193,18 @@
             <select class="form-select form-select-sm mt-1 text-secondary bg-light border-0 shadow-sm" name="variant_id[]" onchange="actualizarVariante(this, '${data.id}')">
             `;
             data.variantes.forEach(v => {
-                let disableStr = v.stock <= 0 ? "(Sin stock)" : `(Stock: ${v.stock})`;
-                variantHtml += `<option value="${v.id}" data-precio="${v.precio_sugerido || data.precio_sugerido}" data-preciominimo="${v.precio_minimo || data.precio_minimo}" data-stock="${v.stock}">${v.nombre} ${disableStr}</option>`;
+                let stockStr = v.stock <= 0 ? "(Sin stock)" : `(Stock: ${v.stock})`;
+                variantHtml += `<option value="${v.id}" data-precio="${v.precio_sugerido || data.precio_sugerido}" data-preciominimo="${v.precio_minimo || data.precio_minimo}" data-stock="${v.stock}">${v.nombre} ${stockStr}</option>`;
             });
             variantHtml += `</select>`;
         } else {
             variantHtml = `<input type="hidden" name="variant_id[]" value="">`;
         }
 
-        if (row_stock <= 0) {
-            alert(`No hay stock disponible para ${data.nombre} en la opción por defecto.`);
-            return;
-        }
-
         const uniqueKey = data.id + "_" + (variant_id || "base");
 
         if (carrito[uniqueKey]) {
             const nuevaCantidad = carrito[uniqueKey].cantidad + 1;
-            if (nuevaCantidad > row_stock) {
-                alert(`Solo hay ${row_stock} uds en stock de ${data.nombre}.`);
-                return;
-            }
             carrito[uniqueKey].cantidad = nuevaCantidad;
             document.getElementById('input_cant_' + uniqueKey).value = nuevaCantidad;
             actualizarFilaUI(uniqueKey);
@@ -244,7 +235,7 @@
                     ${variantHtml}
                 </td>
                 <td>
-                    <input type="number" name="cantidad[]" value="1" min="1" max="${row_stock}" class="form-control form-control-sm text-center fw-bold" id="input_cant_${uniqueKey}" onchange="actualizarCantidad('${uniqueKey}', this.value)">
+                    <input type="number" name="cantidad[]" value="1" min="1" class="form-control form-control-sm text-center fw-bold" id="input_cant_${uniqueKey}" onchange="actualizarCantidad('${uniqueKey}', this.value)">
                 </td>
                 <td>
                     <div class="input-group input-group-sm">
@@ -274,12 +265,6 @@
         
         const uniqueKeyNew = idProducto + "_" + new_variant_id;
         
-        if (new_stock <= 0) {
-            alert('Variante seleccionada no tiene stock.');
-            // Volver al valor anterior (no implementado en esta UI simple, asume que el usuario cambiará)
-            return;
-        }
-        
         if (uniqueKeyOld !== uniqueKeyNew) {
             if (carrito[uniqueKeyNew]) {
                 alert('Esta variante ya está agregada al carrito. Por favor elimina la fila duplicada e incrementa la cantidad.');
@@ -295,18 +280,12 @@
             carrito[uniqueKeyNew].precio_minimo = new_precio_min;
             carrito[uniqueKeyNew].precio_sugerido = new_precio;
             
-            if (carrito[uniqueKeyNew].cantidad > new_stock) {
-                carrito[uniqueKeyNew].cantidad = new_stock;
-            }
-            
             // Actualizar IDs en DOM
             tr.id = 'row_' + uniqueKeyNew;
             
             const numInput = tr.querySelector(`input[id="input_cant_${uniqueKeyOld}"]`);
             if(numInput) {
                 numInput.id = 'input_cant_' + uniqueKeyNew;
-                numInput.max = new_stock;
-                numInput.value = carrito[uniqueKeyNew].cantidad;
                 numInput.setAttribute('onchange', `actualizarCantidad('${uniqueKeyNew}', this.value)`);
             }
             
@@ -334,11 +313,6 @@
     function actualizarCantidad(key, newVal) {
         let val = parseInt(newVal);
         if (isNaN(val) || val <= 0) val = 1;
-        
-        if (val > carrito[key].max_stock) {
-            alert(`El stock máximo es ${carrito[key].max_stock}`);
-            val = carrito[key].max_stock;
-        }
         
         document.getElementById('input_cant_' + key).value = val;
         carrito[key].cantidad = val;

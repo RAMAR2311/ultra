@@ -245,10 +245,9 @@
             let html = `<div class="mb-3"><h6 class="fw-bold">${pData.nombre}</h6><small class="text-muted">Stock Total: ${pData.cantidad_stock}</small></div>`;
             html += `<div class="list-group">`;
             vData.forEach(v => {
-                let badge = v.stock > 0 ? `<span class="badge bg-success rounded-pill">${v.stock} disp</span>` : `<span class="badge bg-danger rounded-pill">0 disp</span>`;
-                let btnState = v.stock > 0 ? '' : 'disabled';
+                let badge = v.stock > 0 ? `<span class="badge bg-success rounded-pill">${v.stock} disp</span>` : `<span class="badge bg-danger rounded-pill">0 (Sin stock)</span>`;
                 html += `
-                <button type="button" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center" onclick="addVariantToCart(${v.id})" ${btnState}>
+                <button type="button" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center" onclick="addVariantToCart(${v.id})">
                     <div>
                         <strong>${v.nombre}</strong><br>
                         <small class="text-muted">${formatoCOP(v.precio_sugerido)}</small>
@@ -262,10 +261,6 @@
             document.getElementById('modalVariantesBody').innerHTML = html;
             new bootstrap.Modal(document.getElementById('modalVariantes')).show();
         } else {
-            if (pData.cantidad_stock <= 0) {
-                alert("¡Producto sin stock en bodega!");
-                return;
-            }
             addToCart(pData.id, null, pData.nombre, pData.sku, pData.precio_sugerido, pData.cantidad_stock, null, pData.precio_minimo);
         }
     }
@@ -281,16 +276,8 @@
         let existingIndex = carrito.findIndex(i => i.product_id === productId && i.variant_id === variantId);
         
         if (existingIndex > -1) {
-            if (carrito[existingIndex].cantidad + 1 > maxStock) {
-                alert('No puedes exceder el stock disponible.');
-                return;
-            }
             carrito[existingIndex].cantidad++;
         } else {
-            if (maxStock <= 0) {
-                alert('¡Producto sin stock en bodega!');
-                return;
-            }
             let nombreMostrar = variantName ? `${nombre} - ${variantName}` : nombre;
             carrito.push({
                 product_id: productId,
@@ -311,10 +298,6 @@
     function updateCartItem(index, qty) {
         let val = parseInt(qty);
         if (isNaN(val) || val < 1) val = 1;
-        if (val > carrito[index].max_stock) {
-            alert('Stock insuficiente.');
-            val = carrito[index].max_stock;
-        }
         carrito[index].cantidad = val;
         renderCart();
     }

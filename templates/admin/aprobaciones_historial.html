@@ -269,12 +269,29 @@
                         <td class="pe-4 text-center text-nowrap">
                             {% if sol.estado == 'pendiente' %}
                             <div class="btn-group btn-group-sm">
-                                <button type="button" class="btn btn-success px-3 fw-bold rounded-start-pill" onclick="abrirModalResolucion({{ sol.id }}, '{{ sol.nombre_producto | replace("'", "\\'") }}', {{ sol.precio_original }}, {{ sol.precio_solicitado }})">
+                                <button type="button" 
+                                        class="btn btn-success px-3 fw-bold rounded-start-pill btn-resolver-solicitud"
+                                        data-id="{{ sol.id }}"
+                                        data-producto="{{ sol.nombre_producto }}"
+                                        data-base="{{ sol.precio_original }}"
+                                        data-solicitado="{{ sol.precio_solicitado }}">
                                     <i class="fa-solid fa-check me-1"></i> Resolver
                                 </button>
                             </div>
                             {% else %}
-                            <button type="button" class="btn btn-sm btn-light border rounded-pill px-3 text-muted fw-semibold" onclick="verDetalleCompleto({{ sol.id }}, '{{ sol.nombre_producto | replace("'", "\\'") }}', '{{ sol.vendedor.nombre if sol.vendedor else "Vendedor" }}', {{ sol.precio_original }}, {{ sol.precio_solicitado }}, {{ sol.precio_aprobado if sol.precio_aprobado is not none else 'null' }}, '{{ sol.estado }}', '{{ (sol.motivo or "") | replace("'", "\\'") }}', '{{ (sol.motivo_rechazo or "") | replace("'", "\\'") }}', '{{ sol.admin.nombre if sol.admin else "—" }}', '{{ sol.fecha_solicitud.strftime("%d/%m/%Y %I:%M %p") if sol.fecha_solicitud else "" }}')">
+                            <button type="button" 
+                                    class="btn btn-sm btn-light border rounded-pill px-3 text-muted fw-semibold btn-detalle-solicitud"
+                                    data-id="{{ sol.id }}"
+                                    data-producto="{{ sol.nombre_producto }}"
+                                    data-vendedor="{{ sol.vendedor.nombre if sol.vendedor else 'Vendedor' }}"
+                                    data-base="{{ sol.precio_original }}"
+                                    data-solicitado="{{ sol.precio_solicitado }}"
+                                    data-autorizado="{{ sol.precio_aprobado if sol.precio_aprobado is not none else '' }}"
+                                    data-estado="{{ sol.estado }}"
+                                    data-motivo="{{ sol.motivo or '' }}"
+                                    data-rechazo="{{ sol.motivo_rechazo or '' }}"
+                                    data-admin="{{ sol.admin.nombre if sol.admin else '' }}"
+                                    data-fecha="{{ sol.fecha_solicitud.strftime('%d/%m/%Y %I:%M %p') if sol.fecha_solicitud else '' }}">
                                 <i class="fa-solid fa-eye me-1"></i> Detalle
                             </button>
                             {% endif %}
@@ -432,6 +449,35 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const elDetalle = document.getElementById('modalDetalleAuditoria');
     if (elDetalle) modalDetalle = new bootstrap.Modal(elDetalle);
+
+    document.addEventListener('click', (e) => {
+        const btnResolver = e.target.closest('.btn-resolver-solicitud');
+        if (btnResolver) {
+            const id = btnResolver.dataset.id;
+            const prod = btnResolver.dataset.producto;
+            const base = parseFloat(btnResolver.dataset.base || 0);
+            const sol = parseFloat(btnResolver.dataset.solicitado || 0);
+            abrirModalResolucion(id, prod, base, sol);
+            return;
+        }
+
+        const btnDetalle = e.target.closest('.btn-detalle-solicitud');
+        if (btnDetalle) {
+            const id = btnDetalle.dataset.id;
+            const prod = btnDetalle.dataset.producto;
+            const vend = btnDetalle.dataset.vendedor;
+            const base = parseFloat(btnDetalle.dataset.base || 0);
+            const sol = parseFloat(btnDetalle.dataset.solicitado || 0);
+            const aut = btnDetalle.dataset.autorizado ? parseFloat(btnDetalle.dataset.autorizado) : null;
+            const est = btnDetalle.dataset.estado;
+            const mot = btnDetalle.dataset.motivo;
+            const rec = btnDetalle.dataset.rechazo;
+            const adm = btnDetalle.dataset.admin;
+            const fec = btnDetalle.dataset.fecha;
+            verDetalleCompleto(id, prod, vend, base, sol, aut, est, mot, rec, adm, fec);
+            return;
+        }
+    });
 });
 
 function abrirModalResolucion(id, producto, base, solicitado) {
