@@ -20,7 +20,7 @@ def clasificar_metodo_digital(metodo_raw):
         return 'bancolombia'
     elif 'daviplata' in m:
         return 'daviplata'
-    elif 'datafono' in m or 'tarjeta' in m or 'bold' in m or 'redeban' in m:
+    elif 'datafono' in m or 'tarjeta' in m or 'bolt' in m or 'bold' in m or 'redeban' in m:
         return 'datafono'
     elif 'credito' in m or 'crédito' in m:
         return 'credito'

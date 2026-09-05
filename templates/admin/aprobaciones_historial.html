@@ -137,19 +137,18 @@
 <!-- Tabla de Registros -->
 <div class="card border-0 shadow-sm rounded-4 overflow-hidden" style="background: #FFFFFF;">
     <div class="table-responsive">
-        <table class="table table-hover align-middle mb-0" style="font-size: 0.88rem;">
-            <thead class="bg-light text-muted border-bottom" style="font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.5px;">
+        <table class="table table-hover align-middle mb-0" style="font-size: 0.84rem;">
+            <thead class="bg-light text-muted border-bottom" style="font-size: 0.74rem; text-transform: uppercase; letter-spacing: 0.5px;">
                 <tr>
-                    <th class="ps-4 py-3"># ID</th>
-                    <th class="py-3">Fecha y Hora</th>
-                    <th class="py-3">Vendedor</th>
+                    <th class="ps-3 py-3" style="width: 50px;"># ID</th>
+                    <th class="py-3" style="width: 110px;">Fecha / Hora</th>
+                    <th class="py-3" style="width: 130px;">Vendedor</th>
                     <th class="py-3">Producto / Variante</th>
-                    <th class="py-3 text-end">Precio Base</th>
-                    <th class="py-3 text-end">Precio Solicitado</th>
-                    <th class="py-3 text-end">Precio Autorizado</th>
-                    <th class="py-3 text-center">Estado</th>
-                    <th class="py-3">Resolutor / Admin</th>
-                    <th class="pe-4 py-3 text-center">Acciones / Detalle</th>
+                    <th class="py-3 text-center" style="width: 170px;">Precios (Base / Solicitado)</th>
+                    <th class="py-3 text-center" style="width: 120px;">Autorizado</th>
+                    <th class="py-3 text-center" style="width: 120px;">Estado</th>
+                    <th class="py-3" style="width: 130px;">Resolutor</th>
+                    <th class="pe-3 py-3 text-center" style="width: 140px;">Acciones</th>
                 </tr>
             </thead>
             <tbody>
@@ -157,106 +156,106 @@
                     {% for sol in solicitudes %}
                     <tr id="row_solicitud_{{ sol.id }}">
                         <!-- ID -->
-                        <td class="ps-4 fw-bold text-muted">
+                        <td class="ps-3 fw-bold text-muted" style="white-space: nowrap;">
                             #{{ sol.id }}
                         </td>
 
                         <!-- Fecha y Hora -->
-                        <td class="text-nowrap">
-                            <div class="fw-semibold text-brand-black">{{ sol.fecha_solicitud.strftime('%d/%m/%Y') }}</div>
-                            <small class="text-muted"><i class="fa-regular fa-clock me-1"></i>{{ sol.fecha_solicitud.strftime('%I:%M %p') }}</small>
+                        <td style="white-space: nowrap;">
+                            <div class="fw-semibold text-brand-black" style="font-size: 0.82rem;">{{ sol.fecha_solicitud.strftime('%d/%m/%Y') }}</div>
+                            <small class="text-muted" style="font-size: 0.75rem;"><i class="fa-regular fa-clock me-1"></i>{{ sol.fecha_solicitud.strftime('%I:%M %p') }}</small>
                         </td>
 
                         <!-- Vendedor -->
                         <td>
-                            <div class="d-flex align-items-center gap-2">
-                                <div class="rounded-circle d-flex align-items-center justify-content-center fw-bold" style="width: 32px; height: 32px; background: #F1F5F9; color: var(--brand-blue); font-size: 0.8rem;">
+                            <div class="d-flex align-items-center gap-1">
+                                <div class="rounded-circle d-flex align-items-center justify-content-center fw-bold flex-shrink-0" style="width: 28px; height: 28px; background: #F1F5F9; color: var(--brand-blue); font-size: 0.75rem;">
                                     {{ sol.vendedor.nombre[:2].upper() if sol.vendedor and sol.vendedor.nombre else 'VE' }}
                                 </div>
-                                <div>
-                                    <strong class="d-block text-brand-black" style="font-size: 0.86rem;">{{ sol.vendedor.nombre if sol.vendedor else 'Vendedor' }}</strong>
-                                    <small class="text-muted">{{ sol.vendedor.rol | capitalize if sol.vendedor else '' }}</small>
+                                <div class="text-truncate" style="max-width: 95px;">
+                                    <strong class="d-block text-brand-black text-truncate" style="font-size: 0.82rem;" title="{{ sol.vendedor.nombre if sol.vendedor else 'Vendedor' }}">{{ sol.vendedor.nombre if sol.vendedor else 'Vendedor' }}</strong>
+                                    <small class="text-muted" style="font-size: 0.72rem;">{{ sol.vendedor.rol | capitalize if sol.vendedor else '' }}</small>
                                 </div>
                             </div>
                         </td>
 
                         <!-- Producto y Variante -->
                         <td>
-                            <div class="fw-bold text-brand-black">{{ sol.nombre_producto }}</div>
+                            <div class="fw-bold text-brand-black lh-sm" style="font-size: 0.84rem;">{{ sol.nombre_producto }}</div>
                             {% if sol.variante %}
-                            <span class="badge bg-light text-secondary border fw-normal" style="font-size: 0.72rem;">
+                            <span class="badge bg-light text-secondary border fw-normal py-0 px-2 mt-1" style="font-size: 0.7rem;">
                                 <i class="fa-solid fa-code-branch me-1"></i>{{ sol.variante.nombre_variante }}
                             </span>
                             {% endif %}
                             {% if sol.motivo %}
-                            <div class="small text-muted fst-italic mt-1" style="max-width: 260px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="{{ sol.motivo }}">
+                            <div class="small text-muted fst-italic mt-1 text-truncate" style="max-width: 230px;" title="{{ sol.motivo }}">
                                 <i class="fa-solid fa-comment-dots text-primary me-1"></i>"{{ sol.motivo }}"
                             </div>
                             {% endif %}
                         </td>
 
-                        <!-- Precio Base -->
-                        <td class="text-end text-muted text-nowrap">
-                            ${{ sol.precio_original | cop }}
-                        </td>
-
-                        <!-- Precio Solicitado -->
-                        <td class="text-end text-nowrap">
-                            <span class="fw-bold" style="color: var(--brand-primary);">${{ sol.precio_solicitado | cop }}</span>
-                            {% set dif = sol.precio_original - sol.precio_solicitado %}
-                            {% if dif > 0 %}
-                            <div class="small text-danger" style="font-size: 0.72rem;">
-                                -${{ dif | cop }}
+                        <!-- Precios Base y Solicitado Compactados -->
+                        <td class="text-center" style="white-space: nowrap;">
+                            <div class="d-flex flex-column align-items-center">
+                                <span class="fw-bold" style="color: var(--brand-primary); font-size: 0.88rem;">
+                                    ${{ sol.precio_solicitado | cop }}
+                                </span>
+                                <div class="text-muted small" style="font-size: 0.73rem;">
+                                    Base: <span class="text-decoration-line-through">${{ sol.precio_original | cop }}</span>
+                                    {% set dif = sol.precio_original - sol.precio_solicitado %}
+                                    {% if dif > 0 %}
+                                    <span class="text-danger fw-semibold">(-${{ dif | cop }})</span>
+                                    {% endif %}
+                                </div>
                             </div>
-                            {% endif %}
                         </td>
 
                         <!-- Precio Autorizado -->
-                        <td class="text-end text-nowrap">
+                        <td class="text-center" style="white-space: nowrap;">
                             {% if sol.precio_aprobado is not none %}
-                            <span class="fw-bold text-success" style="font-size: 0.95rem;">${{ sol.precio_aprobado | cop }}</span>
+                            <span class="fw-bold text-success" style="font-size: 0.92rem;">${{ sol.precio_aprobado | cop }}</span>
                             {% if sol.precio_aprobado > sol.precio_solicitado %}
-                            <div class="small text-muted" style="font-size: 0.7rem;">(Contraoferta)</div>
+                            <div class="small text-muted" style="font-size: 0.68rem;">(Contraoferta)</div>
                             {% endif %}
                             {% else %}
-                            <span class="text-muted">—</span>
+                            <span class="text-muted small">—</span>
                             {% endif %}
                         </td>
 
                         <!-- Estado -->
-                        <td class="text-center text-nowrap">
+                        <td class="text-center" style="white-space: nowrap;">
                             {% if sol.estado == 'pendiente' %}
-                            <span class="badge rounded-pill bg-warning text-dark px-3 py-1 fw-bold">
+                            <span class="badge rounded-pill bg-warning text-dark px-2 py-1 fw-bold" style="font-size: 0.72rem;">
                                 <i class="fa-solid fa-clock fa-spin me-1"></i> Pendiente
                             </span>
                             {% elif sol.estado == 'aprobado' %}
-                            <span class="badge rounded-pill px-3 py-1 fw-bold" style="background: rgba(16, 185, 129, 0.15); color: #059669;">
+                            <span class="badge rounded-pill px-2 py-1 fw-bold" style="background: rgba(16, 185, 129, 0.15); color: #059669; font-size: 0.72rem;">
                                 <i class="fa-solid fa-circle-check me-1"></i> Aprobada
                             </span>
                             {% elif sol.estado == 'utilizada' %}
-                            <span class="badge rounded-pill bg-success text-white px-3 py-1 fw-bold">
+                            <span class="badge rounded-pill bg-success text-white px-2 py-1 fw-bold" style="font-size: 0.72rem;">
                                 <i class="fa-solid fa-bag-shopping me-1"></i> Venta Realizada
                             </span>
                             {% elif sol.estado == 'rechazado' %}
-                            <span class="badge rounded-pill px-3 py-1 fw-bold" style="background: rgba(239, 68, 68, 0.15); color: #DC2626;">
+                            <span class="badge rounded-pill px-2 py-1 fw-bold" style="background: rgba(239, 68, 68, 0.15); color: #DC2626; font-size: 0.72rem;">
                                 <i class="fa-solid fa-circle-xmark me-1"></i> Rechazada
                             </span>
                             {% elif sol.estado == 'cancelada' %}
-                            <span class="badge rounded-pill bg-secondary text-white px-3 py-1 fw-bold">
+                            <span class="badge rounded-pill bg-secondary text-white px-2 py-1 fw-bold" style="font-size: 0.72rem;">
                                 <i class="fa-solid fa-ban me-1"></i> Cancelada
                             </span>
                             {% else %}
-                            <span class="badge bg-light text-muted border rounded-pill px-3 py-1">{{ sol.estado }}</span>
+                            <span class="badge bg-light text-muted border rounded-pill px-2 py-1" style="font-size: 0.72rem;">{{ sol.estado }}</span>
                             {% endif %}
                         </td>
 
                         <!-- Resolutor / Admin -->
                         <td>
                             {% if sol.admin %}
-                            <div class="small fw-semibold text-brand-black">{{ sol.admin.nombre }}</div>
-                            <small class="text-muted" style="font-size: 0.72rem;">{{ sol.fecha_resolucion.strftime('%d/%m %I:%M %p') if sol.fecha_resolucion else '' }}</small>
+                            <div class="small fw-semibold text-brand-black text-truncate" style="max-width: 120px;" title="{{ sol.admin.nombre }}">{{ sol.admin.nombre }}</div>
+                            <small class="text-muted d-block" style="font-size: 0.72rem;">{{ sol.fecha_resolucion.strftime('%d/%m %I:%M %p') if sol.fecha_resolucion else '' }}</small>
                             {% if sol.motivo_rechazo %}
-                            <div class="small text-danger fst-italic mt-1" style="max-width: 200px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="{{ sol.motivo_rechazo }}">
+                            <div class="small text-danger fst-italic text-truncate" style="max-width: 120px;" title="{{ sol.motivo_rechazo }}">
                                 <i class="fa-solid fa-triangle-exclamation me-1"></i>"{{ sol.motivo_rechazo }}"
                             </div>
                             {% endif %}
@@ -265,36 +264,50 @@
                             {% endif %}
                         </td>
 
-                        <!-- Acciones / Detalle -->
-                        <td class="pe-4 text-center text-nowrap">
-                            {% if sol.estado == 'pendiente' %}
-                            <div class="btn-group btn-group-sm">
+                        <!-- Acciones / Factura / Detalle -->
+                        <td class="pe-3 text-center" style="white-space: nowrap;">
+                            <div class="d-flex align-items-center justify-content-center gap-1">
+                                {% if sol.sale_id %}
+                                <a href="{{ url_for('sales_bp.imprimir_ticket', sale_id=sol.sale_id) }}" 
+                                   target="_blank" 
+                                   class="btn btn-sm btn-pink rounded-pill px-2 py-1 fw-bold shadow-sm"
+                                   title="Ver Factura / Recibo #{{ sol.sale_id }}"
+                                   style="font-size: 0.75rem;">
+                                    <i class="fa-solid fa-receipt me-1"></i> Factura #{{ sol.sale_id }}
+                                </a>
+                                {% endif %}
+
+                                {% if sol.estado == 'pendiente' %}
                                 <button type="button" 
-                                        class="btn btn-success px-3 fw-bold rounded-start-pill btn-resolver-solicitud"
+                                        class="btn btn-sm btn-success px-2 py-1 fw-bold rounded-pill btn-resolver-solicitud"
                                         data-id="{{ sol.id }}"
                                         data-producto="{{ sol.nombre_producto }}"
                                         data-base="{{ sol.precio_original }}"
-                                        data-solicitado="{{ sol.precio_solicitado }}">
+                                        data-solicitado="{{ sol.precio_solicitado }}"
+                                        style="font-size: 0.75rem;">
                                     <i class="fa-solid fa-check me-1"></i> Resolver
                                 </button>
+                                {% else %}
+                                <button type="button" 
+                                        class="btn btn-sm btn-light border rounded-pill px-2 py-1 text-muted fw-semibold btn-detalle-solicitud"
+                                        data-id="{{ sol.id }}"
+                                        data-producto="{{ sol.nombre_producto }}"
+                                        data-vendedor="{{ sol.vendedor.nombre if sol.vendedor else 'Vendedor' }}"
+                                        data-base="{{ sol.precio_original }}"
+                                        data-solicitado="{{ sol.precio_solicitado }}"
+                                        data-autorizado="{{ sol.precio_aprobado if sol.precio_aprobado is not none else '' }}"
+                                        data-estado="{{ sol.estado }}"
+                                        data-motivo="{{ sol.motivo or '' }}"
+                                        data-rechazo="{{ sol.motivo_rechazo or '' }}"
+                                        data-admin="{{ sol.admin.nombre if sol.admin else '' }}"
+                                        data-fecha="{{ sol.fecha_solicitud.strftime('%d/%m/%Y %I:%M %p') if sol.fecha_solicitud else '' }}"
+                                        data-saleid="{{ sol.sale_id or '' }}"
+                                        title="Ver detalles de auditoría"
+                                        style="font-size: 0.75rem;">
+                                    <i class="fa-solid fa-eye"></i>
+                                </button>
+                                {% endif %}
                             </div>
-                            {% else %}
-                            <button type="button" 
-                                    class="btn btn-sm btn-light border rounded-pill px-3 text-muted fw-semibold btn-detalle-solicitud"
-                                    data-id="{{ sol.id }}"
-                                    data-producto="{{ sol.nombre_producto }}"
-                                    data-vendedor="{{ sol.vendedor.nombre if sol.vendedor else 'Vendedor' }}"
-                                    data-base="{{ sol.precio_original }}"
-                                    data-solicitado="{{ sol.precio_solicitado }}"
-                                    data-autorizado="{{ sol.precio_aprobado if sol.precio_aprobado is not none else '' }}"
-                                    data-estado="{{ sol.estado }}"
-                                    data-motivo="{{ sol.motivo or '' }}"
-                                    data-rechazo="{{ sol.motivo_rechazo or '' }}"
-                                    data-admin="{{ sol.admin.nombre if sol.admin else '' }}"
-                                    data-fecha="{{ sol.fecha_solicitud.strftime('%d/%m/%Y %I:%M %p') if sol.fecha_solicitud else '' }}">
-                                <i class="fa-solid fa-eye me-1"></i> Detalle
-                            </button>
-                            {% endif %}
                         </td>
                     </tr>
                     {% endfor %}
@@ -431,9 +444,14 @@
                     <span class="text-muted small d-block">Resolución Admin:</span>
                     <p class="text-dark bg-light p-2 rounded-3 small mb-0" id="det_admin_info"></p>
                 </div>
+                <div class="mt-3 text-center" id="det_box_factura" style="display: none;">
+                    <a href="#" id="det_btn_factura" target="_blank" class="btn btn-pink rounded-pill px-4 fw-bold shadow-sm w-100">
+                        <i class="fa-solid fa-receipt me-2"></i>Ver Factura / Recibo Oficial
+                    </a>
+                </div>
             </div>
             <div class="modal-footer border-0 pt-0 px-4 pb-4">
-                <button type="button" class="btn btn-blue rounded-pill px-4 fw-bold w-100" data-bs-dismiss="modal">Cerrar</button>
+                <button type="button" class="btn btn-secondary rounded-pill px-4 fw-bold w-100" data-bs-dismiss="modal">Cerrar</button>
             </div>
         </div>
     </div>
@@ -474,7 +492,8 @@ document.addEventListener('DOMContentLoaded', () => {
             const rec = btnDetalle.dataset.rechazo;
             const adm = btnDetalle.dataset.admin;
             const fec = btnDetalle.dataset.fecha;
-            verDetalleCompleto(id, prod, vend, base, sol, aut, est, mot, rec, adm, fec);
+            const saleId = btnDetalle.dataset.saleid;
+            verDetalleCompleto(id, prod, vend, base, sol, aut, est, mot, rec, adm, fec, saleId);
             return;
         }
     });
@@ -536,7 +555,7 @@ async function ejecutarAccionModal(accion) {
     }
 }
 
-function verDetalleCompleto(id, producto, vendedor, base, solicitado, autorizado, estado, motivo, motivoRechazo, admin, fecha) {
+function verDetalleCompleto(id, producto, vendedor, base, solicitado, autorizado, estado, motivo, motivoRechazo, admin, fecha, saleId) {
     document.getElementById('det_id').textContent = id;
     document.getElementById('det_producto').textContent = producto;
     document.getElementById('det_vendedor').textContent = vendedor;
@@ -555,6 +574,17 @@ function verDetalleCompleto(id, producto, vendedor, base, solicitado, autorizado
         adminInfo.textContent = texto;
     } else {
         boxAdmin.style.display = 'none';
+    }
+
+    const boxFactura = document.getElementById('det_box_factura');
+    const btnFactura = document.getElementById('det_btn_factura');
+    if (saleId && saleId !== '') {
+        boxFactura.style.display = 'block';
+        btnFactura.href = `/sales/ticket/${saleId}`;
+        btnFactura.innerHTML = `<i class="fa-solid fa-receipt me-2"></i>Ver Factura / Ticket #${saleId}`;
+    } else {
+        boxFactura.style.display = 'none';
+        btnFactura.href = '#';
     }
 
     if (modalDetalle) modalDetalle.show();

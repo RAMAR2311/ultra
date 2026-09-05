@@ -18,7 +18,7 @@
     </div>
 
     <!-- Barra de Filtros Dinámicos -->
-    <div class="d-flex flex-wrap align-items-center gap-2">
+    <div class="d-flex flex-wrap align-items-center gap-2 dashboard-filter-container">
         <form method="GET" action="{{ url_for('admin_bp.dashboard') }}" class="d-flex flex-wrap align-items-center gap-2 p-2 bg-white rounded-pill shadow-sm border" id="dashboardFilterForm">
             <!-- Selector de Tipo de Filtro -->
             <select name="filtro_tipo" id="filtroTipoSelect" class="form-select form-select-sm rounded-pill fw-bold border-0 bg-light" style="width: auto; cursor: pointer;" onchange="updateFilterInputs()">
@@ -145,8 +145,8 @@
             <p class="text-muted small mb-2"><i class="fa-solid fa-receipt me-1"></i> {{ conteo_ventas }} ventas realizadas</p>
             
             <div class="d-flex justify-content-between text-muted small pt-2 border-top mb-3">
-                <span title="Pagos en efectivo"><i class="fa-solid fa-money-bill-wave text-success me-1"></i>${{ (ventas_efectivo)|cop }}</span>
-                <span title="Pagos por transferencia/digital"><i class="fa-solid fa-mobile-screen-button text-primary me-1"></i>${{ (ventas_transferencia)|cop }}</span>
+                <span title="Efectivo en caja"><i class="fa-solid fa-money-bill-wave text-success me-1"></i>${{ (ventas_efectivo)|cop }}</span>
+                <span title="Canales digitales (Nequi, Bancolombia, Daviplata, Bolt)"><i class="fa-solid fa-network-wired text-primary me-1"></i>${{ (ventas_transferencia)|cop }}</span>
             </div>
 
             <div class="mt-auto">
@@ -232,6 +232,8 @@
         </div>
     </div>
 </div>
+
+
 
 <!-- FILA 2: Maneos, Alertas de Stock, Proveedores y Aprobaciones (4 Tarjetas) -->
 <div class="row g-3">

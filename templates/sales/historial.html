@@ -187,7 +187,7 @@
 <!-- ========================================================================= -->
 <div class="row g-3 mb-4">
     <!-- NEQUI -->
-    <div class="col-12 col-sm-6 {% if total_transferencia_legacy > 0 %}col-md-3{% else %}col-md-4{% endif %}">
+    <div class="col-12 col-sm-6 {% if total_transferencia_legacy > 0 %}col-md-20p{% else %}col-md-3{% endif %}">
         <div class="card card-custom h-100 p-3 border-0 shadow-sm metric-subcard" style="border-left: 5px solid #6f42c1 !important;">
             <div class="d-flex justify-content-between align-items-center">
                 <div>
@@ -212,7 +212,7 @@
     </div>
 
     <!-- BANCOLOMBIA -->
-    <div class="col-12 col-sm-6 {% if total_transferencia_legacy > 0 %}col-md-3{% else %}col-md-4{% endif %}">
+    <div class="col-12 col-sm-6 {% if total_transferencia_legacy > 0 %}col-md-20p{% else %}col-md-3{% endif %}">
         <div class="card card-custom h-100 p-3 border-0 shadow-sm metric-subcard" style="border-left: 5px solid #fd7e14 !important;">
             <div class="d-flex justify-content-between align-items-center">
                 <div>
@@ -237,7 +237,7 @@
     </div>
 
     <!-- DAVIPLATA -->
-    <div class="col-12 col-sm-6 {% if total_transferencia_legacy > 0 %}col-md-3{% else %}col-md-4{% endif %}">
+    <div class="col-12 col-sm-6 {% if total_transferencia_legacy > 0 %}col-md-20p{% else %}col-md-3{% endif %}">
         <div class="card card-custom h-100 p-3 border-0 shadow-sm metric-subcard" style="border-left: 5px solid #dc3545 !important;">
             <div class="d-flex justify-content-between align-items-center">
                 <div>
@@ -261,9 +261,34 @@
         </div>
     </div>
 
+    <!-- BOLT -->
+    <div class="col-12 col-sm-6 {% if total_transferencia_legacy > 0 %}col-md-20p{% else %}col-md-3{% endif %}">
+        <div class="card card-custom h-100 p-3 border-0 shadow-sm metric-subcard" style="border-left: 5px solid #0052FF !important;">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <div class="d-flex align-items-center gap-1 mb-1">
+                        <span class="badge rounded-circle p-1" style="background-color: #0052FF;"></span>
+                        <span class="text-muted fw-bold text-uppercase" style="font-size: 0.75rem;">Bolt (Datáfono)</span>
+                    </div>
+                    <h4 class="fw-bolder m-0 font-orbitron" style="color: #0052FF;">${{ (total_bolt)|cop }}</h4>
+                </div>
+                <div class="p-2 rounded-3 d-flex align-items-center justify-content-center" style="width: 40px; height: 40px; background-color: #EFF6FF; color: #0052FF;">
+                    <i class="fa-solid fa-bolt fs-5"></i>
+                </div>
+            </div>
+            {% set pct_bolt = ((total_bolt / total_digital * 100)|round(1)) if total_digital > 0 else 0 %}
+            <div class="progress mt-2" style="height: 4px; background-color: #F1F5F9;">
+                <div class="progress-bar" role="progressbar" style="width: {{ pct_bolt }}%; background-color: #0052FF;"></div>
+            </div>
+            <div class="d-flex justify-content-between mt-1 text-muted" style="font-size: 0.7rem;">
+                <span>Digital: {{ pct_bolt }}%</span>
+            </div>
+        </div>
+    </div>
+
     {% if total_transferencia_legacy > 0 %}
     <!-- TRANSFERENCIAS HISTÓRICAS -->
-    <div class="col-12 col-sm-6 col-md-3">
+    <div class="col-12 col-sm-6 col-md-20p">
         <div class="card card-custom h-100 p-3 border-0 shadow-sm metric-subcard" style="border-left: 5px solid var(--brand-pink) !important;">
             <div class="d-flex justify-content-between align-items-center">
                 <div>
@@ -320,17 +345,22 @@
                                 <i class="fa-solid fa-arrows-split-up-and-left me-1" style="color: #fd7e14;"></i> Pago Mixto
                             </span>
                         {% elif venta.pagos|length == 1 %}
-                            {% set metodo = venta.pagos[0].metodo_pago %}
+                            {% set metodo = venta.pagos[0].metodo_pago|lower %}
                             {% if metodo == 'efectivo' %}
                                 <span class="badge bg-light text-success border border-success border-opacity-25 rounded-pill px-3 py-2"><i class="fa-solid fa-money-bills me-1"></i> Efectivo</span>
+                            {% elif metodo in ['bolt', 'bold'] %}
+                                <span class="badge bg-light text-primary border rounded-pill px-3 py-2" style="border-color: #0052FF !important; color: #0052FF !important; background-color: #EFF6FF !important;"><i class="fa-solid fa-bolt me-1"></i> Bolt</span>
                             {% else %}
                                 <span class="badge bg-light text-primary border border-primary border-opacity-25 rounded-pill px-3 py-2"><i class="fa-solid fa-building-columns me-1"></i> {{ metodo|capitalize }}</span>
                             {% endif %}
                         {% else %}
-                            {% if venta.metodo_pago == 'efectivo' %}
+                            {% set metodo_legacy = venta.metodo_pago|lower %}
+                            {% if metodo_legacy == 'efectivo' %}
                                 <span class="badge bg-light text-success border border-success border-opacity-25 rounded-pill px-3 py-2"><i class="fa-solid fa-money-bills me-1"></i> Efectivo</span>
-                            {% elif venta.metodo_pago == 'mixto' %}
+                            {% elif metodo_legacy == 'mixto' %}
                                 <span class="badge bg-light text-dark border border-warning border-opacity-50 rounded-pill px-3 py-2"><i class="fa-solid fa-arrows-split-up-and-left me-1" style="color: #fd7e14;"></i> Pago Mixto</span>
+                            {% elif metodo_legacy in ['bolt', 'bold'] %}
+                                <span class="badge bg-light text-primary border rounded-pill px-3 py-2" style="border-color: #0052FF !important; color: #0052FF !important; background-color: #EFF6FF !important;"><i class="fa-solid fa-bolt me-1"></i> Bolt</span>
                             {% else %}
                                 <span class="badge bg-light text-primary border border-primary border-opacity-25 rounded-pill px-3 py-2"><i class="fa-solid fa-building-columns me-1"></i> {{ venta.metodo_pago|capitalize }}</span>
                             {% endif %}
@@ -425,6 +455,7 @@
                                                         <option value="nequi" {% if current_metodo == 'nequi' %}selected{% endif %}>📱 Nequi</option>
                                                         <option value="bancolombia" {% if current_metodo == 'bancolombia' %}selected{% endif %}>🏦 Bancolombia</option>
                                                         <option value="daviplata" {% if current_metodo == 'daviplata' %}selected{% endif %}>📱 Daviplata</option>
+                                                        <option value="bolt" {% if current_metodo in ['bolt', 'bold'] %}selected{% endif %}>⚡ Bolt (Datáfono)</option>
                                                     </select>
                                                     <div class="form-text small mt-2 text-muted">
                                                         <i class="fa-solid fa-circle-info text-primary me-1"></i>El 100% del total (${{ (venta.monto_total)|cop }}) se asignará al método seleccionado.
@@ -439,18 +470,21 @@
                                                     {% set p_nequi = namespace(val=0) %}
                                                     {% set p_banco = namespace(val=0) %}
                                                     {% set p_davi = namespace(val=0) %}
+                                                    {% set p_bolt = namespace(val=0) %}
                                                     {% if venta.pagos %}
                                                         {% for p in venta.pagos %}
                                                             {% if p.metodo_pago == 'efectivo' %}{% set p_efectivo.val = p.monto|int %}{% endif %}
                                                             {% if p.metodo_pago == 'nequi' %}{% set p_nequi.val = p.monto|int %}{% endif %}
                                                             {% if p.metodo_pago == 'bancolombia' %}{% set p_banco.val = p.monto|int %}{% endif %}
                                                             {% if p.metodo_pago == 'daviplata' %}{% set p_davi.val = p.monto|int %}{% endif %}
+                                                            {% if p.metodo_pago in ['bolt', 'bold'] %}{% set p_bolt.val = p.monto|int %}{% endif %}
                                                         {% endfor %}
                                                     {% else %}
                                                         {% if venta.metodo_pago == 'efectivo' %}{% set p_efectivo.val = venta.monto_total|int %}{% endif %}
                                                         {% if venta.metodo_pago == 'nequi' %}{% set p_nequi.val = venta.monto_total|int %}{% endif %}
                                                         {% if venta.metodo_pago == 'bancolombia' %}{% set p_banco.val = venta.monto_total|int %}{% endif %}
                                                         {% if venta.metodo_pago == 'daviplata' %}{% set p_davi.val = venta.monto_total|int %}{% endif %}
+                                                        {% if venta.metodo_pago in ['bolt', 'bold'] %}{% set p_bolt.val = venta.monto_total|int %}{% endif %}
                                                     {% endif %}
 
                                                     <div class="d-flex flex-column gap-2">
@@ -500,6 +534,18 @@
                                                                    value="{{ '{:,}'.format(p_davi.val) if p_davi.val > 0 else '' }}" 
                                                                    placeholder="0" oninput="formatInputCOP(this); recalcularSuma({{ venta.id }}, {{ venta.monto_total }});">
                                                             <button type="button" class="btn btn-outline-secondary btn-sm" onclick="asignarRestante({{ venta.id }}, 'monto_daviplata', {{ venta.monto_total }})">Todo</button>
+                                                        </div>
+
+                                                        <!-- Bolt -->
+                                                        <div class="input-group">
+                                                            <span class="input-group-text bg-light text-dark fw-bold" style="width: 140px;">
+                                                                ⚡ Bolt
+                                                            </span>
+                                                            <input type="text" class="form-control text-end fw-bold input-monto-{{ venta.id }}" 
+                                                                   name="monto_bolt" id="monto_bolt_{{ venta.id }}" 
+                                                                   value="{{ '{:,}'.format(p_bolt.val) if p_bolt.val > 0 else '' }}" 
+                                                                   placeholder="0" oninput="formatInputCOP(this); recalcularSuma({{ venta.id }}, {{ venta.monto_total }});">
+                                                            <button type="button" class="btn btn-outline-secondary btn-sm" onclick="asignarRestante({{ venta.id }}, 'monto_bolt', {{ venta.monto_total }})">Todo</button>
                                                         </div>
                                                     </div>
 
@@ -565,6 +611,13 @@
 .metric-subcard:hover {
     transform: translateY(-3px);
     box-shadow: 0 8px 20px rgba(0, 0, 0, 0.05) !important;
+}
+
+@media (min-width: 768px) {
+    .col-md-20p {
+        flex: 0 0 auto;
+        width: 20%;
+    }
 }
 
 /* ====== Estilos Exclusivos para PDF/Impresión del Reporte de Ventas ====== */
@@ -708,8 +761,9 @@
         const nq = parseMonto(document.getElementById(`monto_nequi_${saleId}`)?.value);
         const bc = parseMonto(document.getElementById(`monto_bancolombia_${saleId}`)?.value);
         const dv = parseMonto(document.getElementById(`monto_daviplata_${saleId}`)?.value);
+        const bl = parseMonto(document.getElementById(`monto_bolt_${saleId}`)?.value);
         
-        const suma = ef + nq + bc + dv;
+        const suma = ef + nq + bc + dv + bl;
         const total = Math.round(montoTotal);
         const diff = total - suma;
 
@@ -740,7 +794,7 @@
     }
 
     function asignarRestante(saleId, fieldName, montoTotal) {
-        const fields = ['monto_efectivo', 'monto_nequi', 'monto_bancolombia', 'monto_daviplata'];
+        const fields = ['monto_efectivo', 'monto_nequi', 'monto_bancolombia', 'monto_daviplata', 'monto_bolt'];
         let sumaOtros = 0;
         fields.forEach(f => {
             if (f !== fieldName) {
@@ -765,8 +819,9 @@
         const nq = parseMonto(document.getElementById(`monto_nequi_${saleId}`)?.value);
         const bc = parseMonto(document.getElementById(`monto_bancolombia_${saleId}`)?.value);
         const dv = parseMonto(document.getElementById(`monto_daviplata_${saleId}`)?.value);
+        const bl = parseMonto(document.getElementById(`monto_bolt_${saleId}`)?.value);
         
-        const suma = ef + nq + bc + dv;
+        const suma = ef + nq + bc + dv + bl;
         const total = Math.round(montoTotal);
         if (suma !== total) {
             alert(`⚠️ La suma de los métodos de pago ($${formatCOP(suma)}) debe coincidir exactamente con el total de la factura ($${formatCOP(total)}).`);

@@ -182,9 +182,10 @@ def procesar_venta():
                         if not aprobacion:
                             raise ValueError(f"No autorizado: El precio (${precio_venta_final:,.0f}) del producto '{producto.nombre}' está por debajo del mínimo permitido (${precio_limite_autorizado:,.0f}) y no cuenta con autorización remota aprobada por el administrador.")
                         
-                        # Consumir la aprobación para que no sea reutilizable
+                        # Consumir la aprobación para que no sea reutilizable y vincular a la venta
                         aprobacion.estado = 'utilizada'
                         aprobacion.fecha_resolucion = obtener_hora_bogota()
+                        aprobacion.sale_id = nueva_venta.id
 
                 detalle = SaleDetail(
                     sale_id=nueva_venta.id,
@@ -475,39 +476,51 @@ def historial():
     total_nequi = Decimal('0')
     total_bancolombia = Decimal('0')
     total_daviplata = Decimal('0')
+    total_bolt = Decimal('0')
     total_transferencia_legacy = Decimal('0')
     total_mixto = 0  # Contador de ventas con pago mixto
 
     for v in ventas:
         if v.pagos:  # Pagos nuevos con tabla sale_payments
             for pago in v.pagos:
-                if pago.metodo_pago == 'efectivo':
+                metodo = (pago.metodo_pago or '').lower().strip()
+                if metodo == 'efectivo':
                     total_efectivo += pago.monto
-                elif pago.metodo_pago == 'nequi':
+                elif metodo == 'nequi':
                     total_nequi += pago.monto
-                elif pago.metodo_pago == 'bancolombia':
+                elif metodo == 'bancolombia':
                     total_bancolombia += pago.monto
-                elif pago.metodo_pago == 'daviplata':
+                elif metodo == 'daviplata':
                     total_daviplata += pago.monto
-                elif pago.metodo_pago == 'transferencia':
+                elif metodo in ['bolt', 'bold']:
+                    total_bolt += pago.monto
+                elif metodo == 'transferencia':
+                    total_transferencia_legacy += pago.monto
+                else:
+                    # En caso de otro método digital no mapeado
                     total_transferencia_legacy += pago.monto
             if len(v.pagos) > 1:
                 total_mixto += 1
         else:  # Retrocompatibilidad con ventas antiguas sin SalePayment
-            if v.metodo_pago == 'efectivo':
+            metodo_v = (v.metodo_pago or '').lower().strip()
+            if metodo_v == 'efectivo':
                 total_efectivo += v.monto_total
-            elif v.metodo_pago == 'nequi':
+            elif metodo_v == 'nequi':
                 total_nequi += v.monto_total
-            elif v.metodo_pago == 'bancolombia':
+            elif metodo_v == 'bancolombia':
                 total_bancolombia += v.monto_total
-            elif v.metodo_pago == 'daviplata':
+            elif metodo_v == 'daviplata':
                 total_daviplata += v.monto_total
-            elif v.metodo_pago == 'transferencia':
+            elif metodo_v in ['bolt', 'bold']:
+                total_bolt += v.monto_total
+            elif metodo_v == 'transferencia':
+                total_transferencia_legacy += v.monto_total
+            else:
                 total_transferencia_legacy += v.monto_total
 
     # Métricas consolidadas de alto impacto
-    total_general = total_efectivo + total_nequi + total_bancolombia + total_daviplata + total_transferencia_legacy
-    total_digital = total_nequi + total_bancolombia + total_daviplata + total_transferencia_legacy
+    total_general = total_efectivo + total_nequi + total_bancolombia + total_daviplata + total_bolt + total_transferencia_legacy
+    total_digital = total_nequi + total_bancolombia + total_daviplata + total_bolt + total_transferencia_legacy
     total_operaciones = len(ventas)
     ticket_promedio = (total_general / Decimal(total_operaciones)) if total_operaciones > 0 else Decimal('0')
 
@@ -522,6 +535,7 @@ def historial():
                            total_nequi=total_nequi,
                            total_bancolombia=total_bancolombia,
                            total_daviplata=total_daviplata,
+                           total_bolt=total_bolt,
                            total_transferencia_legacy=total_transferencia_legacy,
                            total_mixto=total_mixto,
                            fecha_inicio=fecha_inicio,
@@ -652,7 +666,7 @@ def editar_pago(sale_id):
         
         if tipo_pago == 'unico':
             metodo = request.form.get('metodo_pago_unico', 'efectivo').lower().strip()
-            if metodo not in ['efectivo', 'nequi', 'bancolombia', 'daviplata']:
+            if metodo not in ['efectivo', 'nequi', 'bancolombia', 'daviplata', 'bolt']:
                 metodo = 'efectivo'
             
             # Limpiar pagos previos
@@ -667,7 +681,7 @@ def editar_pago(sale_id):
             venta.metodo_pago = metodo
             
         elif tipo_pago == 'mixto':
-            metodos_posibles = ['efectivo', 'nequi', 'bancolombia', 'daviplata']
+            metodos_posibles = ['efectivo', 'nequi', 'bancolombia', 'daviplata', 'bolt']
             nuevos_pagos = []
             suma_montos = Decimal('0.00')
             

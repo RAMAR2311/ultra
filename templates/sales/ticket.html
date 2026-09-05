@@ -529,8 +529,11 @@
             canvas.toBlob(async (blob) => {
                 const file = new File([blob], `Factura_UltraTech_${SALE_ID}.png`, { type: 'image/png' });
 
-                // Caso 1: Dispositivos móviles (Android / iPhone) con soporte nativo de compartir
-                if (navigator.canShare && navigator.canShare({ files: [file] })) {
+                // Detectar si es un dispositivo móvil real (Android / iPhone / iPad)
+                const esMovil = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+
+                // Caso 1: Dispositivos móviles reales con soporte nativo de compartir
+                if (esMovil && navigator.canShare && navigator.canShare({ files: [file] })) {
                     try {
                         await navigator.share({
                             files: [file],
@@ -545,7 +548,7 @@
                     }
                 }
 
-                // Caso 2: Computadora de Escritorio / WhatsApp Web
+                // Caso 2: Computador de Escritorio (PC / Laptop) -> Directo a WhatsApp Web sin la ventana de Windows
                 let copiado = false;
                 try {
                     if (navigator.clipboard && navigator.clipboard.write) {
@@ -558,21 +561,20 @@
                     console.warn('Portapapeles no soportado:', clipErr);
                 }
 
-                // Descargar automáticamente la imagen en caso de que no pueda pegar del portapapeles
-                const link = document.createElement('a');
-                link.download = `Factura_UltraTech_${SALE_ID}.png`;
-                link.href = canvas.toDataURL('image/png');
-                link.click();
-
-                // Abrir el chat de WhatsApp Web con el cliente
+                // Abrir directamente el chat de WhatsApp Web con el cliente
                 const msgTexto = `Hola, adjunto el comprobante de compra oficial de ULTRA TECH (Factura #${SALE_ID}).`;
                 const url = `https://wa.me/${raw}?text=${encodeURIComponent(msgTexto)}`;
                 window.open(url, '_blank');
 
                 if (copiado) {
-                    alert('✅ ¡Imagen de la factura copiada al portapapeles y descargada!\n\nAl abrirse WhatsApp, solo presiona Ctrl + V (Pegar) para enviar la imagen.');
+                    alert('📋 ¡La imagen de la factura ya fue COPIADA al portapapeles!\n\nEn la ventana de WhatsApp que se acaba de abrir, solo presiona CTRL + V (Pegar) y dale Enviar.');
                 } else {
-                    alert('✅ ¡Imagen descargada!\n\nAl abrirse WhatsApp, arrastra la imagen descargada al chat para enviarla.');
+                    // Si el navegador bloqueó el portapapeles, descargarla
+                    const link = document.createElement('a');
+                    link.download = `Factura_UltraTech_${SALE_ID}.png`;
+                    link.href = canvas.toDataURL('image/png');
+                    link.click();
+                    alert('✅ Se descargó la imagen de la factura.\n\nArrastra el archivo al chat de WhatsApp para enviarlo.');
                 }
 
                 cerrarModalWhatsApp();

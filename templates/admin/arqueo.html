@@ -8,7 +8,9 @@
     .arqueo-container { margin-top: 1rem; }
     
     /* Panel Izquierdo: Tirilla Digital */
-    .kpi-card { transition: transform 0.2s; border: none; border-radius: 12px; }
+    .kpi-card { transition: transform 0.2s; border: none; border-radius: 12px; color: #ffffff !important; }
+    .kpi-card h4 { color: #ffffff !important; font-family: 'Montserrat', sans-serif !important; font-weight: 800 !important; }
+    .kpi-card p { color: rgba(255, 255, 255, 0.85) !important; font-weight: 700 !important; }
     .kpi-card:hover { transform: translateY(-3px); }
     
     .table-tirilla-container {
@@ -107,12 +109,12 @@
                 <div class="col-md-4">
                     <div class="card kpi-card bg-success text-white shadow-sm h-100">
                         <div class="card-body d-flex align-items-center">
-                            <div class="rounded-circle bg-white bg-opacity-25 p-3 me-3">
+                            <div class="rounded-circle bg-white bg-opacity-25 p-3 me-3 text-white">
                                 <i class="fa-solid fa-money-bill-wave fs-4"></i>
                             </div>
                             <div>
-                                <p class="mb-0 small fw-semibold text-white-50 text-uppercase">Efectivo Sistema</p>
-                                <h4 class="mb-0 fw-bold">${{ "{:,.0f}".format(total_efectivo) }}</h4>
+                                <p class="mb-0 small fw-semibold text-white text-opacity-75 text-uppercase" style="letter-spacing: 0.5px;">Efectivo Sistema</p>
+                                <h4 class="mb-0 fw-bold text-white font-orbitron" style="color: #ffffff !important;">${{ "{:,.0f}".format(total_efectivo) }}</h4>
                             </div>
                         </div>
                     </div>
@@ -120,25 +122,25 @@
                 <div class="col-md-4">
                     <div class="card kpi-card bg-primary text-white shadow-sm h-100" style="background-color: var(--brand-blue) !important;">
                         <div class="card-body d-flex align-items-center">
-                            <div class="rounded-circle bg-white bg-opacity-25 p-3 me-3">
+                            <div class="rounded-circle bg-white bg-opacity-25 p-3 me-3 text-white">
                                 <i class="fa-solid fa-mobile-screen fs-4"></i>
                             </div>
                             <div>
-                                <p class="mb-0 small fw-semibold text-white-50 text-uppercase">Dinero Digital</p>
-                                <h4 class="mb-0 fw-bold">${{ "{:,.0f}".format(total_digital) }}</h4>
+                                <p class="mb-0 small fw-semibold text-white text-opacity-75 text-uppercase" style="letter-spacing: 0.5px;">Dinero Digital</p>
+                                <h4 class="mb-0 fw-bold text-white font-orbitron" style="color: #ffffff !important;">${{ "{:,.0f}".format(total_digital) }}</h4>
                             </div>
                         </div>
                     </div>
                 </div>
                 <div class="col-md-4">
-                    <div class="card kpi-card bg-dark text-white shadow-sm h-100" style="background-color: #333 !important;">
+                    <div class="card kpi-card bg-dark text-white shadow-sm h-100" style="background-color: #0F172A !important;">
                         <div class="card-body d-flex align-items-center">
-                            <div class="rounded-circle bg-white bg-opacity-25 p-3 me-3">
+                            <div class="rounded-circle bg-white bg-opacity-25 p-3 me-3 text-white">
                                 <i class="fa-solid fa-sack-dollar fs-4"></i>
                             </div>
                             <div>
-                                <p class="mb-0 small fw-semibold text-white-50 text-uppercase">Venta Total</p>
-                                <h4 class="mb-0 fw-bold">${{ "{:,.0f}".format(total_efectivo + total_digital) }}</h4>
+                                <p class="mb-0 small fw-semibold text-white text-opacity-75 text-uppercase" style="letter-spacing: 0.5px;">Venta Total</p>
+                                <h4 class="mb-0 fw-bold text-white font-orbitron" style="color: #ffffff !important;">${{ "{:,.0f}".format(total_efectivo + total_digital) }}</h4>
                             </div>
                         </div>
                     </div>

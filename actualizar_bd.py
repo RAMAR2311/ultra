@@ -33,6 +33,8 @@ def main():
             "ALTER TABLE clientes ADD COLUMN IF NOT EXISTS notas TEXT;",
             "ALTER TABLE clientes ALTER COLUMN documento_o_nit DROP NOT NULL;",
             "ALTER TABLE clientes ALTER COLUMN telefono DROP NOT NULL;",
+            # Tabla price_approvals
+            "ALTER TABLE price_approvals ADD COLUMN IF NOT EXISTS sale_id INTEGER;",
         ]
 
         for sql in columnas:
@@ -66,6 +68,33 @@ def main():
             db.session.commit()
         except Exception as e:
             db.session.rollback()
+
+        # 5. Vincular aprobaciones 'utilizada' a sus respectivas ventas en sale_details si aún no tienen sale_id
+        try:
+            from models import PriceApproval, Sale, SaleDetail
+            aprobaciones_sin_venta = PriceApproval.query.filter(
+                PriceApproval.estado == 'utilizada',
+                PriceApproval.sale_id.is_(None)
+            ).all()
+
+            for ap in aprobaciones_sin_venta:
+                # Buscar en SaleDetail venta del vendedor con el producto y precio aprobado
+                query_match = db.session.query(SaleDetail).join(Sale).filter(
+                    Sale.vendedor_id == ap.vendedor_id,
+                    SaleDetail.product_id == ap.product_id,
+                    SaleDetail.precio_venta_final == ap.precio_aprobado
+                )
+                if ap.variant_id:
+                    query_match = query_match.filter(SaleDetail.variant_id == ap.variant_id)
+                detalle_encontrado = query_match.order_by(Sale.id.desc()).first()
+
+                if detalle_encontrado:
+                    ap.sale_id = detalle_encontrado.sale_id
+
+            db.session.commit()
+        except Exception as e:
+            db.session.rollback()
+            print(f"[Aviso vinculación aprobaciones] -> {e}")
 
         print("[OK] Base de datos actualizada y todas las columnas sincronizadas correctamente.")
 

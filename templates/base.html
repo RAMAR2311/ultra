@@ -254,6 +254,35 @@
         .offcanvas-body .border-bottom { border-bottom-color: #E2E8F0 !important; }
         .offcanvas-body .bg-light { background-color: #F8F9FA !important; border-color: #E2E8F0 !important; color: var(--brand-text) !important; }
         .offcanvas-body .text-muted { color: #64748B !important; }
+
+        /* Reglas EXCLUSIVAS para móviles (<768px): el computador permanece 100% intacto */
+        @media (max-width: 767.98px) {
+            html, body {
+                overflow-x: hidden;
+                max-width: 100vw;
+            }
+            main.container {
+                overflow-x: clip;
+                max-width: 100%;
+            }
+            .dashboard-filter-container {
+                width: 100% !important;
+            }
+            #dashboardFilterForm {
+                width: 100% !important;
+                border-radius: 1rem !important;
+            }
+            #dashboardFilterForm .filter-group {
+                flex-grow: 1 !important;
+            }
+            #dashboardFilterForm select,
+            #dashboardFilterForm input {
+                font-size: 0.82rem !important;
+            }
+            .dashboard-filter-container > button {
+                width: 100% !important;
+            }
+        }
     </style>
 </head>
 <body>

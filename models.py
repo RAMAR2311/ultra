@@ -493,10 +493,13 @@ class PriceApproval(db.Model):
     fecha_solicitud = db.Column(db.DateTime, default=obtener_hora_bogota, index=True)
     fecha_resolucion = db.Column(db.DateTime, nullable=True)
 
+    sale_id = db.Column(db.Integer, db.ForeignKey('sales.id'), nullable=True, index=True)
+
     vendedor = db.relationship('User', foreign_keys=[vendedor_id], backref='solicitudes_precio')
     admin = db.relationship('User', foreign_keys=[admin_id], backref='aprobaciones_resueltas')
     producto = db.relationship('Product', foreign_keys=[product_id], backref='aprobaciones_precio')
     variante = db.relationship('ProductVariant', foreign_keys=[variant_id], backref='aprobaciones_precio')
+    sale = db.relationship('Sale', foreign_keys=[sale_id], backref='aprobaciones_precio')
 
     def __init__(self, **kwargs):
         super(PriceApproval, self).__init__(**kwargs)

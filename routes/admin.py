@@ -223,8 +223,49 @@ def dashboard():
     ventas_en_rango = Sale.query.filter(Sale.fecha_venta >= inicio_filtro, Sale.fecha_venta <= fin_filtro).all()
     total_ventas = sum((v.monto_total or 0) for v in ventas_en_rango)
     conteo_ventas = len(ventas_en_rango)
-    ventas_efectivo = sum((v.monto_total or 0) for v in ventas_en_rango if v.metodo_pago == 'efectivo')
-    ventas_transferencia = sum((v.monto_total or 0) for v in ventas_en_rango if v.metodo_pago in ['transferencia', 'nequi', 'bancolombia', 'daviplata'])
+
+    # Desglose financiero por método de pago (híbrido: sale_payments con fallback a venta.metodo_pago)
+    ventas_efectivo = Decimal('0.00')
+    ventas_nequi = Decimal('0.00')
+    ventas_bancolombia = Decimal('0.00')
+    ventas_daviplata = Decimal('0.00')
+    ventas_bolt = Decimal('0.00')
+    ventas_otros_digital = Decimal('0.00')
+
+    for v in ventas_en_rango:
+        if v.pagos and len(v.pagos) > 0:
+            for p in v.pagos:
+                monto_p = Decimal(str(p.monto or 0))
+                m = (p.metodo_pago or '').lower().strip()
+                if m == 'efectivo':
+                    ventas_efectivo += monto_p
+                elif m == 'nequi':
+                    ventas_nequi += monto_p
+                elif m == 'bancolombia':
+                    ventas_bancolombia += monto_p
+                elif m == 'daviplata':
+                    ventas_daviplata += monto_p
+                elif m in ['bolt', 'bold']:
+                    ventas_bolt += monto_p
+                else:
+                    ventas_otros_digital += monto_p
+        else:
+            monto_v = Decimal(str(v.monto_total or 0))
+            m = (v.metodo_pago or '').lower().strip()
+            if m == 'efectivo':
+                ventas_efectivo += monto_v
+            elif m == 'nequi':
+                ventas_nequi += monto_v
+            elif m == 'bancolombia':
+                ventas_bancolombia += monto_v
+            elif m == 'daviplata':
+                ventas_daviplata += monto_v
+            elif m in ['bolt', 'bold']:
+                ventas_bolt += monto_v
+            else:
+                ventas_otros_digital += monto_v
+
+    ventas_transferencia = ventas_nequi + ventas_bancolombia + ventas_daviplata + ventas_bolt + ventas_otros_digital
     ticket_promedio = (float(total_ventas) / conteo_ventas) if conteo_ventas > 0 else 0.0
 
     # 2. Unidades y Mercancía Vendida en el Periodo
@@ -314,6 +355,10 @@ def dashboard():
                            conteo_ventas=conteo_ventas,
                            ventas_efectivo=ventas_efectivo,
                            ventas_transferencia=ventas_transferencia,
+                           ventas_nequi=ventas_nequi,
+                           ventas_bancolombia=ventas_bancolombia,
+                           ventas_daviplata=ventas_daviplata,
+                           ventas_bolt=ventas_bolt,
                            ticket_promedio=ticket_promedio,
                            # Tarjeta 2: Unidades vendidas y catálogo
                            unidades_vendidas=unidades_vendidas,
@@ -350,7 +395,8 @@ def dashboard():
 @admin_required
 def aprobaciones():
     """Vista completa de Historial y Auditoría de Aprobaciones de Precios."""
-    estado_filtro = request.args.get('estado', 'todos')
+    # Por requerimiento, por defecto solo se muestran las aprobaciones donde se realizó la venta ('utilizada')
+    estado_filtro = request.args.get('estado', 'utilizada')
     vendedor_id = request.args.get('vendedor_id', type=int)
     buscar = request.args.get('buscar', '').strip()
     fecha_inicio_str = request.args.get('fecha_inicio', '')
@@ -819,8 +865,25 @@ def balance_financiero():
     # 1. Ventas Totales
     ventas_query = Sale.query.filter(Sale.fecha_venta >= inicio_dt, Sale.fecha_venta < fin_dt_query).all()
     
-    ventas_efectivo = sum(v.monto_total for v in ventas_query if v.metodo_pago == 'efectivo')
-    ventas_transferencia = sum(v.monto_total for v in ventas_query if v.metodo_pago in ['transferencia', 'nequi', 'bancolombia', 'daviplata'])
+    ventas_efectivo = Decimal('0.00')
+    ventas_transferencia = Decimal('0.00')
+    for v in ventas_query:
+        if v.pagos and len(v.pagos) > 0:
+            for p in v.pagos:
+                m = (p.metodo_pago or '').lower().strip()
+                monto_p = Decimal(str(p.monto or 0))
+                if m == 'efectivo':
+                    ventas_efectivo += monto_p
+                else:
+                    ventas_transferencia += monto_p
+        else:
+            m = (v.metodo_pago or '').lower().strip()
+            monto_v = Decimal(str(v.monto_total or 0))
+            if m == 'efectivo':
+                ventas_efectivo += monto_v
+            else:
+                ventas_transferencia += monto_v
+
     total_ingresos = ventas_efectivo + ventas_transferencia
 
     # 2. Costo de Mercancía Vendida (COGS)
