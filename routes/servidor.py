@@ -28,7 +28,7 @@ def confirmar_pago():
         return render_template('servidor/confirmar_pago.html', error="Ocurrió un error al procesar el token de confirmación.", status="invalid"), 400
 
     mes_nombre = MESES_ESPANOL[mes - 1] if 1 <= mes <= 12 else str(mes)
-    monto = current_app.config.get('VALOR_MENSUALIDAD_SERVIDOR', '80.000')
+    monto = current_app.config.get('VALOR_MENSUALIDAD_SERVIDOR', '60.000')
 
     # Verificar si el pago ya fue registrado en BD
     pago_existente = ServerPayment.query.filter_by(anio=anio, mes=mes, estado='pagado').first()

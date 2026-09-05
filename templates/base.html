@@ -258,43 +258,47 @@
 </head>
 <body>
     <!-- Navbar ULTRA TECH -->
-    <nav class="navbar navbar-custom mb-5 position-relative">
-        <div class="container-fluid px-3 d-flex justify-content-between align-items-center">
+    <nav class="navbar navbar-custom mb-4 mb-md-5">
+        <div class="container-fluid px-2 px-md-3 d-flex align-items-center justify-content-between">
             
-            {% if current_user.is_authenticated %}
-            <!-- Botón Hamburguesa (Izquierda) -->
-            <button class="navbar-toggler border-0 shadow-none p-2" type="button" data-bs-toggle="offcanvas" data-bs-target="#offcanvasNavbar" aria-controls="offcanvasNavbar">
-                <i class="fa-solid fa-bars fs-3" style="color: var(--brand-primary); text-shadow: 0 0 8px rgba(255,0,127,0.6);"></i>
-            </button>
-            {% else %}
-            <!-- Spacer if not authenticated -->
-            <div style="width: 40px;"></div>
-            {% endif %}
+            <!-- Columna Izquierda: Botón Hamburguesa (Mantiene ancho fijo para centrado perfecto) -->
+            <div class="d-flex align-items-center" style="min-width: 44px;">
+                {% if current_user.is_authenticated %}
+                <button class="navbar-toggler border-0 shadow-none p-1 p-md-2" type="button" data-bs-toggle="offcanvas" data-bs-target="#offcanvasNavbar" aria-controls="offcanvasNavbar" title="Menú">
+                    <i class="fa-solid fa-bars fs-3" style="color: var(--brand-primary); text-shadow: 0 0 8px rgba(255,0,127,0.6);"></i>
+                </button>
+                {% else %}
+                <div style="width: 40px;"></div>
+                {% endif %}
+            </div>
 
-            <!-- Brand Logo (Centro) -->
-            <a class="navbar-brand d-flex align-items-center fw-bold m-0 position-absolute start-50 translate-middle-x" href="{{ url_for('index') }}" style="letter-spacing: 1.5px; font-style: italic;">
-                <span style="color: #FFFFFF; font-weight: 900;">ULTRA</span>
-                <span class="navbar-brand-tech" style="color: var(--brand-primary); font-weight: 900; margin-left: 6px;">TECH</span>
-            </a>
+            <!-- Columna Centro: Brand Logo (Centrado natural flexible sin colisión) -->
+            <div class="d-flex justify-content-center flex-grow-1 px-1 px-sm-2 text-center overflow-hidden">
+                <a class="navbar-brand d-inline-flex align-items-center fw-bold m-0 text-nowrap" href="{{ url_for('index') }}" style="letter-spacing: 1.5px; font-style: italic; font-size: clamp(1.1rem, 4vw, 1.55rem);">
+                    <span style="color: #FFFFFF; font-weight: 900;">ULTRA</span>
+                    <span class="navbar-brand-tech" style="color: var(--brand-primary); font-weight: 900; margin-left: 6px;">TECH</span>
+                </a>
+            </div>
 
-            <!-- Badge Superior Servidor Zenic y Notificaciones de Precios (Derecha) -->
-            <div class="d-flex align-items-center">
+            <!-- Columna Derecha: Badge Notificaciones y Servidor Zenic (Compacto y responsivo) -->
+            <div class="d-flex align-items-center justify-content-end gap-1 gap-md-2" style="min-width: 44px;">
                 {% if current_user.is_authenticated and current_user.rol == 'admin' %}
-                    <div id="admin_approval_badge_btn" style="display: none;" class="me-2">
-                        <span class="badge bg-danger rounded-pill px-2 px-md-3 py-1 shadow-sm d-flex align-items-center gap-1" style="font-size: 0.8rem;">
+                    <div id="admin_approval_badge_btn" style="display: none;" class="me-1">
+                        <span class="badge bg-danger rounded-pill px-2 py-1 shadow-sm d-flex align-items-center gap-1" style="font-size: 0.78rem;">
                             <i class="fa-solid fa-bell fa-shake text-white"></i>
                             <span id="admin_approval_count">0</span>
-                            <span class="d-none d-md-inline">solicitud(es)</span>
+                            <span class="d-none d-lg-inline">solicitud(es)</span>
                         </span>
                     </div>
                     {% if pago_servidor.estado == 'pagado' or pago_servidor.estado == 'al_dia' %}
                     <button type="button" 
                             class="btn btn-sm px-2 px-md-3 py-1 rounded-pill fw-bold d-flex align-items-center gap-1 shadow-sm text-nowrap"
-                            style="background-color: #112211; color: #00E676; border: 1.5px solid #00E676; font-size: 0.82rem;"
+                            style="background-color: #112211; color: #00E676; border: 1.5px solid #00E676; font-size: 0.78rem;"
                             data-bs-toggle="modal" 
                             data-bs-target="#modalPagoServidor">
                         <i class="fa-solid fa-circle-check" style="color: #00E676;"></i>
-                        <span>✓ Zenic: Al día</span>
+                        <span class="d-none d-sm-inline">✓ Zenic: </span>
+                        <span>Al día</span>
                     </button>
                     {% endif %}
                 {% else %}
@@ -474,7 +478,7 @@
                 <div class="alert alert-warning border-warning border-opacity-50 shadow-sm rounded-3 d-flex flex-wrap align-items-center justify-content-between gap-2 mb-4">
                     <div class="d-flex align-items-center gap-2">
                         <i class="fa-solid fa-triangle-exclamation fs-5 text-warning-emphasis"></i>
-                        <span class="fw-semibold">Mensualidad Servidor Zenic: Vence el 30 de {{ pago_servidor.mes_nombre }} (faltan {{ pago_servidor.dias_restantes }} días)</span>
+                        <span class="fw-semibold">Mensualidad Servidor Zenic: Vence el {{ pago_servidor.dia_vencimiento }} de {{ pago_servidor.mes_nombre }} (faltan {{ pago_servidor.dias_restantes }} días)</span>
                     </div>
                     <button class="btn btn-sm btn-warning text-dark fw-bold rounded-pill px-3 shadow-sm" data-bs-toggle="modal" data-bs-target="#modalPagoServidor">
                         <i class="fa-solid fa-wallet me-1"></i> Ver Pago
@@ -484,7 +488,7 @@
                 <div class="alert alert-danger border-danger border-opacity-50 shadow-sm rounded-3 d-flex flex-wrap align-items-center justify-content-between gap-2 mb-4">
                     <div class="d-flex align-items-center gap-2">
                         <i class="fa-solid fa-bell fs-5 text-danger"></i>
-                        <span class="fw-bold">¡Hoy 30 de {{ pago_servidor.mes_nombre }} vence la mensualidad de tu Servidor Zenic!</span>
+                        <span class="fw-bold">¡Hoy {{ pago_servidor.dia_vencimiento }} de {{ pago_servidor.mes_nombre }} vence la mensualidad de tu Servidor Zenic!</span>
                     </div>
                     <button class="btn btn-sm btn-danger fw-bold rounded-pill px-3 shadow-sm" data-bs-toggle="modal" data-bs-target="#modalPagoServidor">
                         <i class="fa-solid fa-bolt me-1"></i> Pagar Hoy
@@ -494,7 +498,7 @@
                 <div class="alert alert-warning border-warning border-opacity-50 shadow-sm rounded-3 d-flex flex-wrap align-items-center justify-content-between gap-2 mb-4">
                     <div class="d-flex align-items-center gap-2">
                         <i class="fa-solid fa-clock-rotate-left fs-5 text-warning-emphasis"></i>
-                        <span class="fw-semibold">⏳ Periodo de gracia Servidor Zenic (quedan {{ pago_servidor.dias_gabela }} días de gabela). Venció el 30 de {{ pago_servidor.mes_nombre }}.</span>
+                        <span class="fw-semibold">⏳ Periodo de gracia Servidor Zenic (quedan {{ pago_servidor.dias_gabela }} días de gabela). Venció el {{ pago_servidor.dia_vencimiento }} de {{ pago_servidor.mes_nombre }}.</span>
                     </div>
                     <button class="btn btn-sm btn-warning text-dark fw-bold rounded-pill px-3 shadow-sm" data-bs-toggle="modal" data-bs-target="#modalPagoServidor">
                         <i class="fa-solid fa-paper-plane me-1"></i> Reportar Pago
@@ -504,7 +508,7 @@
                 <div class="alert alert-danger border-danger border-opacity-50 shadow-sm rounded-3 d-flex flex-wrap align-items-center justify-content-between gap-2 mb-4">
                     <div class="d-flex align-items-center gap-2">
                         <i class="fa-solid fa-circle-exclamation fs-5 text-danger"></i>
-                        <span class="fw-bold">🚨 Mensualidad Servidor Zenic vencida (Gabela de 5 días agotada). Venció el 30 de {{ pago_servidor.mes_nombre }}.</span>
+                        <span class="fw-bold">🚨 Mensualidad Servidor Zenic vencida (Gabela de 5 días agotada). Venció el {{ pago_servidor.dia_vencimiento }} de {{ pago_servidor.mes_nombre }}.</span>
                     </div>
                     <button class="btn btn-sm btn-danger fw-bold rounded-pill px-3 shadow-sm" data-bs-toggle="modal" data-bs-target="#modalPagoServidor">
                         <i class="fa-solid fa-paper-plane me-1"></i> Reportar Pago
@@ -547,7 +551,7 @@
                     <!-- Status Badge & Date -->
                     <div class="d-flex justify-content-between align-items-center mb-3">
                         <span class="badge bg-light text-dark border px-3 py-2 rounded-pill fw-semibold">
-                            <i class="fa-solid fa-calendar-day me-1"></i> Vencimiento: 30 de {{ pago_servidor.mes_nombre }} {{ pago_servidor.anio }}
+                            <i class="fa-solid fa-calendar-day me-1"></i> Vencimiento: {{ pago_servidor.dia_vencimiento }} de {{ pago_servidor.mes_nombre }} {{ pago_servidor.anio }}
                         </span>
                         {% if pago_servidor.estado == 'pagado' %}
                         <span class="badge bg-success text-white px-3 py-2 rounded-pill fw-bold">

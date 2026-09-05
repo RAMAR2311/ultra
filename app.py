@@ -13,7 +13,7 @@ def create_app():
     
     # Configuración mediante variables de entorno
     app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'dev-key-super-secreta')
-    app.config['VALOR_MENSUALIDAD_SERVIDOR'] = os.environ.get('VALOR_MENSUALIDAD_SERVIDOR', '80.000')
+    app.config['VALOR_MENSUALIDAD_SERVIDOR'] = os.environ.get('VALOR_MENSUALIDAD_SERVIDOR', '60.000')
     app.config['PIN_CONFIRMACION_SERVIDOR'] = os.environ.get('PIN_CONFIRMACION_SERVIDOR', '9876')
     
     # Detección inteligente de Base de Datos (PostgreSQL con Fallback automático a SQLite local)
@@ -128,33 +128,42 @@ def create_app():
                 base_url = request.host_url.rstrip('/') if request else 'http://localhost:5000'
                 url_confirmacion = f"{base_url}/servidor/confirmar-pago?token={token}"
 
-            monto = app.config.get('VALOR_MENSUALIDAD_SERVIDOR', '80.000')
+            monto = app.config.get('VALOR_MENSUALIDAD_SERVIDOR', '60.000')
+
+            # Regla de fecha de cobro: A partir del 15 de octubre de 2026, el cobro vence los días 15 de cada mes.
+            # Antes de esa fecha (ej: septiembre 2026), vencía el día 30.
+            if anio_actual > 2026 or (anio_actual == 2026 and mes_actual >= 10):
+                dia_vencimiento = 15
+                dia_preventivo = 8   # Aviso preventivo 7 días antes (del 8 al 14)
+            else:
+                dia_vencimiento = 30
+                dia_preventivo = 22  # Aviso preventivo del 22 al 29
 
             mensaje_wa = (
-                f"Hola, adjunto el comprobante de pago de la mensualidad del servidor Zenic (${monto} COP) para {anio_actual}.\n\n"
+                f"Hola, adjunto el comprobante de pago de la mensualidad del servidor Zenic (${monto} COP) para {mes_nombre} {anio_actual}.\n\n"
                 f"Para confirmar mi pago en el sistema con 1 solo clic, toca aquí:\n"
                 f"{url_confirmacion}"
             )
 
             whatsapp_url = f"https://wa.me/573115643557?text={urllib.parse.quote(mensaje_wa)}"
 
-            # Evaluación de estado del calendario (vencimiento día 30 de cada mes)
+            # Evaluación de estado del calendario según el día de vencimiento (30 o 15)
             dias_restantes = 0
             dias_gabela = 0
 
             if pago_existente:
                 estado = 'pagado'
-            elif 1 <= dia_actual <= 21:
+            elif 1 <= dia_actual < dia_preventivo:
                 estado = 'al_dia'
-            elif 22 <= dia_actual <= 29:
+            elif dia_preventivo <= dia_actual < dia_vencimiento:
                 estado = 'preventivo'
-                dias_restantes = 30 - dia_actual
-            elif dia_actual == 30:
+                dias_restantes = dia_vencimiento - dia_actual
+            elif dia_actual == dia_vencimiento:
                 estado = 'hoy'
                 dias_restantes = 0
-            elif dia_actual == 31:
+            elif dia_vencimiento < dia_actual <= (dia_vencimiento + 5):
                 estado = 'gabela'
-                dias_gabela = 5
+                dias_gabela = (dia_vencimiento + 5) - dia_actual + 1
             else:
                 estado = 'vencido'
 
@@ -162,6 +171,7 @@ def create_app():
                 'estado': estado,
                 'mes_nombre': mes_nombre,
                 'anio': anio_actual,
+                'dia_vencimiento': dia_vencimiento,
                 'monto': monto,
                 'dias_restantes': dias_restantes,
                 'dias_gabela': dias_gabela,
@@ -170,11 +180,14 @@ def create_app():
                 'nequi_num': '3505422186'
             }
         except Exception as e:
+            ahora_fallback = obtener_hora_bogota()
+            dia_venc_fallback = 15 if (ahora_fallback.year > 2026 or (ahora_fallback.year == 2026 and ahora_fallback.month >= 10)) else 30
             pago_servidor = {
                 'estado': 'al_dia',
                 'mes_nombre': 'Actual',
-                'anio': 2026,
-                'monto': '80.000',
+                'anio': ahora_fallback.year,
+                'dia_vencimiento': dia_venc_fallback,
+                'monto': '60.000',
                 'dias_restantes': 0,
                 'dias_gabela': 0,
                 'whatsapp_url': '#',
