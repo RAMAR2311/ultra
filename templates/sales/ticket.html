@@ -432,13 +432,8 @@
 
         <div style="display: flex; flex-direction: column; gap: 8px;">
             <button type="button" id="btnEnviarWA" onclick="enviarWhatsAppConImagen()" 
-                    style="width: 100%; padding: 13px; background: linear-gradient(135deg, #25D366 0%, #128C7E 100%); color: #FFFFFF; border: none; border-radius: 8px; font-weight: 800; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; font-size: 0.92rem; box-shadow: 0 4px 12px rgba(37, 211, 102, 0.35);">
-                <i class="fa-brands fa-whatsapp" style="font-size: 1.2rem;"></i> Enviar con Imagen
-            </button>
-
-            <button type="button" onclick="enviarWhatsAppSoloTexto()" 
-                    style="width: 100%; padding: 10px; background: #F8FAFC; border: 1px solid #CBD5E1; border-radius: 8px; font-weight: 600; cursor: pointer; color: #475569; font-size: 0.84rem;">
-                Enviar solo texto (resumen)
+                    style="width: 100%; padding: 13px; background: linear-gradient(135deg, #25D366 0%, #128C7E 100%); color: #FFFFFF; border: none; border-radius: 8px; font-weight: 800; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; font-size: 0.95rem; box-shadow: 0 4px 12px rgba(37, 211, 102, 0.35);">
+                <i class="fa-brands fa-whatsapp" style="font-size: 1.25rem;"></i> Enviar Factura a WhatsApp
             </button>
         </div>
     </div>
@@ -548,7 +543,7 @@
                     }
                 }
 
-                // Caso 2: Computador de Escritorio (PC / Laptop) -> Directo a WhatsApp Web sin la ventana de Windows
+                // Caso 2: Computador de Escritorio (PC / Laptop)
                 let copiado = false;
                 try {
                     if (navigator.clipboard && navigator.clipboard.write) {
@@ -561,21 +556,16 @@
                     console.warn('Portapapeles no soportado:', clipErr);
                 }
 
-                // Abrir directamente el chat de WhatsApp Web con el cliente
-                const msgTexto = `Hola, adjunto el comprobante de compra oficial de ULTRA TECH (Factura #${SALE_ID}).`;
-                const url = `https://wa.me/${raw}?text=${encodeURIComponent(msgTexto)}`;
-                window.open(url, '_blank');
+                // Descargar automáticamente la imagen de respaldo
+                const link = document.createElement('a');
+                link.download = `Factura_UltraTech_${SALE_ID}.png`;
+                link.href = canvas.toDataURL('image/png');
+                link.click();
 
-                if (copiado) {
-                    alert('📋 ¡La imagen de la factura ya fue COPIADA al portapapeles!\n\nEn la ventana de WhatsApp que se acaba de abrir, solo presiona CTRL + V (Pegar) y dale Enviar.');
-                } else {
-                    // Si el navegador bloqueó el portapapeles, descargarla
-                    const link = document.createElement('a');
-                    link.download = `Factura_UltraTech_${SALE_ID}.png`;
-                    link.href = canvas.toDataURL('image/png');
-                    link.click();
-                    alert('✅ Se descargó la imagen de la factura.\n\nArrastra el archivo al chat de WhatsApp para enviarlo.');
-                }
+                // Enviar el comprobante completo en texto estructurado por WhatsApp
+                // de modo que el cliente siempre tenga su factura detallada
+                const url = `https://wa.me/${raw}?text=${encodeURIComponent(mensajeTextoLimpio)}`;
+                window.open(url, '_blank');
 
                 cerrarModalWhatsApp();
                 if (btnEnviar) btnEnviar.disabled = false;
