@@ -75,6 +75,51 @@ def eliminar_vendedor(id):
         
     return redirect(url_for('admin_bp.vendedores'))
 
+@admin_bp.route('/vendedores/<int:id>/editar', methods=['POST'])
+@login_required
+@admin_required
+def editar_vendedor(id):
+    usuario = User.query.get_or_404(id)
+    nombre = request.form.get('nombre', '').strip()
+    email = request.form.get('email', '').strip()
+    telefono = request.form.get('telefono', '').strip()
+    rol = request.form.get('rol', '').strip()
+    nueva_password = request.form.get('password', '').strip()
+
+    if not nombre or not email:
+        flash("El nombre y el correo empresarial son obligatorios.", "danger")
+        return redirect(url_for('admin_bp.vendedores'))
+
+    # Validar duplicados de correo en usuarios activos
+    usuario_existente = User.query.filter(User.email == email, User.id != id, User.rol != 'eliminado').first()
+    if usuario_existente:
+        flash(f"El correo '{email}' ya se encuentra registrado por otro usuario en el sistema.", "danger")
+        return redirect(url_for('admin_bp.vendedores'))
+
+    roles_permitidos = ['admin', 'vendedor', 'bodega', 'vendedor_bodega']
+    if rol in roles_permitidos:
+        # Si el admin actual se edita a sí mismo, no permitir quitarse el rol de admin
+        if usuario.id == current_user.id and rol != 'admin':
+            flash("No puedes retirar tu propio rol de Administrador.", "warning")
+        else:
+            usuario.rol = rol
+
+    usuario.nombre = nombre
+    usuario.email = email
+    usuario.telefono = telefono
+
+    if nueva_password:
+        usuario.password_hash = generate_password_hash(nueva_password)
+
+    try:
+        db.session.commit()
+        flash(f"¡Credenciales y perfil de '{usuario.nombre}' actualizados exitosamente!", "success")
+    except Exception as e:
+        db.session.rollback()
+        flash("Ocurrió un error al actualizar la información del usuario.", "danger")
+
+    return redirect(url_for('admin_bp.vendedores'))
+
 @admin_bp.route('/dashboard')
 @login_required
 @admin_required

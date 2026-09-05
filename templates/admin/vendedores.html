@@ -1,146 +1,299 @@
 {% extends "base.html" %}
 
 {% block content %}
-<div class="row mb-5">
-    <div class="col-12 d-flex justify-content-between align-items-center">
-        <!-- Título con acento Azul Turquesa según reglas de Branding (.text-brand-blue es #A3D8DE) -->
-        <h2 class="fw-bolder m-0" style="color: var(--brand-blue);">
-            <i class="fa-solid fa-users-gear me-2"></i>Gestión de Personal
+<!-- Cabecera Principal -->
+<div class="d-flex flex-wrap justify-content-between align-items-center mb-4 gap-3">
+    <div>
+        <div class="d-flex align-items-center gap-2 mb-1">
+            <span class="badge rounded-pill px-3 py-1 fw-bold" style="background: rgba(0, 230, 118, 0.12); color: #059669; font-size: 0.8rem;">
+                <i class="fa-solid fa-users me-1"></i> Administración de Usuarios
+            </span>
+        </div>
+        <h2 class="fw-bold text-brand-black mb-1">
+            <i class="fa-solid fa-users-gear me-2" style="color: var(--brand-blue);"></i>Gestión de Personal
         </h2>
-        <a href="/admin/dashboard" class="btn btn-light rounded-pill px-4 fw-bold text-muted border shadow-sm">
+        <p class="text-muted mb-0">Administra cuentas, roles, credenciales de acceso y permisos de los colaboradores.</p>
+    </div>
+    <div class="d-flex align-items-center gap-2">
+        <button type="button" class="btn btn-blue rounded-pill px-4 fw-bold shadow-sm" data-bs-toggle="modal" data-bs-target="#modalNuevoPersonal">
+            <i class="fa-solid fa-user-plus me-1"></i> Nuevo Empleado
+        </button>
+        <a href="/admin/dashboard" class="btn btn-outline-secondary rounded-pill px-4 fw-bold shadow-sm">
             <i class="fa-solid fa-arrow-left me-1"></i> Panel Principal
         </a>
     </div>
 </div>
 
-<div class="row g-4 mb-5">
-    <!-- Columna Izquierda: Formulario (Card en Blanco Sólido) -->
-    <div class="col-md-4">
-        <div class="card card-custom p-4 h-100">
-            <h5 class="fw-bold text-brand-black mb-4"><i class="fa-solid fa-id-badge me-2 text-brand-pink"></i> Alta de Nuevo Personal / Usuario</h5>
-            <form method="POST">
-                <!-- Autenticador Estricto para el Servidor Jinja -->
-                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
-                
-                <div class="mb-3">
-                    <label class="form-label text-brand-black fw-semibold small">Nombre Completo</label>
-                    <input type="text" name="nombre" class="form-control bg-light border-0 py-2" required placeholder="Ej. Ana Pérez">
-                </div>
-                
-                <div class="mb-3">
-                    <label class="form-label text-brand-black fw-semibold small">Correo Empresarial (Login)</label>
-                    <input type="email" name="email" class="form-control bg-light border-0 py-2" required placeholder="admin@ultratech.com">
-                </div>
-                
-                <div class="mb-3">
-                    <label class="form-label text-brand-black fw-semibold small">Celular / Móvil de Contacto</label>
-                    <input type="text" name="telefono" class="form-control bg-light border-0 py-2" placeholder="Ej. 300 123 4567">
-                </div>
-                
-                <div class="mb-3">
-                    <label class="form-label text-brand-black fw-semibold small">Asignar Rol / Perfil de Usuario</label>
-                    <select name="rol" class="form-select bg-light border-0 py-2" required>
-                        <option value="admin">🛡️ Administrador (Acceso Total al Sistema)</option>
-                        <option value="vendedor" selected>🏪 Vendedor (Cajas/Tienda)</option>
-                        <option value="bodega">📦 Encargado de Bodega (Admin de Bodega)</option>
-                        <option value="vendedor_bodega">🚚 Vendedor de Bodega (Facturación)</option>
-                    </select>
-                </div>
+<!-- Tabla de Personal a Ancho Completo (Sin Desplazamiento Horizontal) -->
+<div class="card card-custom p-0 overflow-hidden border-0 shadow-sm mb-5">
+    <div class="bg-light px-4 py-3 border-bottom d-flex justify-content-between align-items-center">
+        <h5 class="fw-bold text-brand-black m-0" style="font-size: 1.05rem;">
+            <i class="fa-solid fa-address-card me-2 text-primary"></i>Plantilla de Personal Activo en Sistema
+        </h5>
+        <span class="badge bg-white text-muted border rounded-pill px-3 py-1 fw-semibold">
+            {{ vendedores|length }} usuarios registrados
+        </span>
+    </div>
+    
+    <div class="table-responsive p-0">
+        <table class="table table-hover align-middle m-0 w-100" style="font-size: 0.9rem;">
+            <thead class="bg-light text-muted border-bottom" style="font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.5px;">
+                <tr>
+                    <th class="ps-4 py-3" style="width: 25%;">Nombre de Empleado</th>
+                    <th class="py-3" style="width: 27%;">Credencial de Acceso (Email)</th>
+                    <th class="py-3" style="width: 15%;">Teléfono / Móvil</th>
+                    <th class="py-3" style="width: 18%;">Rol / Perfil</th>
+                    <th class="py-3 text-center" style="width: 8%;">Status</th>
+                    <th class="pe-4 py-3 text-center" style="width: 12%;">Acciones</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for vendedor in vendedores %}
+                <tr>
+                    <!-- Nombre -->
+                    <td class="ps-4">
+                        <div class="d-flex align-items-center gap-2">
+                            <div class="rounded-circle d-flex align-items-center justify-content-center fw-bold shadow-sm" style="width: 36px; height: 36px; background: #F1F5F9; color: var(--brand-blue); font-size: 0.82rem; flex-shrink: 0;">
+                                {{ vendedor.nombre[:2].upper() if vendedor.nombre else 'EM' }}
+                            </div>
+                            <div>
+                                <strong class="text-brand-black d-block mb-0" style="font-size: 0.92rem;">{{ vendedor.nombre }}</strong>
+                                {% if vendedor.id == current_user.id %}
+                                    <span class="badge bg-secondary bg-opacity-10 text-secondary border border-secondary rounded-pill" style="font-size: 0.68rem;">Tú (Sesión Actual)</span>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </td>
 
-                <div class="mb-4">
-                    <label class="form-label text-brand-black fw-semibold small">Contraseña (PIN)</label>
-                    <input type="password" name="password" class="form-control bg-light border-0 py-2" required placeholder="••••••••">
+                    <!-- Email -->
+                    <td>
+                        <span class="text-muted fw-semibold" style="word-break: break-word;">
+                            <i class="fa-regular fa-envelope me-1 text-primary opacity-75"></i>{{ vendedor.email }}
+                        </span>
+                    </td>
+
+                    <!-- Teléfono -->
+                    <td>
+                        {% if vendedor.telefono %}
+                            <span class="text-muted small"><i class="fa-solid fa-phone me-1 text-secondary"></i>{{ vendedor.telefono }}</span>
+                        {% else %}
+                            <span class="text-muted small fst-italic">No registrado</span>
+                        {% endif %}
+                    </td>
+
+                    <!-- Rol -->
+                    <td>
+                        {% if vendedor.rol == 'admin' %}
+                            <span class="badge bg-danger bg-opacity-10 text-danger border border-danger rounded-pill px-3 py-1">
+                                <i class="fa-solid fa-shield-halved me-1"></i> Administrador
+                            </span>
+                        {% elif vendedor.rol == 'vendedor' %}
+                            <span class="badge bg-info bg-opacity-10 text-info border border-info rounded-pill px-3 py-1">
+                                <i class="fa-solid fa-cash-register me-1"></i> Vendedor Cajas
+                            </span>
+                        {% elif vendedor.rol == 'bodega' %}
+                            <span class="badge bg-primary bg-opacity-10 text-primary border border-primary rounded-pill px-3 py-1">
+                                <i class="fa-solid fa-warehouse me-1"></i> Encargado Bodega
+                            </span>
+                        {% elif vendedor.rol == 'vendedor_bodega' %}
+                            <span class="badge bg-warning bg-opacity-10 text-warning border border-warning rounded-pill px-3 py-1">
+                                <i class="fa-solid fa-truck-ramp-box me-1"></i> Vendedor Bodega
+                            </span>
+                        {% else %}
+                            <span class="badge bg-light text-dark border rounded-pill px-3 py-1">{{ vendedor.rol }}</span>
+                        {% endif %}
+                    </td>
+
+                    <!-- Status -->
+                    <td class="text-center">
+                        <span class="badge bg-success bg-opacity-10 text-success border border-success rounded-pill px-2 py-1 small">
+                            <i class="fa-solid fa-circle-check me-1"></i>Activo
+                        </span>
+                    </td>
+
+                    <!-- Acciones -->
+                    <td class="pe-4 text-center text-nowrap">
+                        <div class="d-inline-flex align-items-center gap-2">
+                            <!-- Botón Editar Correo / Contraseña / Perfil -->
+                            <button type="button" 
+                                    class="btn btn-sm btn-outline-primary rounded-pill px-2 py-1 shadow-sm d-flex align-items-center gap-1" 
+                                    title="Editar credenciales y perfil"
+                                    onclick="abrirModalEditar({{ vendedor.id }}, '{{ vendedor.nombre | replace("'", "\\'") }}', '{{ vendedor.email | replace("'", "\\'") }}', '{{ vendedor.telefono or "" }}', '{{ vendedor.rol }}')">
+                                <i class="fa-solid fa-user-pen"></i>
+                                <span class="small fw-semibold">Editar</span>
+                            </button>
+
+                            <!-- Botón Eliminar (solo si no es el usuario actual) -->
+                            {% if vendedor.id != current_user.id %}
+                            <form action="{{ url_for('admin_bp.eliminar_vendedor', id=vendedor.id) }}" method="POST" class="d-inline m-0" onsubmit="return confirm('¿Estás seguro de que deseas eliminar este usuario? Esta acción no se puede deshacer.');">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                                <button type="submit" class="btn btn-sm btn-outline-danger rounded-circle shadow-sm" title="Dar de baja usuario" style="width: 31px; height: 31px; padding: 0;">
+                                    <i class="fa-solid fa-trash-can"></i>
+                                </button>
+                            </form>
+                            {% endif %}
+                        </div>
+                    </td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="6" class="text-center py-5 text-muted">
+                        <i class="fa-solid fa-users-slash fs-1 mb-3 opacity-25"></i>
+                        <p class="mb-0">Aún no has dado de alta a ningún usuario en el sistema.</p>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- MODAL: ALTA DE NUEVO PERSONAL / USUARIO -->
+<div class="modal fade" id="modalNuevoPersonal" tabindex="-1" aria-labelledby="modalNuevoPersonalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
+            <div class="modal-header text-white border-0 py-3" style="background: var(--brand-gradient);">
+                <div class="d-flex align-items-center gap-2">
+                    <i class="fa-solid fa-id-badge fs-5"></i>
+                    <h5 class="modal-title fw-bold m-0" id="modalNuevoPersonalLabel">Alta de Nuevo Personal / Usuario</h5>
                 </div>
-                
-                <div class="d-grid mt-auto">
-                    <!-- Sólida Llamada a la Acción (Azul Turquesa según Identidad Gráfica) -->
-                    <button type="submit" class="btn btn-blue py-3 fw-bold text-brand-black rounded-3 shadow-sm text-uppercase">
-                        <i class="fa-solid fa-user-plus me-1"></i> Otorgar Acceso
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form method="POST" action="{{ url_for('admin_bp.vendedores') }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                <div class="modal-body p-4">
+                    <div class="mb-3">
+                        <label class="form-label text-brand-black fw-semibold small">Nombre Completo</label>
+                        <input type="text" name="nombre" class="form-control bg-light border-0 py-2 rounded-3" required placeholder="Ej. Ana Pérez">
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label text-brand-black fw-semibold small">Correo Empresarial (Login)</label>
+                        <input type="email" name="email" class="form-control bg-light border-0 py-2 rounded-3" required placeholder="empleado@ultratech.com">
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label text-brand-black fw-semibold small">Celular / Móvil de Contacto</label>
+                        <input type="text" name="telefono" class="form-control bg-light border-0 py-2 rounded-3" placeholder="Ej. 300 123 4567">
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label text-brand-black fw-semibold small">Asignar Rol / Perfil de Usuario</label>
+                        <select name="rol" class="form-select bg-light border-0 py-2 rounded-3" required>
+                            <option value="admin">🛡️ Administrador (Acceso Total al Sistema)</option>
+                            <option value="vendedor" selected>🏪 Vendedor (Cajas/Tienda)</option>
+                            <option value="bodega">📦 Encargado de Bodega (Admin de Bodega)</option>
+                            <option value="vendedor_bodega">🚚 Vendedor de Bodega (Facturación)</option>
+                        </select>
+                    </div>
+
+                    <div class="mb-2">
+                        <label class="form-label text-brand-black fw-semibold small">Contraseña (PIN)</label>
+                        <input type="password" name="password" class="form-control bg-light border-0 py-2 rounded-3" required placeholder="••••••••">
+                    </div>
+                </div>
+                <div class="modal-footer border-0 pt-0 px-4 pb-4">
+                    <button type="button" class="btn btn-light rounded-pill px-4 fw-bold" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-blue rounded-pill px-4 fw-bold shadow-sm">
+                        <i class="fa-solid fa-user-plus me-1"></i> Registrar Empleado
                     </button>
                 </div>
             </form>
         </div>
     </div>
+</div>
 
-    <!-- Columna Derecha: Tabla Administrativa -->
-    <div class="col-md-8">
-        <div class="card card-custom p-0 overflow-hidden h-100 table-custom">
-            <!-- Título de cabecera adherido a la tabla -->
-            <div class="bg-light p-4 border-bottom">
-                 <h5 class="fw-bold text-brand-black m-0 mt-2">Plantilla de Personal Activo en Sistema</h5>
+<!-- MODAL: EDITAR CREDENCIALES, CORREO O CONTRASEÑA -->
+<div class="modal fade" id="modalEditarPersonal" tabindex="-1" aria-labelledby="modalEditarPersonalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
+            <div class="modal-header text-white border-0 py-3" style="background: var(--brand-blue);">
+                <div class="d-flex align-items-center gap-2">
+                    <i class="fa-solid fa-user-pen fs-5 text-white"></i>
+                    <h5 class="modal-title fw-bold m-0 text-white" id="modalEditarPersonalLabel">Editar Credenciales y Perfil</h5>
+                </div>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
-            <div class="table-responsive p-0">
-                <table class="table table-hover align-middle m-0">
-                    <thead class="bg-light">
-                        <tr>
-                            <th class="ps-4">NOMBRE DE EMPLEADO</th>
-                            <th>EMAIL (CREDENCIAL DE ACCESO)</th>
-                            <th>ROL / PERFIL</th>
-                            <th class="text-center">STATUS</th>
-                            <th class="text-center pe-4">ACCIONES</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for vendedor in vendedores %}
-                        <tr>
-                            <td class="fw-bold text-brand-black ps-4">
-                                {{ vendedor.nombre }}
-                                {% if vendedor.id == current_user.id %}
-                                    <span class="badge bg-secondary bg-opacity-10 text-secondary border border-secondary rounded-pill ms-1" style="font-size: 0.7rem;">Tú</span>
-                                {% endif %}
-                            </td>
-                            <td class="text-muted">{{ vendedor.email }}</td>
-                            <td>
-                                {% if vendedor.rol == 'admin' %}
-                                    <span class="badge bg-danger bg-opacity-10 text-danger border border-danger rounded-pill px-2">
-                                        <i class="fa-solid fa-shield-halved me-1"></i> Administrador
-                                    </span>
-                                {% elif vendedor.rol == 'vendedor' %}
-                                    <span class="badge bg-info bg-opacity-10 text-info border border-info rounded-pill px-2">
-                                        <i class="fa-solid fa-cash-register me-1"></i> Vendedor Cajas
-                                    </span>
-                                {% elif vendedor.rol == 'bodega' %}
-                                    <span class="badge bg-primary bg-opacity-10 text-primary border border-primary rounded-pill px-2">
-                                        <i class="fa-solid fa-warehouse me-1"></i> Encargado Bodega
-                                    </span>
-                                {% elif vendedor.rol == 'vendedor_bodega' %}
-                                    <span class="badge bg-warning bg-opacity-10 text-warning border border-warning rounded-pill px-2">
-                                        <i class="fa-solid fa-truck-ramp-box me-1"></i> Vendedor Bodega
-                                    </span>
-                                {% else %}
-                                    {{ vendedor.rol }}
-                                {% endif %}
-                            </td>
-                            <td class="text-center">
-                                <span class="badge bg-success bg-opacity-10 text-success border border-success rounded-pill px-3 py-2 w-100">Activo</span>
-                            </td>
-                            <td class="text-center pe-4">
-                                {% if vendedor.id == current_user.id %}
-                                    <span class="badge bg-light text-muted border rounded-pill px-2 py-1" style="font-size: 0.75rem;">
-                                        <i class="fa-solid fa-user-check me-1"></i> Sesión Actual
-                                    </span>
-                                {% else %}
-                                    <form action="{{ url_for('admin_bp.eliminar_vendedor', id=vendedor.id) }}" method="POST" class="d-inline" onsubmit="return confirm('¿Estás seguro de que deseas eliminar este usuario? Esta acción no se puede deshacer.');">
-                                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
-                                        <button type="submit" class="btn btn-sm btn-outline-danger rounded-circle shadow-sm" title="Dar de baja usuario">
-                                            <i class="fa-solid fa-trash-can"></i>
-                                        </button>
-                                    </form>
-                                {% endif %}
-                            </td>
-                        </tr>
-                        {% else %}
-                        <tr>
-                            <td colspan="5" class="text-center py-5 text-muted">
-                                <i class="fa-solid fa-users-slash fs-1 mb-3 opacity-25"></i>
-                                <p class="mb-0">Aún no has dado de alta a ningún usuario en el sistema.</p>
-                            </td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
+            <form method="POST" id="formEditarPersonal">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                <div class="modal-body p-4">
+                    <div class="mb-3">
+                        <label class="form-label text-brand-black fw-semibold small">Nombre Completo</label>
+                        <input type="text" name="nombre" id="edit_nombre" class="form-control bg-light border-0 py-2 rounded-3" required>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label text-brand-black fw-semibold small">
+                            <i class="fa-solid fa-envelope me-1 text-primary"></i> Correo Empresarial (Login)
+                        </label>
+                        <input type="email" name="email" id="edit_email" class="form-control bg-light border-0 py-2 rounded-3" required>
+                        <small class="text-muted">Credencial con la que el usuario inicia sesión.</small>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label text-brand-black fw-semibold small">Celular / Móvil</label>
+                        <input type="text" name="telefono" id="edit_telefono" class="form-control bg-light border-0 py-2 rounded-3">
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label text-brand-black fw-semibold small">Rol / Perfil</label>
+                        <select name="rol" id="edit_rol" class="form-select bg-light border-0 py-2 rounded-3" required>
+                            <option value="admin">🛡️ Administrador (Acceso Total al Sistema)</option>
+                            <option value="vendedor">🏪 Vendedor (Cajas/Tienda)</option>
+                            <option value="bodega">📦 Encargado de Bodega (Admin de Bodega)</option>
+                            <option value="vendedor_bodega">🚚 Vendedor de Bodega (Facturación)</option>
+                        </select>
+                    </div>
+
+                    <div class="mb-2 p-3 rounded-3" style="background: #F8FAFC; border: 1px dashed #CBD5E1;">
+                        <label class="form-label text-brand-black fw-semibold small mb-1">
+                            <i class="fa-solid fa-key me-1 text-warning"></i> Cambiar Contraseña (PIN)
+                        </label>
+                        <input type="password" name="password" class="form-control border bg-white py-2 rounded-3" placeholder="Nueva contraseña (opcional)">
+                        <small class="text-muted d-block mt-1">
+                            <i class="fa-solid fa-circle-info me-1"></i>Déjalo en blanco si deseas mantener la contraseña actual.
+                        </small>
+                    </div>
+                </div>
+                <div class="modal-footer border-0 pt-0 px-4 pb-4">
+                    <button type="button" class="btn btn-light rounded-pill px-4 fw-bold" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-blue rounded-pill px-4 fw-bold shadow-sm">
+                        <i class="fa-solid fa-floppy-disk me-1"></i> Guardar Cambios
+                    </button>
+                </div>
+            </form>
         </div>
     </div>
 </div>
+
+<script>
+let modalEditar = null;
+
+document.addEventListener('DOMContentLoaded', () => {
+    const elModal = document.getElementById('modalEditarPersonal');
+    if (elModal) {
+        modalEditar = new bootstrap.Modal(elModal);
+    }
+});
+
+function abrirModalEditar(id, nombre, email, telefono, rol) {
+    const form = document.getElementById('formEditarPersonal');
+    form.action = `/admin/vendedores/${id}/editar`;
+
+    document.getElementById('edit_nombre').value = nombre;
+    document.getElementById('edit_email').value = email;
+    document.getElementById('edit_telefono').value = telefono;
+    
+    const selectRol = document.getElementById('edit_rol');
+    if (selectRol) selectRol.value = rol;
+
+    // Resetear campo de contraseña
+    const passInput = form.querySelector('input[name="password"]');
+    if (passInput) passInput.value = '';
+
+    if (modalEditar) {
+        modalEditar.show();
+    }
+}
+</script>
 {% endblock %}
