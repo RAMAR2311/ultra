@@ -345,14 +345,190 @@
                             <a href="{{ url_for('sales_bp.imprimir_ticket', sale_id=venta.id) }}" target="_blank" class="btn btn-pink btn-sm rounded-pill px-3 fw-bold shadow-sm w-100">
                                 <i class="fa-solid fa-receipt me-1"></i> Ver Recibo
                             </a>
-                            
+
                             {% if current_user.rol == 'admin' %}
+                            <!-- Botón Editar Pago -->
+                            <button type="button" class="btn btn-outline-dark btn-sm rounded-pill px-3 fw-bold shadow-sm w-100 d-flex align-items-center justify-content-center gap-1"
+                                    style="border-color: #CBD5E1; background-color: #F8FAFC; color: #0F172A;"
+                                    data-bs-toggle="modal" data-bs-target="#modalEditarPago{{ venta.id }}">
+                                <i class="fa-solid fa-pen-to-square" style="color: var(--brand-primary);"></i> Editar Pago
+                            </button>
+
+                            <!-- Botón Anular Venta -->
                             <form action="{{ url_for('sales_bp.eliminar_venta', sale_id=venta.id) }}" method="POST" onsubmit="return confirm('ATENCIÓN: ¿Está seguro de anular esta venta? Esta acción NO se puede deshacer y retornará el stock de los productos vendidos.');" class="m-0 p-0">
                                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
                                 <button type="submit" class="btn btn-danger btn-sm rounded-pill px-3 fw-bold shadow-sm w-100">
                                     <i class="fa-solid fa-trash me-1"></i> Anular
                                 </button>
                             </form>
+
+                            <!-- Modal Editar Pago Factura #{{ venta.id }} -->
+                            <div class="modal fade" id="modalEditarPago{{ venta.id }}" tabindex="-1" aria-labelledby="modalEditarPagoLabel{{ venta.id }}" aria-hidden="true">
+                                <div class="modal-dialog modal-dialog-centered">
+                                    <div class="modal-content border-0 shadow-lg" style="border-radius: 20px; overflow: hidden;">
+                                        <div class="modal-header text-white" style="background: linear-gradient(135deg, #0F172A 0%, #1E293B 100%); border-bottom: 3px solid var(--brand-primary);">
+                                            <div class="text-start">
+                                                <h5 class="modal-title fw-bold mb-0 text-white" id="modalEditarPagoLabel{{ venta.id }}">
+                                                    <i class="fa-solid fa-file-invoice-dollar me-2" style="color: var(--brand-primary);"></i> Factura #{{ venta.id }}
+                                                </h5>
+                                                <small class="text-white-50" style="font-size: 0.8rem;">
+                                                    {{ venta.fecha_venta.strftime('%d/%m/%Y %I:%M %p') }} &bull; Cajero: {{ venta.vendedor.nombre }}
+                                                </small>
+                                            </div>
+                                            <button type="button" class="btn-close btn-close-white shadow-none" data-bs-dismiss="modal" aria-label="Close"></button>
+                                        </div>
+                                        
+                                        <form action="{{ url_for('sales_bp.editar_pago', sale_id=venta.id) }}" method="POST" id="formEditarPago{{ venta.id }}" onsubmit="return validarEnvioPago({{ venta.id }}, {{ venta.monto_total }});">
+                                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                                            <input type="hidden" name="fecha_inicio" value="{{ fecha_inicio }}"/>
+                                            <input type="hidden" name="fecha_fin" value="{{ fecha_fin }}"/>
+                                            
+                                            <div class="modal-body p-4 bg-white text-start">
+                                                <!-- Resumen del Total -->
+                                                <div class="p-3 rounded-3 mb-3 d-flex justify-content-between align-items-center" style="background-color: #FFF1F7; border: 1px solid rgba(255, 0, 127, 0.2);">
+                                                    <div>
+                                                        <span class="d-block text-muted small fw-bold text-uppercase">Total Factura</span>
+                                                        <span class="fs-4 fw-bolder" style="color: var(--brand-primary);">${{ (venta.monto_total)|cop }}</span>
+                                                    </div>
+                                                    <span class="badge rounded-pill px-3 py-2 fw-bold" style="background: #0F172A; color: #FFFFFF;">
+                                                        <i class="fa-solid fa-receipt me-1"></i> #{{ venta.id }}
+                                                    </span>
+                                                </div>
+
+                                                <!-- Tipo de Pago: Único o Mixto -->
+                                                <label class="form-label small fw-bold text-muted text-uppercase mb-2">Modalidad de Pago</label>
+                                                <div class="d-flex gap-2 mb-3">
+                                                    <div class="form-check form-check-inline flex-fill m-0 p-0">
+                                                        <input class="btn-check" type="radio" name="tipo_pago" id="tipo_unico_{{ venta.id }}" value="unico" 
+                                                               {% if venta.pagos|length <= 1 and venta.metodo_pago != 'mixto' %}checked{% endif %}
+                                                               onchange="toggleModalidadPago({{ venta.id }})">
+                                                        <label class="btn btn-outline-dark w-100 py-2 rounded-3 fw-bold small text-nowrap" for="tipo_unico_{{ venta.id }}">
+                                                            <i class="fa-solid fa-wallet me-1"></i> Pago Único
+                                                        </label>
+                                                    </div>
+                                                    <div class="form-check form-check-inline flex-fill m-0 p-0">
+                                                        <input class="btn-check" type="radio" name="tipo_pago" id="tipo_mixto_{{ venta.id }}" value="mixto" 
+                                                               {% if venta.pagos|length > 1 or venta.metodo_pago == 'mixto' %}checked{% endif %}
+                                                               onchange="toggleModalidadPago({{ venta.id }})">
+                                                        <label class="btn btn-outline-dark w-100 py-2 rounded-3 fw-bold small text-nowrap" for="tipo_mixto_{{ venta.id }}">
+                                                            <i class="fa-solid fa-arrows-split-up-and-left me-1"></i> Dividido / Mixto
+                                                        </label>
+                                                    </div>
+                                                </div>
+
+                                                <!-- SECCIÓN 1: PAGO ÚNICO -->
+                                                <div id="seccion_unico_{{ venta.id }}" {% if venta.pagos|length > 1 or venta.metodo_pago == 'mixto' %}style="display: none;"{% endif %}>
+                                                    <label class="form-label small fw-bold text-muted text-uppercase">Seleccionar Método de Pago</label>
+                                                    {% set current_metodo = (venta.pagos[0].metodo_pago if venta.pagos else venta.metodo_pago)|lower %}
+                                                    <select class="form-select form-select-lg border shadow-sm" name="metodo_pago_unico" id="metodo_unico_{{ venta.id }}">
+                                                        <option value="efectivo" {% if current_metodo == 'efectivo' %}selected{% endif %}>💵 Efectivo</option>
+                                                        <option value="nequi" {% if current_metodo == 'nequi' %}selected{% endif %}>📱 Nequi</option>
+                                                        <option value="bancolombia" {% if current_metodo == 'bancolombia' %}selected{% endif %}>🏦 Bancolombia</option>
+                                                        <option value="daviplata" {% if current_metodo == 'daviplata' %}selected{% endif %}>📱 Daviplata</option>
+                                                    </select>
+                                                    <div class="form-text small mt-2 text-muted">
+                                                        <i class="fa-solid fa-circle-info text-primary me-1"></i>El 100% del total (${{ (venta.monto_total)|cop }}) se asignará al método seleccionado.
+                                                    </div>
+                                                </div>
+
+                                                <!-- SECCIÓN 2: PAGO MIXTO / DIVIDIDO -->
+                                                <div id="seccion_mixto_{{ venta.id }}" {% if venta.pagos|length <= 1 and venta.metodo_pago != 'mixto' %}style="display: none;"{% endif %}>
+                                                    <label class="form-label small fw-bold text-muted text-uppercase mb-2">Distribuir Montos</label>
+                                                    
+                                                    {% set p_efectivo = namespace(val=0) %}
+                                                    {% set p_nequi = namespace(val=0) %}
+                                                    {% set p_banco = namespace(val=0) %}
+                                                    {% set p_davi = namespace(val=0) %}
+                                                    {% if venta.pagos %}
+                                                        {% for p in venta.pagos %}
+                                                            {% if p.metodo_pago == 'efectivo' %}{% set p_efectivo.val = p.monto|int %}{% endif %}
+                                                            {% if p.metodo_pago == 'nequi' %}{% set p_nequi.val = p.monto|int %}{% endif %}
+                                                            {% if p.metodo_pago == 'bancolombia' %}{% set p_banco.val = p.monto|int %}{% endif %}
+                                                            {% if p.metodo_pago == 'daviplata' %}{% set p_davi.val = p.monto|int %}{% endif %}
+                                                        {% endfor %}
+                                                    {% else %}
+                                                        {% if venta.metodo_pago == 'efectivo' %}{% set p_efectivo.val = venta.monto_total|int %}{% endif %}
+                                                        {% if venta.metodo_pago == 'nequi' %}{% set p_nequi.val = venta.monto_total|int %}{% endif %}
+                                                        {% if venta.metodo_pago == 'bancolombia' %}{% set p_banco.val = venta.monto_total|int %}{% endif %}
+                                                        {% if venta.metodo_pago == 'daviplata' %}{% set p_davi.val = venta.monto_total|int %}{% endif %}
+                                                    {% endif %}
+
+                                                    <div class="d-flex flex-column gap-2">
+                                                        <!-- Efectivo -->
+                                                        <div class="input-group">
+                                                            <span class="input-group-text bg-light text-dark fw-bold" style="width: 140px;">
+                                                                💵 Efectivo
+                                                            </span>
+                                                            <input type="text" class="form-control text-end fw-bold input-monto-{{ venta.id }}" 
+                                                                   name="monto_efectivo" id="monto_efectivo_{{ venta.id }}" 
+                                                                   value="{{ '{:,}'.format(p_efectivo.val) if p_efectivo.val > 0 else '' }}" 
+                                                                   placeholder="0" oninput="formatInputCOP(this); recalcularSuma({{ venta.id }}, {{ venta.monto_total }});">
+                                                            <button type="button" class="btn btn-outline-secondary btn-sm" onclick="asignarRestante({{ venta.id }}, 'monto_efectivo', {{ venta.monto_total }})">Todo</button>
+                                                        </div>
+
+                                                        <!-- Nequi -->
+                                                        <div class="input-group">
+                                                            <span class="input-group-text bg-light text-dark fw-bold" style="width: 140px;">
+                                                                📱 Nequi
+                                                            </span>
+                                                            <input type="text" class="form-control text-end fw-bold input-monto-{{ venta.id }}" 
+                                                                   name="monto_nequi" id="monto_nequi_{{ venta.id }}" 
+                                                                   value="{{ '{:,}'.format(p_nequi.val) if p_nequi.val > 0 else '' }}" 
+                                                                   placeholder="0" oninput="formatInputCOP(this); recalcularSuma({{ venta.id }}, {{ venta.monto_total }});">
+                                                            <button type="button" class="btn btn-outline-secondary btn-sm" onclick="asignarRestante({{ venta.id }}, 'monto_nequi', {{ venta.monto_total }})">Todo</button>
+                                                        </div>
+
+                                                        <!-- Bancolombia -->
+                                                        <div class="input-group">
+                                                            <span class="input-group-text bg-light text-dark fw-bold" style="width: 140px;">
+                                                                🏦 Bancolombia
+                                                            </span>
+                                                            <input type="text" class="form-control text-end fw-bold input-monto-{{ venta.id }}" 
+                                                                   name="monto_bancolombia" id="monto_bancolombia_{{ venta.id }}" 
+                                                                   value="{{ '{:,}'.format(p_banco.val) if p_banco.val > 0 else '' }}" 
+                                                                   placeholder="0" oninput="formatInputCOP(this); recalcularSuma({{ venta.id }}, {{ venta.monto_total }});">
+                                                            <button type="button" class="btn btn-outline-secondary btn-sm" onclick="asignarRestante({{ venta.id }}, 'monto_bancolombia', {{ venta.monto_total }})">Todo</button>
+                                                        </div>
+
+                                                        <!-- Daviplata -->
+                                                        <div class="input-group">
+                                                            <span class="input-group-text bg-light text-dark fw-bold" style="width: 140px;">
+                                                                📱 Daviplata
+                                                            </span>
+                                                            <input type="text" class="form-control text-end fw-bold input-monto-{{ venta.id }}" 
+                                                                   name="monto_daviplata" id="monto_daviplata_{{ venta.id }}" 
+                                                                   value="{{ '{:,}'.format(p_davi.val) if p_davi.val > 0 else '' }}" 
+                                                                   placeholder="0" oninput="formatInputCOP(this); recalcularSuma({{ venta.id }}, {{ venta.monto_total }});">
+                                                            <button type="button" class="btn btn-outline-secondary btn-sm" onclick="asignarRestante({{ venta.id }}, 'monto_daviplata', {{ venta.monto_total }})">Todo</button>
+                                                        </div>
+                                                    </div>
+
+                                                    <!-- Indicador de Balance en Tiempo Real -->
+                                                    <div class="mt-3 p-2 rounded-3 border" id="balance_box_{{ venta.id }}" style="background-color: #F8FAFC;">
+                                                        <div class="d-flex justify-content-between align-items-center">
+                                                            <small class="text-muted fw-bold">Suma asignada:</small>
+                                                            <span class="fw-bold" id="suma_display_{{ venta.id }}">$0</span>
+                                                        </div>
+                                                        <div class="d-flex justify-content-between align-items-center mt-1">
+                                                            <small class="text-muted fw-bold">Estado:</small>
+                                                            <span class="small fw-bold" id="estado_display_{{ venta.id }}">Listo</span>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            
+                                            <div class="modal-footer bg-light border-top d-flex justify-content-between">
+                                                <button type="button" class="btn btn-outline-secondary rounded-pill px-4 fw-bold" data-bs-dismiss="modal">
+                                                    Cancelar
+                                                </button>
+                                                <button type="submit" class="btn btn-pink rounded-pill px-4 fw-bold shadow-sm" id="btn_guardar_{{ venta.id }}">
+                                                    <i class="fa-solid fa-check me-1"></i> Guardar Pago
+                                                </button>
+                                            </div>
+                                        </form>
+                                    </div>
+                                </div>
+                            </div>
                             {% endif %}
                         </div>
                     </td>
@@ -499,7 +675,7 @@
 }
 </style>
 
-<!-- Inicializar Tooltips Bootstrap para Desglose de Pagos Mixtos -->
+<!-- Inicializar Tooltips Bootstrap y Funciones de Edición de Pago -->
 <script>
     document.addEventListener('DOMContentLoaded', function () {
         var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
@@ -507,5 +683,96 @@
             return new bootstrap.Tooltip(el);
         });
     });
+
+    function toggleModalidadPago(saleId) {
+        const isMixto = document.getElementById(`tipo_mixto_${saleId}`).checked;
+        const secUnico = document.getElementById(`seccion_unico_${saleId}`);
+        const secMixto = document.getElementById(`seccion_mixto_${saleId}`);
+        if (isMixto) {
+            secUnico.style.display = 'none';
+            secMixto.style.display = 'block';
+        } else {
+            secUnico.style.display = 'block';
+            secMixto.style.display = 'none';
+        }
+    }
+
+    function parseMonto(val) {
+        if (!val) return 0;
+        const clean = val.toString().replace(/\D/g, '');
+        return clean ? parseInt(clean, 10) : 0;
+    }
+
+    function recalcularSuma(saleId, montoTotal) {
+        const ef = parseMonto(document.getElementById(`monto_efectivo_${saleId}`)?.value);
+        const nq = parseMonto(document.getElementById(`monto_nequi_${saleId}`)?.value);
+        const bc = parseMonto(document.getElementById(`monto_bancolombia_${saleId}`)?.value);
+        const dv = parseMonto(document.getElementById(`monto_daviplata_${saleId}`)?.value);
+        
+        const suma = ef + nq + bc + dv;
+        const total = Math.round(montoTotal);
+        const diff = total - suma;
+
+        const sumaDisplay = document.getElementById(`suma_display_${saleId}`);
+        const estadoDisplay = document.getElementById(`estado_display_${saleId}`);
+        const btnGuardar = document.getElementById(`btn_guardar_${saleId}`);
+
+        if (sumaDisplay) sumaDisplay.textContent = '$' + formatCOP(suma);
+
+        if (diff === 0) {
+            if (estadoDisplay) {
+                estadoDisplay.className = 'small fw-bold text-success';
+                estadoDisplay.innerHTML = '<i class="fa-solid fa-circle-check me-1"></i> Suma exacta ($' + formatCOP(total) + ')';
+            }
+            if (btnGuardar) btnGuardar.disabled = false;
+        } else if (diff > 0) {
+            if (estadoDisplay) {
+                estadoDisplay.className = 'small fw-bold text-warning';
+                estadoDisplay.innerHTML = '<i class="fa-solid fa-triangle-exclamation me-1"></i> Faltan $' + formatCOP(diff);
+            }
+            if (btnGuardar) btnGuardar.disabled = false; // Permitir que envíe y el backend o confirm avise
+        } else {
+            if (estadoDisplay) {
+                estadoDisplay.className = 'small fw-bold text-danger';
+                estadoDisplay.innerHTML = '<i class="fa-solid fa-circle-xmark me-1"></i> Te pasaste por $' + formatCOP(Math.abs(diff));
+            }
+        }
+    }
+
+    function asignarRestante(saleId, fieldName, montoTotal) {
+        const fields = ['monto_efectivo', 'monto_nequi', 'monto_bancolombia', 'monto_daviplata'];
+        let sumaOtros = 0;
+        fields.forEach(f => {
+            if (f !== fieldName) {
+                sumaOtros += parseMonto(document.getElementById(`${f}_${saleId}`)?.value);
+            }
+        });
+
+        const total = Math.round(montoTotal);
+        const restante = Math.max(0, total - sumaOtros);
+        const targetInput = document.getElementById(`${fieldName}_${saleId}`);
+        if (targetInput) {
+            targetInput.value = restante > 0 ? formatCOP(restante) : '';
+            recalcularSuma(saleId, montoTotal);
+        }
+    }
+
+    function validarEnvioPago(saleId, montoTotal) {
+        const isMixto = document.getElementById(`tipo_mixto_${saleId}`).checked;
+        if (!isMixto) return true;
+
+        const ef = parseMonto(document.getElementById(`monto_efectivo_${saleId}`)?.value);
+        const nq = parseMonto(document.getElementById(`monto_nequi_${saleId}`)?.value);
+        const bc = parseMonto(document.getElementById(`monto_bancolombia_${saleId}`)?.value);
+        const dv = parseMonto(document.getElementById(`monto_daviplata_${saleId}`)?.value);
+        
+        const suma = ef + nq + bc + dv;
+        const total = Math.round(montoTotal);
+        if (suma !== total) {
+            alert(`⚠️ La suma de los métodos de pago ($${formatCOP(suma)}) debe coincidir exactamente con el total de la factura ($${formatCOP(total)}).`);
+            return false;
+        }
+        return true;
+    }
 </script>
 {% endblock %}

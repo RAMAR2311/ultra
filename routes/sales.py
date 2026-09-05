@@ -616,7 +616,90 @@ def eliminar_venta(sale_id):
         db.session.rollback()
         flash('Ocurrió un error al anular la venta.', 'danger')
         
-    return redirect(url_for('sales_bp.historial'))
+# Endpoint para Editar Método/Distribución de Pago de una Venta Histórica
+@sales_bp.route('/editar_pago/<int:sale_id>', methods=['POST'])
+@login_required
+@admin_required
+def editar_pago(sale_id):
+    venta = Sale.query.get_or_404(sale_id)
+    
+    fecha_inicio = request.form.get('fecha_inicio', '')
+    fecha_fin = request.form.get('fecha_fin', '')
+    
+    # Validar si la caja de la fecha de la venta ya está cerrada
+    caja_cerrada = ArqueoCaja.query.filter_by(fecha_arqueo=venta.fecha_venta.date()).first()
+    if caja_cerrada:
+        flash(f'No se puede modificar el pago de la venta #{venta.id} porque la caja del día {venta.fecha_venta.date().strftime("%Y-%m-%d")} ya fue cerrada.', 'danger')
+        return redirect(url_for('sales_bp.historial', fecha_inicio=fecha_inicio, fecha_fin=fecha_fin))
+    
+    try:
+        tipo_pago = request.form.get('tipo_pago', 'unico')
+        
+        if tipo_pago == 'unico':
+            metodo = request.form.get('metodo_pago_unico', 'efectivo').lower().strip()
+            if metodo not in ['efectivo', 'nequi', 'bancolombia', 'daviplata']:
+                metodo = 'efectivo'
+            
+            # Limpiar pagos previos
+            SalePayment.query.filter_by(sale_id=venta.id).delete()
+            
+            nuevo_pago = SalePayment(
+                sale_id=venta.id,
+                metodo_pago=metodo,
+                monto=venta.monto_total
+            )
+            db.session.add(nuevo_pago)
+            venta.metodo_pago = metodo
+            
+        elif tipo_pago == 'mixto':
+            metodos_posibles = ['efectivo', 'nequi', 'bancolombia', 'daviplata']
+            nuevos_pagos = []
+            suma_montos = Decimal('0.00')
+            
+            for m in metodos_posibles:
+                raw_val = request.form.get(f'monto_{m}', '0').replace(',', '').replace('$', '').strip()
+                if raw_val:
+                    try:
+                        monto_decimal = Decimal(raw_val)
+                        if monto_decimal > Decimal('0'):
+                            nuevos_pagos.append((m, monto_decimal))
+                            suma_montos += monto_decimal
+                    except Exception:
+                        pass
+            
+            if not nuevos_pagos:
+                flash('Debe especificar al menos un método con monto mayor a $0 en pago mixto.', 'warning')
+                return redirect(url_for('sales_bp.historial', fecha_inicio=fecha_inicio, fecha_fin=fecha_fin))
+                
+            # Validar que la suma sea exactamente igual al total de la venta
+            if abs(suma_montos - venta.monto_total) > Decimal('0.01'):
+                flash(f'La suma de los pagos (${suma_montos:,.0f}) no coincide con el total de la factura (${venta.monto_total:,.0f}).', 'danger')
+                return redirect(url_for('sales_bp.historial', fecha_inicio=fecha_inicio, fecha_fin=fecha_fin))
+            
+            # Limpiar pagos previos y crear los nuevos
+            SalePayment.query.filter_by(sale_id=venta.id).delete()
+            
+            for m, monto_val in nuevos_pagos:
+                p = SalePayment(
+                    sale_id=venta.id,
+                    metodo_pago=m,
+                    monto=monto_val
+                )
+                db.session.add(p)
+                
+            if len(nuevos_pagos) == 1:
+                venta.metodo_pago = nuevos_pagos[0][0]
+            else:
+                venta.metodo_pago = 'mixto'
+        
+        db.session.commit()
+        flash(f'¡Método de pago de la venta #{venta.id} actualizado exitosamente!', 'success')
+        
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Ocurrió un error al actualizar el pago: {str(e)}', 'danger')
+        
+    return redirect(url_for('sales_bp.historial', fecha_inicio=fecha_inicio, fecha_fin=fecha_fin))
 
 # Endpoint Catálogo Estricto de solo vista para Operarios
 @sales_bp.route('/catalogo', methods=['GET'])
