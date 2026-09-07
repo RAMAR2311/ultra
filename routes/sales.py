@@ -592,34 +592,48 @@ def ventas_hoy():
 def eliminar_venta(sale_id):
     venta = Sale.query.get_or_404(sale_id)
     
+    fecha_inicio = request.form.get('fecha_inicio', '')
+    fecha_fin = request.form.get('fecha_fin', '')
+    
     # Validar si la caja de la fecha de la venta ya está cerrada
     caja_cerrada = ArqueoCaja.query.filter_by(fecha_arqueo=venta.fecha_venta.date()).first()
     if caja_cerrada:
         flash(f'No se puede anular la venta #{venta.id} porque la caja del día {venta.fecha_venta.date().strftime("%Y-%m-%d")} ya fue cerrada.', 'danger')
-        return redirect(url_for('sales_bp.historial'))
+        return redirect(url_for('sales_bp.historial', fecha_inicio=fecha_inicio, fecha_fin=fecha_fin))
     
     try:
-        # Revertir Stock
-        from models import StockAdjustment
+        from models import StockAdjustment, PriceApproval
+        
+        # 1. Desvincular aprobaciones de precio asociadas para no violar restricciones de clave foránea
+        aprobaciones = PriceApproval.query.filter_by(sale_id=venta.id).all()
+        for ap in aprobaciones:
+            ap.sale_id = None
+            if ap.estado == 'utilizada':
+                ap.estado = 'cancelada'
+
+        # 2. Revertir Stock
         for detalle in venta.detalles:
             if detalle.variant_id:
                 variante = ProductVariant.query.with_for_update().get(detalle.variant_id)
+                prod_id = detalle.product_id or (variante.product_id if variante else None)
                 if variante:
                     stock_anterior = variante.cantidad_stock
                     variante.cantidad_stock += detalle.cantidad_vendida
                     
-                    ajuste = StockAdjustment(
-                        product_id=detalle.product_id,
-                        admin_id=current_user.id,
-                        tipo_movimiento=f"Anulación Venta #{venta.id} (Subcat: {variante.nombre_variante})",
-                        stock_anterior=stock_anterior,
-                        stock_nuevo=variante.cantidad_stock
-                    )
-                    db.session.add(ajuste)
+                    if prod_id:
+                        ajuste = StockAdjustment(
+                            product_id=prod_id,
+                            admin_id=current_user.id,
+                            tipo_movimiento=f"Anulación Venta #{venta.id} (Subcat: {variante.nombre_variante})",
+                            stock_anterior=stock_anterior,
+                            stock_nuevo=variante.cantidad_stock
+                        )
+                        db.session.add(ajuste)
                     
-                producto = Product.query.with_for_update().get(detalle.product_id)
-                if producto:
-                    producto.cantidad_stock += detalle.cantidad_vendida
+                if prod_id:
+                    producto = Product.query.with_for_update().get(prod_id)
+                    if producto:
+                        producto.cantidad_stock += detalle.cantidad_vendida
             elif detalle.product_id:
                 producto = Product.query.with_for_update().get(detalle.product_id)
                 if producto:
@@ -635,14 +649,16 @@ def eliminar_venta(sale_id):
                     )
                     db.session.add(ajuste)
                     
-        # Eliminar Venta y Detalles (Cascada)
+        # 3. Eliminar Venta y sus Detalles/Pagos asociados (Cascada)
         db.session.delete(venta)
         db.session.commit()
-        flash('Venta anulada y stock devuelto exitosamente.', 'success')
+        flash(f'Venta #{sale_id} anulada y stock devuelto exitosamente.', 'success')
         
     except Exception as e:
         db.session.rollback()
-        flash('Ocurrió un error al anular la venta.', 'danger')
+        flash(f'Ocurrió un error al anular la venta: {str(e)}', 'danger')
+        
+    return redirect(url_for('sales_bp.historial', fecha_inicio=fecha_inicio, fecha_fin=fecha_fin))
         
 # Endpoint para Editar Método/Distribución de Pago de una Venta Histórica
 @sales_bp.route('/editar_pago/<int:sale_id>', methods=['POST'])

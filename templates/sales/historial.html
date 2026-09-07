@@ -387,6 +387,8 @@
                             <!-- Botón Anular Venta -->
                             <form action="{{ url_for('sales_bp.eliminar_venta', sale_id=venta.id) }}" method="POST" onsubmit="return confirm('ATENCIÓN: ¿Está seguro de anular esta venta? Esta acción NO se puede deshacer y retornará el stock de los productos vendidos.');" class="m-0 p-0">
                                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                                <input type="hidden" name="fecha_inicio" value="{{ fecha_inicio }}"/>
+                                <input type="hidden" name="fecha_fin" value="{{ fecha_fin }}"/>
                                 <button type="submit" class="btn btn-danger btn-sm rounded-pill px-3 fw-bold shadow-sm w-100">
                                     <i class="fa-solid fa-trash me-1"></i> Anular
                                 </button>
