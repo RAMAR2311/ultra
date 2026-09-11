@@ -1,18 +1,23 @@
 {% extends "base.html" %}
 
 {% block content %}
-<div class="d-flex justify-content-between align-items-center mb-4">
-    <h2 class="fw-bold text-brand-black m-0"><i class="fa-solid fa-address-book text-brand-blue me-2"></i> Directorio de Clientes</h2>
-    <a href="{{ url_for('bodega_bp.nuevo_cliente') }}" class="btn btn-blue rounded-pill px-4 shadow-sm">
+<div class="d-flex flex-column flex-sm-row justify-content-between align-items-start align-items-sm-center gap-3 mb-4">
+    <div>
+        <h2 class="fw-bold text-brand-black m-0">
+            <i class="fa-solid fa-address-book text-brand-blue me-2"></i> Directorio de Clientes
+        </h2>
+        <span class="text-muted small">Gestión comercial, cartera y estados de cuenta en bodega</span>
+    </div>
+    <a href="{{ url_for('bodega_bp.nuevo_cliente') }}" class="btn btn-blue rounded-pill px-4 shadow-sm fw-bold">
         <i class="fa-solid fa-plus me-1"></i> Registrar Cliente
     </a>
 </div>
 
-<!-- Filtros por Estado y Zona -->
-<div class="card card-custom p-3 mb-4 border-0 shadow-sm bg-white">
+<!-- Barra de Filtros, Buscador y Conmutador de Vista -->
+<div class="card card-custom p-3 mb-4 border-0 shadow-sm bg-white rounded-4">
     <div class="row g-3 align-items-center">
-        <!-- Buscador -->
-        <div class="col-md-5 position-relative">
+        <!-- Buscador Inteligente -->
+        <div class="col-12 col-lg-5 position-relative">
             <div class="input-group shadow-sm rounded-pill border">
                 <span class="input-group-text bg-white border-0 ps-3"><i class="fa-solid fa-magnifying-glass text-muted"></i></span>
                 <input type="text" id="clientesSearch" class="form-control border-0 bg-white shadow-none ps-2" placeholder="Buscar por Nombre, NIT o Zona..." autocomplete="off">
@@ -24,7 +29,8 @@
         </div>
 
         <!-- Filtros por Chips de Estado y Zona -->
-        <div class="col-md-7 d-flex flex-wrap gap-2 align-items-center justify-content-md-end">
+        <div class="col-12 col-lg-7 d-flex flex-wrap gap-2 align-items-center justify-content-start justify-content-lg-end">
+            <!-- Chips de Estado -->
             <div class="btn-group btn-group-sm rounded-pill shadow-sm" role="group">
                 <a href="{{ url_for('bodega_bp.clientes', zona=zona_sel) }}" class="btn {{ 'btn-dark' if not estado_sel else 'btn-outline-secondary' }}">Todos</a>
                 <a href="{{ url_for('bodega_bp.clientes', estado='deuda', zona=zona_sel) }}" class="btn {{ 'btn-danger' if estado_sel == 'deuda' else 'btn-outline-danger' }}"><i class="fa-solid fa-circle-exclamation me-1"></i>Con Deuda</a>
@@ -44,106 +50,93 @@
                     {% endfor %}
                 </ul>
             </div>
+
+            <!-- Conmutador de Vista (Tarjetas / Tabla) -->
+            <div class="btn-group btn-group-sm rounded-pill shadow-sm ms-lg-1" role="group" id="viewModeToggle">
+                <button type="button" class="btn btn-outline-secondary px-3" id="btnVistaCards" title="Vista en Tarjetas (Ideal para celulares y tablets)">
+                    <i class="fa-solid fa-table-cells-large me-1"></i> Tarjetas
+                </button>
+                <button type="button" class="btn btn-dark px-3" id="btnVistaTabla" title="Vista en Tabla (Ideal para computador)">
+                    <i class="fa-solid fa-table-list me-1"></i> Tabla
+                </button>
+            </div>
             
-            <small class="text-muted fw-bold ms-2" style="font-size: 0.75rem;">
+            <small class="text-muted fw-bold ms-1" style="font-size: 0.75rem;">
                 <span id="visibleCount" class="text-brand-pink">{{ clientes|length }}</span> clientes
             </small>
         </div>
     </div>
 </div>
 
-<div class="card card-custom p-0 border-0 shadow-sm overflow-hidden">
+<!-- ========================================================
+     VISTA 1: TABLA RESPONSIVA (OPTIMIZADA PARA COMPUTADOR)
+     ======================================================== -->
+<div id="clientesTableView" class="card card-custom p-0 border-0 shadow-sm overflow-hidden rounded-4 mb-4">
     <div class="table-responsive">
         <table class="table table-hover table-custom mb-0 align-middle" id="clientesTable">
             <thead class="bg-light">
                 <tr>
-                    <th class="ps-4">RAZÓN SOCIAL / NOMBRE</th>
-                    <th>DOCUMENTO</th>
-                    <th>ZONA</th>
-                    <th class="text-center">DEUDA TOTAL</th>
-                    <th class="text-center">ESTADO</th>
-                    <th class="text-center">ACCIONES</th>
+                    <th class="ps-4 py-3" style="min-width: 220px;">RAZÓN SOCIAL / NOMBRE</th>
+                    <th class="py-3 text-nowrap" style="min-width: 140px;">DOCUMENTO</th>
+                    <th class="py-3" style="min-width: 110px;">ZONA</th>
+                    <th class="py-3 text-center text-nowrap" style="min-width: 130px;">DEUDA TOTAL</th>
+                    <th class="py-3 text-center text-nowrap" style="min-width: 120px;">ESTADO</th>
+                    <th class="py-3 text-center text-nowrap" style="min-width: 320px;">ACCIONES</th>
                 </tr>
             </thead>
             <tbody>
                 {% for c in clientes %}
                 <tr class="cliente-row" data-zona="{{ (c.zona or '')|lower }}">
-                    <td class="ps-4 fw-bold text-brand-black">{{ c.nombre_o_razon_social }}</td>
-                    <td class="text-muted">{{ c.documento_o_nit }}</td>
+                    <td class="ps-4 fw-bold text-brand-black">
+                        <a href="{{ url_for('bodega_bp.cliente_detalle', id=c.id) }}" class="text-decoration-none text-brand-black hover-primary">
+                            {{ c.nombre_o_razon_social }}
+                        </a>
+                    </td>
+                    <td class="text-muted text-nowrap font-monospace small">{{ c.documento_o_nit or 'Sin Documento' }}</td>
                     <td>
                         <span class="badge bg-light text-dark border px-2 py-1">
                             <i class="fa-solid fa-location-dot text-primary me-1"></i>{{ c.zona or 'Sin Zona' }}
                         </span>
                     </td>
-                    <td class="text-center fw-bolder {% if c.deuda_total > 0 %}text-danger{% else %}text-success{% endif %}">
+                    <td class="text-center text-nowrap fw-bolder font-orbitron {% if c.deuda_total > 0 %}text-danger{% else %}text-success{% endif %}">
                         ${{ (c.deuda_total)|cop }}
                     </td>
-                    <td class="text-center">
+                    <td class="text-center text-nowrap">
                         {% if c.estado_global == 'Al Día' %}
                             <span class="badge bg-light text-success border border-success rounded-pill px-3 py-2"><i class="fa-solid fa-check-circle me-1"></i> Al Día</span>
                         {% else %}
                             <span class="badge bg-light text-danger border border-danger rounded-pill px-3 py-2"><i class="fa-solid fa-circle-exclamation me-1"></i> Con Deuda</span>
                         {% endif %}
                     </td>
-                    <td class="text-center">
-                        <div class="d-flex gap-2 justify-content-center">
-                            <a href="{{ url_for('bodega_bp.editar_cliente', id=c.id) }}" class="btn btn-sm btn-outline-primary rounded-pill px-3" title="Editar">
+                    <td class="text-center text-nowrap py-2">
+                        <div class="d-inline-flex align-items-center gap-1 justify-content-center">
+                            <a href="{{ url_for('bodega_bp.editar_cliente', id=c.id) }}" class="btn btn-sm btn-outline-primary rounded-pill px-2 py-1" title="Editar cliente">
                                 <i class="fa-solid fa-pen me-1"></i> Editar
                             </a>
-                            <a href="{{ url_for('bodega_bp.cliente_detalle', id=c.id) }}" class="btn btn-sm btn-outline-dark rounded-pill px-3" title="Ver Estado de Cuenta">
+                            <a href="{{ url_for('bodega_bp.cliente_detalle', id=c.id) }}" class="btn btn-sm btn-outline-dark rounded-pill px-2 py-1" title="Ver Historial y Facturas">
                                 <i class="fa-solid fa-eye me-1"></i> Ver Cuenta
+                            </a>
+                            <a href="{{ url_for('bodega_bp.estado_cuenta', id=c.id) }}" class="btn btn-sm btn-success rounded-pill px-3 py-1 fw-bold text-white shadow-sm" style="background-color: #10B981; border-color: #10B981;" title="Descargar y Enviar Estado de Cuenta">
+                                <i class="fa-solid fa-file-invoice-dollar me-1"></i> Estado Cuenta
                             </a>
                             {% if current_user.rol == 'admin' %}
                                 {% if c.deuda_total <= 0 %}
-                                <button type="button" class="btn btn-sm btn-outline-danger rounded-pill px-3" data-bs-toggle="modal" data-bs-target="#modalEliminarCliente{{ c.id }}" title="Eliminar Cliente">
-                                    <i class="fa-solid fa-trash-can"></i>
+                                <button type="button" class="btn btn-sm btn-outline-danger rounded-circle p-0 d-inline-flex align-items-center justify-content-center ms-1" style="width: 28px; height: 28px;" data-bs-toggle="modal" data-bs-target="#modalEliminarCliente{{ c.id }}" title="Eliminar Cliente">
+                                    <i class="fa-solid fa-trash-can" style="font-size: 0.75rem;"></i>
                                 </button>
                                 {% else %}
-                                <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill px-3" disabled title="No se puede eliminar: tiene deuda pendiente">
-                                    <i class="fa-solid fa-trash-can"></i>
+                                <button type="button" class="btn btn-sm btn-outline-secondary rounded-circle p-0 d-inline-flex align-items-center justify-content-center ms-1 opacity-50" style="width: 28px; height: 28px;" disabled title="No se puede eliminar: tiene deuda pendiente">
+                                    <i class="fa-solid fa-trash-can" style="font-size: 0.75rem;"></i>
                                 </button>
                                 {% endif %}
                             {% endif %}
                         </div>
                     </td>
                 </tr>
-
-                {% if c.deuda_total <= 0 %}
-                <!-- Modal de Confirmación para Eliminar Cliente -->
-                <div class="modal fade" id="modalEliminarCliente{{ c.id }}" tabindex="-1" aria-labelledby="modalEliminarClienteLabel{{ c.id }}" aria-hidden="true">
-                    <div class="modal-dialog modal-dialog-centered">
-                        <div class="modal-content border-0 shadow rounded-4 overflow-hidden">
-                            <div class="modal-header bg-danger text-white border-0">
-                                <h5 class="modal-title fw-bold" id="modalEliminarClienteLabel{{ c.id }}">
-                                    <i class="fa-solid fa-triangle-exclamation me-2"></i> Confirmar Eliminación
-                                </h5>
-                                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
-                            </div>
-                            <div class="modal-body p-4">
-                                <p class="mb-2">¿Estás seguro de que deseas eliminar al cliente:</p>
-                                <p class="fw-bold fs-5 text-brand-black mb-3">{{ c.nombre_o_razon_social }}</p>
-                                <div class="alert alert-warning border-0 rounded-3 mb-0">
-                                    <i class="fa-solid fa-info-circle me-1"></i> Esta acción eliminará también todas sus facturas y registros asociados. <strong>No se puede deshacer.</strong>
-                                </div>
-                            </div>
-                            <div class="modal-footer border-0 pt-0">
-                                <button type="button" class="btn btn-outline-secondary rounded-pill px-4" data-bs-dismiss="modal">Cancelar</button>
-                                <form action="{{ url_for('bodega_bp.eliminar_cliente', id=c.id) }}" method="POST" class="d-inline">
-                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
-                                    <button type="submit" class="btn btn-danger rounded-pill px-4 fw-bold">
-                                        <i class="fa-solid fa-trash-can me-1"></i> Sí, Eliminar
-                                    </button>
-                                </form>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                {% endif %}
-
                 {% else %}
                 <tr>
-                    <td colspan="5" class="text-center py-5 text-muted">
-                        <i class="fa-solid fa-users-slash fs-2 mb-3 text-brand-pink opacity-50"></i>
+                    <td colspan="6" class="text-center py-5 text-muted">
+                        <i class="fa-solid fa-users-slash fs-1 mb-3 opacity-25"></i>
                         <p class="mb-0">No hay clientes en el directorio. Registra uno para comenzar.</p>
                     </td>
                 </tr>
@@ -153,46 +146,260 @@
     </div>
 </div>
 
+<!-- ========================================================
+     VISTA 2: GRID DE TARJETAS (RESPONSIVE: CELULAR, TABLET Y PC)
+     ======================================================== -->
+<div id="clientesCardsView" class="mb-4">
+    <div class="row g-3" id="cardsGridContainer">
+        {% for c in clientes %}
+        <div class="col-12 col-md-6 col-xl-4 cliente-card-item" data-zona="{{ (c.zona or '')|lower }}">
+            <div class="card card-custom h-100 border-0 shadow-sm p-3 p-sm-4 bg-white rounded-4 position-relative" style="border-left: 5px solid {% if c.deuda_total > 0 %}#E11D48{% else %}#10B981{% endif %} !important;">
+                
+                <!-- Cabecera de la Tarjeta -->
+                <div class="d-flex justify-content-between align-items-start gap-2 mb-2">
+                    <div class="flex-grow-1 overflow-hidden">
+                        <a href="{{ url_for('bodega_bp.cliente_detalle', id=c.id) }}" class="text-decoration-none">
+                            <h5 class="fw-bold text-brand-black mb-1 text-truncate" title="{{ c.nombre_o_razon_social }}">
+                                {{ c.nombre_o_razon_social }}
+                            </h5>
+                        </a>
+                        <div class="d-flex flex-wrap gap-1 align-items-center text-muted small">
+                            <span class="badge bg-light text-dark border px-2 py-1 font-monospace">
+                                <i class="fa-solid fa-id-card text-muted me-1"></i>{{ c.documento_o_nit or 'Sin NIT' }}
+                            </span>
+                            <span class="badge bg-light text-dark border px-2 py-1">
+                                <i class="fa-solid fa-location-dot text-primary me-1"></i>{{ c.zona or 'Sin Zona' }}
+                            </span>
+                        </div>
+                    </div>
+
+                    <!-- Badge de Estado -->
+                    <div>
+                        {% if c.estado_global == 'Al Día' %}
+                            <span class="badge bg-light text-success border border-success rounded-pill px-2 py-1 small">
+                                <i class="fa-solid fa-check-circle me-1"></i> Al Día
+                            </span>
+                        {% else %}
+                            <span class="badge bg-light text-danger border border-danger rounded-pill px-2 py-1 small">
+                                <i class="fa-solid fa-circle-exclamation me-1"></i> Con Deuda
+                            </span>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <!-- Caja de Deuda Destacada -->
+                <div class="d-flex justify-content-between align-items-center py-2 px-3 my-2 rounded-3" style="background-color: {% if c.deuda_total > 0 %}#FFF1F2{% else %}#F0FDF4{% endif %};">
+                    <div>
+                        <span class="text-muted text-uppercase fw-bold d-block" style="font-size: 0.7rem; letter-spacing: 0.5px;">
+                            DEUDA TOTAL
+                        </span>
+                        <small class="text-muted" style="font-size: 0.75rem;">Saldo deudor acumulado</small>
+                    </div>
+                    <div class="text-end">
+                        <span class="fs-4 fw-black font-orbitron {% if c.deuda_total > 0 %}text-danger{% else %}text-success{% endif %}">
+                            ${{ (c.deuda_total)|cop }}
+                        </span>
+                    </div>
+                </div>
+
+                <!-- Contacto Rápido -->
+                <div class="d-flex justify-content-between align-items-center text-muted small mb-3 px-1">
+                    <div>
+                        {% if c.telefono %}
+                            <a href="tel:{{ c.telefono }}" class="text-decoration-none text-muted">
+                                <i class="fa-solid fa-phone text-primary me-1"></i> {{ c.telefono }}
+                            </a>
+                        {% else %}
+                            <span class="text-muted fst-italic">Sin teléfono registrado</span>
+                        {% endif %}
+                    </div>
+                    {% if c.local_numero %}
+                    <span class="text-muted small"><i class="fa-solid fa-store me-1"></i>{{ c.local_numero }}</span>
+                    {% endif %}
+                </div>
+
+                <!-- Botones de Acción Táctiles (Adaptados a Dedo y Celular) -->
+                <div class="d-flex flex-wrap gap-2 pt-2 border-top mt-auto">
+                    <a href="{{ url_for('bodega_bp.estado_cuenta', id=c.id) }}" class="btn btn-success rounded-pill flex-grow-1 fw-bold text-white shadow-sm py-2 px-3" style="background-color: #10B981; border-color: #10B981;">
+                        <i class="fa-solid fa-file-invoice-dollar me-1"></i> Estado Cuenta
+                    </a>
+                    
+                    <a href="{{ url_for('bodega_bp.cliente_detalle', id=c.id) }}" class="btn btn-outline-dark rounded-pill px-3 py-2 fw-semibold" title="Ver Historial y Facturas">
+                        <i class="fa-solid fa-eye me-1"></i> Ver Cuenta
+                    </a>
+
+                    <a href="{{ url_for('bodega_bp.editar_cliente', id=c.id) }}" class="btn btn-outline-primary rounded-pill px-3 py-2" title="Editar Cliente">
+                        <i class="fa-solid fa-pen"></i>
+                    </a>
+
+                    {% if current_user.rol == 'admin' and c.deuda_total <= 0 %}
+                    <button type="button" class="btn btn-outline-danger rounded-pill px-3 py-2" data-bs-toggle="modal" data-bs-target="#modalEliminarCliente{{ c.id }}" title="Eliminar Cliente">
+                        <i class="fa-solid fa-trash-can"></i>
+                    </button>
+                    {% endif %}
+                </div>
+
+            </div>
+        </div>
+        {% else %}
+        <div class="col-12 text-center py-5 text-muted">
+            <i class="fa-solid fa-users-slash fs-1 mb-3 opacity-25"></i>
+            <p class="mb-0">No hay clientes en el directorio. Registra uno para comenzar.</p>
+        </div>
+        {% endfor %}
+    </div>
+    
+    <!-- Mensaje sin resultados para tarjetas -->
+    <div id="noResultsCards" class="text-center py-5 text-muted d-none">
+        <i class="fa-solid fa-magnifying-glass-minus fs-1 mb-3 opacity-25"></i>
+        <p class="mb-0">No se encontraron clientes que coincidan con tu búsqueda.</p>
+    </div>
+</div>
+
+<!-- Modales de Eliminación -->
+{% for c in clientes %}
+    {% if c.deuda_total <= 0 and current_user.rol == 'admin' %}
+    <div class="modal fade" id="modalEliminarCliente{{ c.id }}" tabindex="-1" aria-labelledby="modalEliminarClienteLabel{{ c.id }}" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content border-0 shadow rounded-4 overflow-hidden">
+                <div class="modal-header bg-danger text-white border-0">
+                    <h5 class="modal-title fw-bold" id="modalEliminarClienteLabel{{ c.id }}">
+                        <i class="fa-solid fa-triangle-exclamation me-2"></i> Confirmar Eliminación
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body p-4">
+                    <p class="mb-2">¿Estás seguro de que deseas eliminar al cliente:</p>
+                    <p class="fw-bold fs-5 text-brand-black mb-3">{{ c.nombre_o_razon_social }}</p>
+                    <div class="alert alert-warning border-0 rounded-3 mb-0">
+                        <i class="fa-solid fa-info-circle me-1"></i> Esta acción eliminará también todas sus facturas y registros asociados. <strong>No se puede deshacer.</strong>
+                    </div>
+                </div>
+                <div class="modal-footer border-0 pt-0">
+                    <button type="button" class="btn btn-outline-secondary rounded-pill px-4" data-bs-dismiss="modal">Cancelar</button>
+                    <form method="POST" action="{{ url_for('bodega_bp.eliminar_cliente', id=c.id) }}" class="d-inline">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <button type="submit" class="btn btn-danger rounded-pill px-4 fw-bold">Sí, Eliminar</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+{% endfor %}
+
+<style>
+.font-orbitron {
+    font-family: 'Orbitron', monospace, sans-serif;
+}
+.hover-primary:hover {
+    color: #0284C7 !important;
+}
+.transition-card {
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+.transition-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 10px 25px rgba(0,0,0,0.08) !important;
+}
+</style>
+
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     const searchInput = document.getElementById('clientesSearch');
     const clearBtn = document.getElementById('clearSearch');
     const dropdown = document.getElementById('searchDropdown');
     const tableRows = document.querySelectorAll('.cliente-row');
+    const cardItems = document.querySelectorAll('.cliente-card-item');
     const visibleCount = document.getElementById('visibleCount');
     const tbody = document.querySelector('tbody');
+    const noResultsCards = document.getElementById('noResultsCards');
 
-    // Crear fila de "No hay resultados"
+    // Conmutador de Vistas: Tabla vs Tarjetas
+    const btnVistaCards = document.getElementById('btnVistaCards');
+    const btnVistaTabla = document.getElementById('btnVistaTabla');
+    const tableView = document.getElementById('clientesTableView');
+    const cardsView = document.getElementById('clientesCardsView');
+
+    function setViewMode(mode) {
+        if (mode === 'cards') {
+            cardsView.classList.remove('d-none');
+            tableView.classList.add('d-none');
+            btnVistaCards.className = 'btn btn-dark px-3';
+            btnVistaTabla.className = 'btn btn-outline-secondary px-3';
+            localStorage.setItem('bodega_clientes_view', 'cards');
+        } else {
+            tableView.classList.remove('d-none');
+            cardsView.classList.add('d-none');
+            btnVistaTabla.className = 'btn btn-dark px-3';
+            btnVistaCards.className = 'btn btn-outline-secondary px-3';
+            localStorage.setItem('bodega_clientes_view', 'table');
+        }
+    }
+
+    // Detección automática según dispositivo: Si es celular o tablet (<992px), vista de tarjetas por defecto
+    const savedView = localStorage.getItem('bodega_clientes_view');
+    if (savedView) {
+        setViewMode(savedView);
+    } else {
+        if (window.innerWidth < 992) {
+            setViewMode('cards');
+        } else {
+            setViewMode('table');
+        }
+    }
+
+    btnVistaCards.addEventListener('click', () => setViewMode('cards'));
+    btnVistaTabla.addEventListener('click', () => setViewMode('table'));
+
+    // Fila de "No hay resultados" para la tabla
     const noResultsRow = document.createElement('tr');
     noResultsRow.className = 'no-results d-none';
-    noResultsRow.innerHTML = `<td colspan="5" class="text-center py-5 text-muted">
+    noResultsRow.innerHTML = `<td colspan="6" class="text-center py-5 text-muted">
         <i class="fa-solid fa-magnifying-glass-minus fs-1 mb-3 opacity-25"></i>
         <p class="mb-0">No se encontraron clientes que coincidan con tu búsqueda.</p>
     </td>`;
-    tbody.appendChild(noResultsRow);
+    if (tbody) tbody.appendChild(noResultsRow);
 
     let debounceTimer;
 
     function performSearch() {
         const query = searchInput.value.toLowerCase().trim();
-        
-        // 1. Filtrado local de la tabla
         let matches = 0;
+
+        // 1. Filtrar filas de la tabla
         tableRows.forEach(row => {
-            const nombre = row.cells[0].textContent.toLowerCase();
-            const documento = row.cells[1].textContent.toLowerCase();
-            if (nombre.includes(query) || documento.includes(query)) {
+            const text = row.textContent.toLowerCase();
+            if (text.includes(query)) {
                 row.classList.remove('d-none');
                 matches++;
             } else {
                 row.classList.add('d-none');
             }
         });
-        visibleCount.textContent = matches;
-        if (matches === 0 && query !== '') noResultsRow.classList.remove('d-none');
-        else noResultsRow.classList.add('d-none');
 
-        // 2. Búsqueda AJAX global para el "despliegue"
+        // 2. Filtrar tarjetas
+        cardItems.forEach(card => {
+            const text = card.textContent.toLowerCase();
+            if (text.includes(query)) {
+                card.classList.remove('d-none');
+            } else {
+                card.classList.add('d-none');
+            }
+        });
+
+        if (visibleCount) visibleCount.textContent = matches;
+
+        // Mensaje sin resultados
+        if (matches === 0 && query !== '') {
+            if (noResultsRow) noResultsRow.classList.remove('d-none');
+            if (noResultsCards) noResultsCards.classList.remove('d-none');
+        } else {
+            if (noResultsRow) noResultsRow.classList.add('d-none');
+            if (noResultsCards) noResultsCards.classList.add('d-none');
+        }
+
+        // Búsqueda AJAX global en dropdown
         clearTimeout(debounceTimer);
         if (query.length < 2) {
             dropdown.classList.add('d-none');
@@ -233,7 +440,6 @@ document.addEventListener('DOMContentLoaded', function() {
 
     searchInput.addEventListener('input', performSearch);
 
-    // Ocultar dropdown al hacer click fuera
     document.addEventListener('click', (e) => {
         if (!searchInput.contains(e.target) && !dropdown.contains(e.target)) {
             dropdown.classList.add('d-none');

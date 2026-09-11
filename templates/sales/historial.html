@@ -338,9 +338,13 @@
                     <td class="text-center align-middle">
                         {% if venta.pagos|length > 1 %}
                             <!-- Pago Mixto: badge especial con tooltip de desglose -->
+                            {% set ns_tt = namespace(text='') %}
+                            {% for p in venta.pagos %}
+                                {% set ns_tt.text = ns_tt.text ~ (p.metodo_pago|capitalize) ~ ': $' ~ ((p.monto)|cop) ~ ('<br>' if not loop.last else '') %}
+                            {% endfor %}
                             <span class="badge bg-light text-dark border border-warning border-opacity-50 rounded-pill px-3 py-2" 
                                   data-bs-toggle="tooltip" data-bs-html="true" data-bs-placement="left"
-                                  title="{% for p in venta.pagos %}{{ p.metodo_pago|capitalize }}: ${{ (p.monto)|cop }}{% if not loop.last %}&lt;br&gt;{% endif %}{% endfor %}"
+                                  title="{{ ns_tt.text }}"
                                   style="cursor: help;">
                                 <i class="fa-solid fa-arrows-split-up-and-left me-1" style="color: #fd7e14;"></i> Pago Mixto
                             </span>
@@ -497,7 +501,7 @@
                                                             </span>
                                                             <input type="text" class="form-control text-end fw-bold input-monto-{{ venta.id }}" 
                                                                    name="monto_efectivo" id="monto_efectivo_{{ venta.id }}" 
-                                                                   value="{{ '{:,}'.format(p_efectivo.val) if p_efectivo.val > 0 else '' }}" 
+                                                                   value="{{ (p_efectivo.val)|cop if p_efectivo.val > 0 else '' }}" 
                                                                    placeholder="0" oninput="formatInputCOP(this); recalcularSuma({{ venta.id }}, {{ venta.monto_total }});">
                                                             <button type="button" class="btn btn-outline-secondary btn-sm" onclick="asignarRestante({{ venta.id }}, 'monto_efectivo', {{ venta.monto_total }})">Todo</button>
                                                         </div>
@@ -509,7 +513,7 @@
                                                             </span>
                                                             <input type="text" class="form-control text-end fw-bold input-monto-{{ venta.id }}" 
                                                                    name="monto_nequi" id="monto_nequi_{{ venta.id }}" 
-                                                                   value="{{ '{:,}'.format(p_nequi.val) if p_nequi.val > 0 else '' }}" 
+                                                                   value="{{ (p_nequi.val)|cop if p_nequi.val > 0 else '' }}" 
                                                                    placeholder="0" oninput="formatInputCOP(this); recalcularSuma({{ venta.id }}, {{ venta.monto_total }});">
                                                             <button type="button" class="btn btn-outline-secondary btn-sm" onclick="asignarRestante({{ venta.id }}, 'monto_nequi', {{ venta.monto_total }})">Todo</button>
                                                         </div>
@@ -521,7 +525,7 @@
                                                             </span>
                                                             <input type="text" class="form-control text-end fw-bold input-monto-{{ venta.id }}" 
                                                                    name="monto_bancolombia" id="monto_bancolombia_{{ venta.id }}" 
-                                                                   value="{{ '{:,}'.format(p_banco.val) if p_banco.val > 0 else '' }}" 
+                                                                   value="{{ (p_banco.val)|cop if p_banco.val > 0 else '' }}" 
                                                                    placeholder="0" oninput="formatInputCOP(this); recalcularSuma({{ venta.id }}, {{ venta.monto_total }});">
                                                             <button type="button" class="btn btn-outline-secondary btn-sm" onclick="asignarRestante({{ venta.id }}, 'monto_bancolombia', {{ venta.monto_total }})">Todo</button>
                                                         </div>
@@ -533,7 +537,7 @@
                                                             </span>
                                                             <input type="text" class="form-control text-end fw-bold input-monto-{{ venta.id }}" 
                                                                    name="monto_daviplata" id="monto_daviplata_{{ venta.id }}" 
-                                                                   value="{{ '{:,}'.format(p_davi.val) if p_davi.val > 0 else '' }}" 
+                                                                   value="{{ (p_davi.val)|cop if p_davi.val > 0 else '' }}" 
                                                                    placeholder="0" oninput="formatInputCOP(this); recalcularSuma({{ venta.id }}, {{ venta.monto_total }});">
                                                             <button type="button" class="btn btn-outline-secondary btn-sm" onclick="asignarRestante({{ venta.id }}, 'monto_daviplata', {{ venta.monto_total }})">Todo</button>
                                                         </div>
@@ -545,7 +549,7 @@
                                                             </span>
                                                             <input type="text" class="form-control text-end fw-bold input-monto-{{ venta.id }}" 
                                                                    name="monto_bolt" id="monto_bolt_{{ venta.id }}" 
-                                                                   value="{{ '{:,}'.format(p_bolt.val) if p_bolt.val > 0 else '' }}" 
+                                                                   value="{{ (p_bolt.val)|cop if p_bolt.val > 0 else '' }}" 
                                                                    placeholder="0" oninput="formatInputCOP(this); recalcularSuma({{ venta.id }}, {{ venta.monto_total }});">
                                                             <button type="button" class="btn btn-outline-secondary btn-sm" onclick="asignarRestante({{ venta.id }}, 'monto_bolt', {{ venta.monto_total }})">Todo</button>
                                                         </div>

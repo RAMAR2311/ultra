@@ -555,6 +555,78 @@ def cliente_detalle(id):
     cliente = Cliente.query.get_or_404(id)
     return render_template('bodega/cliente_detalle.html', cliente=cliente)
 
+@bodega_bp.route('/clientes/<int:id>/estado-cuenta')
+@login_required
+@any_bodega_required
+def estado_cuenta(id):
+    cliente = Cliente.query.get_or_404(id)
+    if current_user.rol == 'vendedor_bodega' and cliente.creado_por_id != current_user.id:
+        flash('No tienes permiso para consultar este cliente.', 'warning')
+        return redirect(url_for('bodega_bp.clientes'))
+
+    # Facturas ordenadas cronológicamente (más recientes primero)
+    facturas_ordenadas = sorted(
+        cliente.facturas, 
+        key=lambda f: f.fecha_subida or datetime.min, 
+        reverse=True
+    )
+    
+    # Abonos ordenados (más recientes primero)
+    abonos_ordenados = sorted(
+        cliente.abonos, 
+        key=lambda a: a.fecha_abono or datetime.min, 
+        reverse=True
+    )
+
+    # Construir extracto contable cronológico (de antiguo a nuevo para saldo acumulado)
+    movimientos_raw = []
+    for f in cliente.facturas:
+        movimientos_raw.append({
+            'tipo': 'FACTURA',
+            'fecha': f.fecha_subida or cliente.fecha_registro or datetime.min,
+            'referencia': f"Factura #{f.numero_factura}",
+            'descripcion': f"Venta a {f.modalidad.upper() if f.modalidad else 'CRÉDITO'}",
+            'cargo': f.monto_total if f.modalidad == 'credito' else Decimal('0'),
+            'abono': Decimal('0'),
+            'modalidad': f.modalidad,
+            'estado': f.estado,
+            'obj': f
+        })
+    for a in cliente.abonos:
+        if not (a.factura and a.factura.modalidad == 'contado'):
+            movimientos_raw.append({
+                'tipo': 'ABONO',
+                'fecha': a.fecha_abono or cliente.fecha_registro or datetime.min,
+                'referencia': f"Abono #{a.id}" + (f" (Fac #{a.factura.numero_factura})" if a.factura else " (Abono Global)"),
+                'descripcion': f"Pago vía {a.metodo_pago.capitalize()}" + (f" - {a.observacion}" if a.observacion else ""),
+                'cargo': Decimal('0'),
+                'abono': a.monto,
+                'metodo': a.metodo_pago,
+                'obj': a
+            })
+
+    movimientos_ordenados = sorted(movimientos_raw, key=lambda m: m['fecha'])
+    saldo_acumulado = Decimal('0')
+    for m in movimientos_ordenados:
+        saldo_acumulado += (m['cargo'] - m['abono'])
+        m['saldo'] = saldo_acumulado
+
+    # Invertir para visualización de movimientos recientes arriba
+    movimientos_display = list(reversed(movimientos_ordenados))
+    fecha_hoy = obtener_hora_bogota()
+    auto_download = request.args.get('download', '0') == '1'
+
+    return render_template(
+        'bodega/estado_cuenta.html',
+        cliente=cliente,
+        facturas=facturas_ordenadas,
+        abonos=abonos_ordenados,
+        movimientos=movimientos_display,
+        fecha_hoy=fecha_hoy,
+        auto_download=auto_download
+    )
+
+
 @bodega_bp.route('/facturas/<int:factura_id>/abono', methods=['POST'])
 @login_required
 @any_bodega_required

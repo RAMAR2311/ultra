@@ -1,0 +1,8 @@
+{
+    "files.associations": {
+        "*.html": "django-html",
+        "**/templates/**/*.html": "django-html"
+    },
+    "html.validate.scripts": false,
+    "html.validate.styles": false
+}
