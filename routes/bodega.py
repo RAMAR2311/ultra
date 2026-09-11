@@ -1,7 +1,7 @@
 from flask import Blueprint, render_template, request, flash, redirect, url_for, current_app, jsonify
 from flask_login import login_required, current_user
 from decorators import any_bodega_required, admin_required, bodega_required
-from models import db, Cliente, FacturaBodega, AbonoBodega, Product, StockAdjustment, FacturaBodegaDetalle, obtener_hora_bogota
+from models import db, Cliente, FacturaBodega, AbonoBodega, Product, StockAdjustment, FacturaBodegaDetalle, obtener_hora_bogota, SystemSetting
 import os
 from decimal import Decimal
 from datetime import datetime, timedelta
@@ -264,31 +264,34 @@ def caja_rapida():
                         from models import ProductVariant
                         variante = ProductVariant.query.get(variant_id)
                         
-                    if variante:
-                        stock_ant = variante.cantidad_stock or 0
-                        variante.cantidad_stock = stock_ant - cantidad
-                        producto.cantidad_stock = sum([v.cantidad_stock for v in producto.variantes])
-                        
-                        ajuste = StockAdjustment(
-                            product_id=producto.id,
-                            admin_id=current_user.id,
-                            tipo_movimiento=f"Venta Bodega Rápida #{numero_factura} (Subcat: {variante.nombre_variante})",
-                            stock_anterior=stock_ant,
-                            stock_nuevo=variante.cantidad_stock
-                        )
-                        db.session.add(ajuste)
-                    else:
-                        stock_ant = producto.cantidad_stock or 0
-                        producto.cantidad_stock = stock_ant - cantidad
-                        
-                        ajuste = StockAdjustment(
-                            product_id=producto.id,
-                            admin_id=current_user.id,
-                            tipo_movimiento=f"Venta Bodega Rápida #{numero_factura}",
-                            stock_anterior=stock_ant,
-                            stock_nuevo=producto.cantidad_stock
-                        )
-                        db.session.add(ajuste)
+                    descontar_stock = SystemSetting.get_bool('descontar_stock_ventas', default=False)
+                    if descontar_stock:
+                        if variante:
+                            stock_ant = variante.cantidad_stock or 0
+                            variante.cantidad_stock = stock_ant - cantidad
+                            if producto.variantes:
+                                producto.cantidad_stock = sum([v.cantidad_stock or 0 for v in producto.variantes])
+                            
+                            ajuste = StockAdjustment(
+                                product_id=producto.id,
+                                admin_id=current_user.id,
+                                tipo_movimiento=f"Venta Bodega Rápida #{numero_factura} (Subcat: {variante.nombre_variante})",
+                                stock_anterior=stock_ant,
+                                stock_nuevo=variante.cantidad_stock
+                            )
+                            db.session.add(ajuste)
+                        else:
+                            stock_ant = producto.cantidad_stock or 0
+                            producto.cantidad_stock = stock_ant - cantidad
+                            
+                            ajuste = StockAdjustment(
+                                product_id=producto.id,
+                                admin_id=current_user.id,
+                                tipo_movimiento=f"Venta Bodega Rápida #{numero_factura}",
+                                stock_anterior=stock_ant,
+                                stock_nuevo=producto.cantidad_stock
+                            )
+                            db.session.add(ajuste)
                         
                     detalle = FacturaBodegaDetalle(
                         factura_id=nueva_fact.id,
@@ -450,30 +453,33 @@ def nueva_factura():
                 )
                 db.session.add(detalle)
                 
-                # 2. Descontar Stock y Registrar Historial de Ajuste (Permitiendo facturar sin stock)
-                if variante:
-                    stock_anterior = variante.cantidad_stock or 0
-                    variante.cantidad_stock = stock_anterior - cant
-                    if producto.variantes:
-                        producto.cantidad_stock = sum([v.cantidad_stock for v in producto.variantes])
-                    ajuste = StockAdjustment(
-                        product_id=producto.id,
-                        admin_id=current_user.id,
-                        tipo_movimiento=f"Salida de subcategoría {variante.nombre_variante} por Factura Bodega #{num_factura}",
-                        stock_anterior=stock_anterior,
-                        stock_nuevo=variante.cantidad_stock
-                    )
-                else:
-                    stock_anterior = producto.cantidad_stock or 0
-                    producto.cantidad_stock = stock_anterior - cant
-                    ajuste = StockAdjustment(
-                        product_id=producto.id,
-                        admin_id=current_user.id,
-                        tipo_movimiento=f"Salida por Factura Bodega #{num_factura}",
-                        stock_anterior=stock_anterior,
-                        stock_nuevo=producto.cantidad_stock
-                    )
-                db.session.add(ajuste)
+                # 2. Descontar Stock y Registrar Historial de Ajuste si está activo en el sistema
+                descontar_stock = SystemSetting.get_bool('descontar_stock_ventas', default=False)
+                if descontar_stock:
+                    if variante:
+                        stock_anterior = variante.cantidad_stock or 0
+                        variante.cantidad_stock = stock_anterior - cant
+                        if producto.variantes:
+                            producto.cantidad_stock = sum([v.cantidad_stock or 0 for v in producto.variantes])
+                        ajuste = StockAdjustment(
+                            product_id=producto.id,
+                            admin_id=current_user.id,
+                            tipo_movimiento=f"Salida de subcategoría {variante.nombre_variante} por Factura Bodega #{num_factura}",
+                            stock_anterior=stock_anterior,
+                            stock_nuevo=variante.cantidad_stock
+                        )
+                        db.session.add(ajuste)
+                    else:
+                        stock_anterior = producto.cantidad_stock or 0
+                        producto.cantidad_stock = stock_anterior - cant
+                        ajuste = StockAdjustment(
+                            product_id=producto.id,
+                            admin_id=current_user.id,
+                            tipo_movimiento=f"Salida por Factura Bodega #{num_factura}",
+                            stock_anterior=stock_anterior,
+                            stock_nuevo=producto.cantidad_stock
+                        )
+                        db.session.add(ajuste)
 
             db.session.commit()
             flash('Factura guardada y stock de inventario descontado correctamente.', 'success')
@@ -498,10 +504,18 @@ def nueva_factura():
 @login_required
 @any_bodega_required
 def api_buscar_producto_bodega(sku):
-    producto = Product.query.filter_by(sku=sku, tipo_inventario='bodega').first()
+    sku_clean = sku.strip()
+    producto = Product.query.filter_by(sku=sku_clean, tipo_inventario='bodega').first()
+    if not producto:
+        producto = Product.query.filter(Product.sku.ilike(sku_clean), Product.tipo_inventario == 'bodega').first()
+    if not producto:
+        # Fallback a inventario general si no está catalogado estrictamente como bodega
+        producto = Product.query.filter_by(sku=sku_clean).first()
+    if not producto:
+        producto = Product.query.filter(Product.sku.ilike(sku_clean)).first()
     
     if not producto:
-        return jsonify({'error': 'Código SKU no encontrado en bodega'}), 404
+        return jsonify({'error': 'Código SKU no encontrado en el catálogo'}), 404
         
     return jsonify({
         'id': producto.id,

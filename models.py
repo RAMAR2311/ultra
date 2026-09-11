@@ -504,4 +504,40 @@ class PriceApproval(db.Model):
     def __init__(self, **kwargs):
         super(PriceApproval, self).__init__(**kwargs)
 
+class SystemSetting(db.Model):
+    """Modelo para configuraciones dinámicas del sistema."""
+    __tablename__ = 'system_settings'
+
+    clave = db.Column(db.String(100), primary_key=True)
+    valor = db.Column(db.String(255), nullable=False)
+    descripcion = db.Column(db.String(255), nullable=True)
+
+    def __init__(self, **kwargs):
+        super(SystemSetting, self).__init__(**kwargs)
+
+    @classmethod
+    def get_bool(cls, clave, default=False):
+        try:
+            setting = cls.query.filter_by(clave=clave).first()
+            if not setting:
+                return default
+            return setting.valor.strip().lower() in ('true', '1', 'si', 'yes')
+        except Exception:
+            return default
+
+    @classmethod
+    def set_bool(cls, clave, valor, descripcion=None):
+        str_val = 'true' if valor else 'false'
+        setting = cls.query.filter_by(clave=clave).first()
+        if not setting:
+            setting = cls(clave=clave, valor=str_val, descripcion=descripcion)
+            db.session.add(setting)
+        else:
+            setting.valor = str_val
+            if descripcion:
+                setting.descripcion = descripcion
+        db.session.commit()
+        return valor
+
+
 

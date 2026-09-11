@@ -1,6 +1,6 @@
 from flask import Blueprint, request, jsonify, flash, redirect, render_template, abort, url_for
 from flask_login import login_required, current_user
-from models import db, Product, ProductVariant, Sale, SaleDetail, SalePayment, Expense, obtener_hora_bogota, ArqueoCaja, PriceApproval
+from models import db, Product, ProductVariant, Sale, SaleDetail, SalePayment, Expense, obtener_hora_bogota, ArqueoCaja, PriceApproval, SystemSetting, StockAdjustment
 from decorators import admin_required
 from decimal import Decimal
 from datetime import datetime, timedelta
@@ -129,44 +129,46 @@ def procesar_venta():
                 if not producto:
                     raise ValueError(f"El producto con ID {product_id} no existe.")
 
+                # Consultar si el sistema tiene activado el descuento de stock
+                descontar_stock = SystemSetting.get_bool('descontar_stock_ventas', default=False)
+
+                ajuste = None
                 if variant_id:
                     variante = ProductVariant.query.with_for_update().get(variant_id)
                     if not variante:
                         raise ValueError(f"La variante con ID {variant_id} no existe.")
-                    if cantidad_vendida > variante.cantidad_stock:
-                        raise ValueError(f"Stock insuficiente para la variante '{variante.nombre_variante}' de '{producto.nombre}'. Solicitado: {cantidad_vendida}, Disponible: {variante.cantidad_stock}.")
                     
-                    stock_anterior = variante.cantidad_stock
-                    variante.cantidad_stock -= cantidad_vendida
-                    producto.cantidad_stock -= cantidad_vendida # Sincronizar producto base
                     precio_limite_autorizado = variante.precio_costo if current_user.rol == 'admin' else variante.precio_minimo
-                    
-                    from models import StockAdjustment
-                    ajuste = StockAdjustment(
-                        product_id=producto.id,
-                        admin_id=current_user.id,
-                        tipo_movimiento=f"Venta Tienda (Subcat: {variante.nombre_variante})",
-                        stock_anterior=stock_anterior,
-                        stock_nuevo=variante.cantidad_stock
-                    )
-                    db.session.add(ajuste)
+
+                    if descontar_stock:
+                        stock_anterior = variante.cantidad_stock or 0
+                        variante.cantidad_stock = stock_anterior - cantidad_vendida
+                        if producto.variantes:
+                            producto.cantidad_stock = sum(v.cantidad_stock or 0 for v in producto.variantes)
+                        
+                        ajuste = StockAdjustment(
+                            product_id=producto.id,
+                            admin_id=current_user.id,
+                            tipo_movimiento=f"Venta Tienda (Subcat: {variante.nombre_variante})",
+                            stock_anterior=stock_anterior,
+                            stock_nuevo=variante.cantidad_stock
+                        )
+                        db.session.add(ajuste)
                 else:
-                    if cantidad_vendida > producto.cantidad_stock:
-                        raise ValueError(f"Stock insuficiente para el producto '{producto.nombre}'. Solicitado: {cantidad_vendida}, Disponible: {producto.cantidad_stock}.")
-                    
-                    stock_anterior = producto.cantidad_stock
-                    producto.cantidad_stock -= cantidad_vendida
                     precio_limite_autorizado = producto.precio_costo if current_user.rol == 'admin' else producto.precio_minimo
-                    
-                    from models import StockAdjustment
-                    ajuste = StockAdjustment(
-                        product_id=producto.id,
-                        admin_id=current_user.id,
-                        tipo_movimiento="Venta Tienda",
-                        stock_anterior=stock_anterior,
-                        stock_nuevo=producto.cantidad_stock
-                    )
-                    db.session.add(ajuste)
+
+                    if descontar_stock:
+                        stock_anterior = producto.cantidad_stock or 0
+                        producto.cantidad_stock = stock_anterior - cantidad_vendida
+                        
+                        ajuste = StockAdjustment(
+                            product_id=producto.id,
+                            admin_id=current_user.id,
+                            tipo_movimiento="Venta Tienda",
+                            stock_anterior=stock_anterior,
+                            stock_nuevo=producto.cantidad_stock
+                        )
+                        db.session.add(ajuste)
 
                 if not es_obsequio and precio_venta_final < precio_limite_autorizado:
                     # Si no es admin, verificar si cuenta con una aprobación remota activa
@@ -198,7 +200,8 @@ def procesar_venta():
                 db.session.flush() # Importante para tener el id de la venta si se quisiera, pero ya lo tenemos en nueva_venta.id
                 
                 # Para añadir el ID de la venta al tipo de movimiento ahora que la venta tiene ID asignado:
-                ajuste.tipo_movimiento = f"{ajuste.tipo_movimiento} #{nueva_venta.id}"
+                if ajuste:
+                    ajuste.tipo_movimiento = f"{ajuste.tipo_movimiento} #{nueva_venta.id}"
                 
                 monto_total += (precio_venta_final * cantidad_vendida)
 
@@ -260,8 +263,10 @@ def procesar_venta():
         return jsonify({'error': str(val_err)}), 400
         
     except Exception as e:
+        import traceback
+        traceback.print_exc()
         db.session.rollback()
-        return jsonify({'error': 'Ocurrió un error interno al procesar la venta.'}), 500
+        return jsonify({'error': f'Ocurrió un error interno al procesar la venta: {str(e)}'}), 500
 
 @sales_bp.route('/api/search_products')
 @login_required

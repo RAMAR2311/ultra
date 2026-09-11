@@ -2,10 +2,11 @@ import os
 from werkzeug.utils import secure_filename
 from flask import current_app, Blueprint, render_template, request, redirect, url_for, flash, abort, send_file, jsonify
 from flask_login import login_required, current_user
-from models import db, Product, StockAdjustment, ProductVariant
+from models import db, Product, StockAdjustment, ProductVariant, SystemSetting
 from decorators import admin_required, admin_or_bodega_required
 import pandas as pd
 from io import BytesIO
+from sqlalchemy import or_, and_
 
 inventory_bp = Blueprint('inventory_bp', __name__)
 
@@ -16,11 +17,11 @@ def index():
     tipo = 'bodega' if current_user.rol == 'bodega' else 'tienda'
     page = request.args.get('page', 1, type=int)
     q = request.args.get('q', '').strip()
+    filtro_foto = request.args.get('foto', '').strip()
     per_page = 20
 
     base_query = Product.query.filter_by(tipo_inventario=tipo)
     if q:
-        from sqlalchemy import or_
         base_query = base_query.filter(
             or_(
                 Product.sku.ilike(f'%{q}%'),
@@ -29,6 +30,11 @@ def index():
                 Product.variantes.any(ProductVariant.nombre_variante.ilike(f'%{q}%'))
             )
         )
+
+    if filtro_foto == 'con_foto':
+        base_query = base_query.filter(Product.imagen.isnot(None), Product.imagen != '')
+    elif filtro_foto == 'sin_foto':
+        base_query = base_query.filter(or_(Product.imagen.is_(None), Product.imagen == ''))
 
     # Paginación del listado principal
     paginacion = base_query.order_by(Product.nombre).paginate(
@@ -44,7 +50,15 @@ def index():
     valor_costo = 0.0
     valor_sugerido = 0.0
     total_unidades_fisicas = 0
+    total_con_foto = 0
+    total_sin_foto = 0
+
     for p in todos:
+        if p.imagen and str(p.imagen).strip():
+            total_con_foto += 1
+        else:
+            total_sin_foto += 1
+
         if p.variantes:
             for v in p.variantes:
                 costo = float(v.precio_costo or p.precio_costo or 0)
@@ -61,16 +75,35 @@ def index():
             valor_sugerido += sugerido * stock
             total_unidades_fisicas += stock
 
+    descontar_stock_activo = SystemSetting.get_bool('descontar_stock_ventas', default=False)
+
     return render_template(
         'inventory/index.html',
         productos=productos,
         paginacion=paginacion,
         total_productos=total_productos,
+        total_con_foto=total_con_foto,
+        total_sin_foto=total_sin_foto,
+        filtro_foto=filtro_foto,
+        descontar_stock_activo=descontar_stock_activo,
         valor_costo=valor_costo,
         valor_sugerido=valor_sugerido,
         total_unidades_fisicas=total_unidades_fisicas,
         q=q
     )
+
+@inventory_bp.route('/toggle_descontar_stock', methods=['POST'])
+@login_required
+@admin_or_bodega_required
+def toggle_descontar_stock():
+    actual = SystemSetting.get_bool('descontar_stock_ventas', default=False)
+    nuevo_estado = not actual
+    SystemSetting.set_bool('descontar_stock_ventas', nuevo_estado, descripcion="Indica si las ventas y facturas descuentan unidades del stock")
+    if nuevo_estado:
+        flash('Descuento de stock ACTIVADO: A partir de ahora, las ventas y facturas restarán unidades del inventario.', 'success')
+    else:
+        flash('Descuento de stock PAUSADO: Puedes facturar y vender libremente sin que se descuenten unidades del inventario mientras realizas la subida.', 'warning')
+    return redirect(request.referrer or url_for('inventory_bp.index'))
 
 @inventory_bp.route('/nuevo', methods=['GET', 'POST'])
 @login_required

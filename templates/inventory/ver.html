@@ -19,10 +19,17 @@
         <div class="col-lg-4">
             <div class="card card-custom p-4 text-center border-0 shadow-sm h-100">
                 {% if producto.imagen %}
-                    <img src="{{ url_for('static', filename='uploads/' ~ producto.imagen) }}" alt="{{ producto.nombre }}" class="img-fluid rounded mb-4 shadow-sm" style="max-height: 280px; object-fit: contain;">
+                    <div class="position-relative mb-4">
+                        <img src="{{ url_for('static', filename='uploads/' ~ producto.imagen) }}" alt="{{ producto.nombre }}" class="img-fluid rounded shadow-sm" style="max-height: 280px; object-fit: contain;">
+                        <span class="badge bg-success position-absolute top-0 end-0 m-2 rounded-pill px-3 py-2 shadow-sm"><i class="fa-solid fa-check me-1"></i>Con Fotografía</span>
+                    </div>
                 {% else %}
-                    <div class="bg-light rounded d-flex align-items-center justify-content-center mb-4 border" style="height: 250px;">
-                        <i class="fa-solid fa-image fa-4x text-muted opacity-50"></i>
+                    <div class="bg-light rounded d-flex flex-column align-items-center justify-content-center mb-4 border p-4" style="height: 250px;">
+                        <i class="fa-solid fa-image-slash fa-4x text-danger opacity-50 mb-2"></i>
+                        <span class="badge bg-danger bg-opacity-10 text-danger border border-danger-subtle rounded-pill px-3 py-2 fw-bold"><i class="fa-solid fa-triangle-exclamation me-1"></i>Producto Sin Foto</span>
+                        <a href="{{ url_for('inventory_bp.editar_producto', id=producto.id) }}" class="btn btn-sm btn-outline-primary rounded-pill mt-3 px-3">
+                            <i class="fa-solid fa-upload me-1"></i>Subir foto ahora
+                        </a>
                     </div>
                 {% endif %}
                 

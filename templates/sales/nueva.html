@@ -914,19 +914,10 @@
         );
 
         if (existente) {
-            if (existente.cantidad + 1 > maxStock) {
-                posToast(`¡Stock insuficiente! Solo quedan ${maxStock} unidades de ${producto.nombre}.`, 'warning');
-                return;
-            }
             existente.cantidad++;
             posToast(`+1 ${producto.nombre} (${existente.cantidad} en venta)`, 'info');
             renderizarCarrito(existente.id, variantId);
         } else {
-            if (maxStock <= 0) {
-                posToast(`¡Sin Stock Físico! ${producto.nombre} no tiene unidades disponibles.`, 'warning');
-                return;
-            }
-
             carrito.push({
                 id: producto.id,
                 sku: producto.sku,
@@ -1256,20 +1247,6 @@
                 renderizarCarrito();
                 return;
             }
-            
-            if (!item.es_manual) {
-                let max_stock = item.cantidad_stock;
-                if (item.variantes && item.variantes.length > 0) {
-                    const varSel = item.variantes.find(v => v.id == item.variant_id);
-                    if (varSel) max_stock = varSel.stock;
-                }
-
-                if (nuevaCantidad > max_stock) {
-                    posToast(`Stock insuficiente. Máximo disponible: ${max_stock}`, 'warning');
-                    renderizarCarrito();
-                    return;
-                }
-            }
             item.cantidad = nuevaCantidad;
         }
 
@@ -1280,10 +1257,6 @@
             item.aprobacion_id = null;
             const varSel = item.variantes.find(v => v.id == item.variant_id);
             if (varSel) {
-                if (item.cantidad > varSel.stock) {
-                    posToast(`Variante con stock limitado (${varSel.stock}). Ajustando cantidad.`, 'warning');
-                    item.cantidad = varSel.stock > 0 ? varSel.stock : 1;
-                }
                 item.precio_final = varSel.precio_sugerido;
                 item.precio_limite = varSel.precio_limite;
                 item.precio_minimo = varSel.precio_minimo;

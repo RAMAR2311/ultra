@@ -161,8 +161,11 @@
         if (!sku) return;
 
         fetch(`/bodega/api/producto/${encodeURIComponent(sku)}`)
-            .then(res => {
-                if (!res.ok) throw new Error("Producto no existe en la bodega o no hay stock.");
+            .then(async res => {
+                if (!res.ok) {
+                    const errData = await res.json().catch(() => ({}));
+                    throw new Error(errData.error || "Código de producto (SKU) no encontrado en el catálogo.");
+                }
                 return res.json();
             })
             .then(data => {

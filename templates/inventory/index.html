@@ -1,9 +1,29 @@
 {% extends "base.html" %}
 
 {% block content %}
-<div class="d-flex justify-content-between align-items-center mb-4">
-    <h2 class="fw-bold text-brand-black m-0">Inventario Central</h2>
-    <div class="d-flex gap-2">
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4">
+    <div>
+        <h2 class="fw-bold text-brand-black m-0">Inventario Central</h2>
+        <small class="text-muted">Gestión de catálogo, existencias y control fotográfico</small>
+    </div>
+    <div class="d-flex flex-wrap align-items-center gap-2">
+        <!-- Switch de Activación de Descuento de Stock -->
+        <form method="POST" action="{{ url_for('inventory_bp.toggle_descontar_stock') }}" class="d-inline m-0">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            {% if descontar_stock_activo %}
+            <button type="submit" class="btn btn-outline-success rounded-pill px-3 py-2 fw-bold shadow-sm d-inline-flex align-items-center gap-2" title="Haz clic para pausar el descuento de inventario durante la subida">
+                <i class="fa-solid fa-toggle-on text-success fs-5"></i>
+                <span class="small">Descontar Stock: <strong class="text-success">ACTIVO</strong></span>
+            </button>
+            {% else %}
+            <button type="submit" class="btn btn-outline-warning rounded-pill px-3 py-2 fw-bold shadow-sm d-inline-flex align-items-center gap-2" style="background-color: #fffbeb; border-color: #f59e0b;" title="Haz clic para activar el descuento de inventario una vez subido el stock">
+                <i class="fa-solid fa-toggle-off text-muted fs-5"></i>
+                <span class="small text-dark">Descontar Stock: <strong class="text-danger">PAUSADO</strong></span>
+                <span class="badge bg-warning text-dark rounded-pill" style="font-size: 0.65rem;">Modo Subida</span>
+            </button>
+            {% endif %}
+        </form>
+
         <button type="button" class="btn btn-outline-success rounded-pill px-4 fw-bold shadow-sm" data-bs-toggle="modal" data-bs-target="#importarModal">
             <i class="fa-solid fa-file-excel me-1"></i> Importar Masivo
         </button>
@@ -12,6 +32,24 @@
         </a>
     </div>
 </div>
+
+{% if not descontar_stock_activo %}
+<div class="alert alert-warning border-0 shadow-sm rounded-4 d-flex align-items-center justify-content-between p-3 mb-4" style="background: linear-gradient(90deg, #fffbeb 0%, #fef3c7 100%); border-left: 5px solid #f59e0b !important;">
+    <div class="d-flex align-items-center gap-3">
+        <i class="fa-solid fa-cloud-arrow-up text-warning fs-2"></i>
+        <div>
+            <div class="fw-bold text-dark">MODO SUBIDA DE INVENTARIO: Venta sin descuento de stock</div>
+            <small class="text-secondary">Actualmente puedes facturar en <strong>Tienda y Bodega sin necesidad de tener stock</strong> y las ventas <strong>NO descontarán unidades</strong> del inventario. Cuando termines de subir tu inventario, pulsa el botón superior para activar el descuento automático.</small>
+        </div>
+    </div>
+    <form method="POST" action="{{ url_for('inventory_bp.toggle_descontar_stock') }}" class="d-none d-md-block m-0">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <button type="submit" class="btn btn-warning btn-sm rounded-pill fw-bold text-dark px-3 shadow-sm text-nowrap">
+            <i class="fa-solid fa-power-off me-1"></i> Activar Descuento Ahora
+        </button>
+    </form>
+</div>
+{% endif %}
 
 <!-- Fila de Tarjetas Dinámicas de Inventario (Mismo color de tarjeta de Proveedores: #7BC8D0) -->
 <div class="row g-3 mb-4">
@@ -30,8 +68,11 @@
                 </div>
             </div>
             <div class="mt-2 pt-2 border-top d-flex justify-content-between align-items-center text-muted small">
-                <span><i class="fa-solid fa-tag me-1 text-muted"></i> <strong>{{ total_productos }}</strong> referencias activas</span>
-                <span class="badge bg-light text-dark border rounded-pill px-2 py-1">Stock Físico</span>
+                <span><i class="fa-solid fa-tag me-1 text-muted"></i> <strong>{{ total_productos }}</strong> referencias</span>
+                <span title="Control de imágenes cargadas">
+                    <span class="text-success fw-bold"><i class="fa-solid fa-camera me-1"></i>{{ total_con_foto }}</span> / 
+                    <span class="text-danger fw-bold"><i class="fa-solid fa-image-slash me-1"></i>{{ total_sin_foto }}</span>
+                </span>
             </div>
         </div>
     </div>
@@ -127,6 +168,27 @@
     </div>
 </div>
 
+<!-- Barra de Filtros Rápidos por Estado de Foto -->
+<div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
+    <div class="d-flex flex-wrap align-items-center gap-2">
+        <span class="small fw-bold text-muted text-uppercase me-1" style="font-size: 0.75rem;"><i class="fa-solid fa-camera me-1 text-primary"></i> Filtrar por Foto:</span>
+        <a href="{{ url_for('inventory_bp.index', q=q) }}" class="btn btn-sm rounded-pill px-3 fw-bold {% if not filtro_foto %}btn-dark shadow-sm{% else %}btn-light border text-muted{% endif %}">
+            Todos ({{ total_productos }})
+        </a>
+        <a href="{{ url_for('inventory_bp.index', q=q, foto='con_foto') }}" class="btn btn-sm rounded-pill px-3 fw-bold {% if filtro_foto == 'con_foto' %}btn-success shadow-sm{% else %}btn-light border text-success{% endif %}">
+            <i class="fa-solid fa-circle-check me-1"></i> Con Foto ({{ total_con_foto }})
+        </a>
+        <a href="{{ url_for('inventory_bp.index', q=q, foto='sin_foto') }}" class="btn btn-sm rounded-pill px-3 fw-bold {% if filtro_foto == 'sin_foto' %}btn-danger shadow-sm{% else %}btn-light border text-danger{% endif %}">
+            <i class="fa-solid fa-triangle-exclamation me-1"></i> Sin Foto ({{ total_sin_foto }})
+        </a>
+        {% if filtro_foto %}
+        <a href="{{ url_for('inventory_bp.index', q=q) }}" class="text-muted small ms-2 text-decoration-none" title="Limpiar filtro de fotos">
+            <i class="fa-solid fa-xmark me-1"></i> Quitar filtro
+        </a>
+        {% endif %}
+    </div>
+</div>
+
 <div class="card card-custom p-0 overflow-hidden">
     <div class="table-responsive">
         <table class="table table-hover table-custom mb-0">
@@ -134,6 +196,7 @@
                 <tr>
                     <th width="120" class="ps-4">SKU</th>
                     <th>PRODUCTO</th>
+                    <th width="110" class="text-center">FOTO</th>
                     <th width="150" class="text-center">STOCK</th>
                     <th width="150" class="text-end">PRECIO COSTO</th>
                     <th width="150" class="text-end">PRECIO MÍNIMO</th>
@@ -158,6 +221,23 @@
                         <small><strong>{{ p.sku }}</strong></small>
                     </td>
                     <td class="fw-semibold text-brand-black">{{ p.nombre }}</td>
+                    <td class="text-center align-middle">
+                        {% if p.imagen %}
+                            <div class="d-inline-flex align-items-center gap-1">
+                                <a href="{{ url_for('static', filename='uploads/' + p.imagen) }}" target="_blank" title="Ver foto ampliada">
+                                    <img src="{{ url_for('static', filename='uploads/' + p.imagen) }}" alt="{{ p.nombre }}" class="rounded shadow-2xs border" style="width: 36px; height: 36px; object-fit: cover;" onerror="this.onerror=null; this.parentElement.innerHTML='<span class=\'badge bg-danger bg-opacity-10 text-danger rounded-pill\'>Error img</span>';">
+                                </a>
+                                <span class="badge bg-success bg-opacity-10 text-success border border-success-subtle rounded-pill py-1 px-2" style="font-size: 0.65rem;" title="Foto cargada">
+                                    <i class="fa-solid fa-check"></i>
+                                </span>
+                            </div>
+                        {% else %}
+                            <a href="{{ url_for('inventory_bp.editar_producto', id=p.id) }}" class="badge text-decoration-none bg-danger bg-opacity-10 text-danger border border-danger-subtle rounded-pill py-1 px-2 d-inline-flex align-items-center gap-1" style="font-size: 0.68rem;" title="Subir foto a este producto">
+                                <i class="fa-solid fa-camera"></i>
+                                <span>Sin Foto</span>
+                            </a>
+                        {% endif %}
+                    </td>
                     <td>
                         <!-- Regla Estricta: Badge rojo si el stock <= 3 -->
                         {% if p.total_stock <= 3 %}
@@ -229,7 +309,7 @@
                 </tr>
                 {% if p.variantes %}
                 <tr class="collapse bg-light collapse-variantes-fila" id="collapseVariantes{{ p.id }}" data-parent-id="{{ p.id }}">
-                    <td colspan="7" class="p-0 border-bottom border-dark border-opacity-10 shadow-inner">
+                    <td colspan="8" class="p-0 border-bottom border-dark border-opacity-10 shadow-inner">
                         <div class="p-3 bg-white" style="border-left: 4px solid var(--brand-pink); border-radius: 0 0 8px 8px;">
                             <table class="table table-sm table-borderless mb-0">
                                 <thead class="text-muted" style="font-size: 0.8rem; border-bottom: 1px solid #eee;">
@@ -265,7 +345,7 @@
                 {% endif %}
                 {% else %}
                 <tr>
-                    <td colspan="7" class="text-center py-5 text-muted">
+                    <td colspan="8" class="text-center py-5 text-muted">
                         <!-- Icono en Rosa Pastel -->
                         <i class="fa-solid fa-box-open fs-1 mb-3 text-brand-pink"></i>
                         <p class="mb-0">
