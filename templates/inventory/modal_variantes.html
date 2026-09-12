@@ -1,11 +1,11 @@
 <div class="modal fade" id="variantesModal{{ p.id }}" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
         <div class="modal-content border-0 shadow">
             <div class="modal-header border-0 bg-light">
                 <h5 class="modal-title fw-bold text-brand-black">Gestión de Subcategorías - {{ p.nombre }}</h5>
                 <button type="button" class="btn-close shadow-none" data-bs-dismiss="modal"></button>
             </div>
-            <div class="modal-body p-4 text-start bg-light rounded-bottom">
+            <div class="modal-body p-3 p-md-4 text-start bg-light rounded-bottom">
                 
                 <!-- Sección para Añadir Nueva Variante -->
                 <div class="card border-0 shadow-sm mb-4">
@@ -14,31 +14,31 @@
                         <form method="POST" action="{{ url_for('inventory_bp.agregar_variante', id=p.id) }}">
                             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                             <div class="row g-2 mb-3">
-                                <div class="col-md-9">
+                                <div class="col-12 col-sm-8 col-md-9">
                                     <label class="form-label small text-muted mb-1 fw-bold">Nombre o Atributo</label>
                                     <input type="text" name="nombre_variante" class="form-control form-control-sm" placeholder="Ej: Funda Silicona Negra" required>
                                 </div>
-                                <div class="col-md-3">
+                                <div class="col-12 col-sm-4 col-md-3">
                                     <label class="form-label small text-muted mb-1 fw-bold">Stock Inicial</label>
                                     <input type="number" name="cantidad_stock" class="form-control form-control-sm" placeholder="0" required min="0">
                                 </div>
                             </div>
                             <div class="row g-2 mb-3">
-                                <div class="col-md-4">
+                                <div class="col-12 col-sm-4">
                                     <label class="form-label small text-muted mb-1 fw-bold">P. Costo (Opcional)</label>
                                     <div class="input-group input-group-sm">
                                         <span class="input-group-text bg-light text-muted border-end-0">$</span>
                                         <input type="number" step="1" name="precio_costo" class="form-control border-start-0 ps-0" placeholder="{{ "%.0f"|format(p.precio_costo) }}">
                                     </div>
                                 </div>
-                                <div class="col-md-4">
+                                <div class="col-12 col-sm-4">
                                     <label class="form-label small text-muted mb-1 fw-bold">P. Mínimo (Opcional)</label>
                                     <div class="input-group input-group-sm">
                                         <span class="input-group-text bg-light text-muted border-end-0">$</span>
                                         <input type="number" step="1" name="precio_minimo" class="form-control border-start-0 ps-0" placeholder="{{ "%.0f"|format(p.precio_minimo) }}">
                                     </div>
                                 </div>
-                                <div class="col-md-4">
+                                <div class="col-12 col-sm-4">
                                     <label class="form-label small fw-bold mb-1" style="color: var(--brand-pink);">P. Sugerido (Opcional)</label>
                                     <div class="input-group input-group-sm">
                                         <span class="input-group-text bg-light text-muted border-end-0">$</span>
@@ -46,7 +46,7 @@
                                     </div>
                                 </div>
                             </div>
-                            <button type="submit" class="btn btn-success btn-sm fw-bold w-100 rounded-pill"><i class="fa-solid fa-plus me-1"></i> Registrar Subcategoría</button>
+                            <button type="submit" class="btn btn-success btn-sm fw-bold w-100 rounded-pill py-2"><i class="fa-solid fa-plus me-1"></i> Registrar Subcategoría</button>
                         </form>
                     </div>
                 </div>
@@ -84,22 +84,22 @@
                                     </div>
                                 </div>
 
-                                <div class="row g-2 align-items-end pe-4"> 
-                                    <div class="col-4">
+                                <div class="row g-2 align-items-end pe-md-4"> 
+                                    <div class="col-12 col-sm-4">
                                         <label class="form-label text-muted mb-1" style="font-size: 0.65rem; letter-spacing: 0.5px;">COSTO REAL</label>
                                         <div class="input-group input-group-sm">
                                             <span class="input-group-text bg-transparent border-end-0 text-muted px-2">$</span>
                                             <input type="number" step="1" name="precio_costo[]" class="form-control border-start-0 ps-0 text-secondary" value="{{ "%.0f"|format(v.precio_costo|float) if v.precio_costo else "%.0f"|format(p.precio_costo|float) }}">
                                         </div>
                                     </div>
-                                    <div class="col-4">
+                                    <div class="col-12 col-sm-4">
                                         <label class="form-label text-muted mb-1" style="font-size: 0.65rem; letter-spacing: 0.5px;">P. MÍNIMO DEV.</label>
                                         <div class="input-group input-group-sm">
                                             <span class="input-group-text bg-transparent border-end-0 text-muted px-2">$</span>
                                             <input type="number" step="1" name="precio_minimo[]" class="form-control border-start-0 ps-0 text-secondary" value="{{ "%.0f"|format(v.precio_minimo|float) if v.precio_minimo else "%.0f"|format(p.precio_minimo|float) }}">
                                         </div>
                                     </div>
-                                    <div class="col-4">
+                                    <div class="col-12 col-sm-4">
                                         <label class="form-label mb-1" style="font-size: 0.65rem; letter-spacing: 0.5px; color: var(--brand-pink);">P. SUGERIDO</label>
                                         <div class="input-group input-group-sm">
                                             <span class="input-group-text bg-transparent border-end-0 fw-bold px-2" style="color: var(--brand-pink);">$</span>
