@@ -523,6 +523,10 @@ class SystemSetting(db.Model):
                 return default
             return setting.valor.strip().lower() in ('true', '1', 'si', 'yes')
         except Exception:
+            # Si la consulta falla (ej: tabla ausente), Postgres deja la transacción
+            # abortada. Sin este rollback, cualquier operación posterior en la misma
+            # petición (como registrar una venta) fallaba en cadena.
+            db.session.rollback()
             return default
 
     @classmethod
