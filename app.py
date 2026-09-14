@@ -277,6 +277,29 @@ def create_app():
         from flask import render_template
         return render_template('offline.html')
 
+    # Manejador Global de Errores: red de seguridad para la sesión de Base de Datos.
+    # Si una consulta falla a mitad de una petición y la ruta no hace su propio
+    # rollback, Postgres deja la transacción en estado "aborted" y esa conexión
+    # queda inservible para las peticiones siguientes hasta reiniciar el servicio
+    # (esto fue la causa de que las ventas fallaran en cadena el 2026-09-14).
+    # Este handler garantiza el rollback siempre, sin alterar el comportamiento
+    # normal de errores HTTP (404, 403, etc.).
+    @app.errorhandler(Exception)
+    def manejar_error_global(e):
+        from flask import request, jsonify
+        from werkzeug.exceptions import HTTPException
+
+        if isinstance(e, HTTPException):
+            return e
+
+        db.session.rollback()
+        app.logger.exception('Error no controlado')
+
+        if request.path.startswith('/api') or request.is_json:
+            return jsonify({'error': f'Ocurrió un error interno al procesar la solicitud: {str(e)}'}), 500
+
+        return "<h1>Ocurrió un error interno</h1><p>Por favor intenta nuevamente. Si el problema persiste, contacta al administrador.</p>", 500
+
     return app
 
 if __name__ == '__main__':
