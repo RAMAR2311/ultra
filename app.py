@@ -308,12 +308,21 @@ def create_app():
             return e
 
         db.session.rollback()
-        app.logger.exception('Error no controlado')
+        import traceback
+        traceback.print_exc()
+        app.logger.exception('Error no controlado: %s', str(e))
 
         if request.path.startswith('/api') or request.is_json:
             return jsonify({'error': f'Ocurrió un error interno al procesar la solicitud: {str(e)}'}), 500
 
-        return "<h1>Ocurrió un error interno</h1><p>Por favor intenta nuevamente. Si el problema persiste, contacta al administrador.</p>", 500
+        return f"""
+        <div style="font-family: sans-serif; max-width: 650px; margin: 50px auto; padding: 25px; border: 1px solid #FECDD3; background: #FFF1F2; border-radius: 12px; color: #9F1239;">
+            <h2 style="margin-top: 0; color: #E11D48;">Ocurrió un error interno</h2>
+            <p><strong>Detalle técnico:</strong> {str(e)}</p>
+            <p style="color: #64748B; font-size: 0.9rem;">Por favor toma una captura o copia este mensaje para solucionarlo.</p>
+            <a href="javascript:history.back()" style="display: inline-block; margin-top: 10px; background: #0F172A; color: white; padding: 8px 16px; border-radius: 8px; text-decoration: none; font-weight: bold; font-size: 0.85rem;">← Volver</a>
+        </div>
+        """, 500
 
     return app
 
