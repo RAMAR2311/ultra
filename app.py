@@ -1,8 +1,16 @@
 import os
-from dotenv import load_dotenv
 
-# Cargar variables de entorno desde .env si existe
-load_dotenv()
+# Cargar variables de entorno explícitamente desde el .env del proyecto
+try:
+    from dotenv import load_dotenv
+    base_dir = os.path.dirname(os.path.abspath(__file__))
+    env_path = os.path.join(base_dir, '.env')
+    if os.path.exists(env_path):
+        load_dotenv(env_path)
+    else:
+        load_dotenv()
+except Exception:
+    pass
 
 from flask import Flask, redirect, url_for
 from flask_sqlalchemy import SQLAlchemy
@@ -21,19 +29,18 @@ def create_app():
     app.config['VALOR_MENSUALIDAD_SERVIDOR'] = os.environ.get('VALOR_MENSUALIDAD_SERVIDOR', '60.000')
     app.config['PIN_CONFIRMACION_SERVIDOR'] = os.environ.get('PIN_CONFIRMACION_SERVIDOR', '9876')
     
-    # Detección de Base de Datos: 
-    # - En Servidor (/var/www/ultratech): PostgreSQL 'ultra' para proteger la información real del cliente.
-    # - En Local: SQLite ('instance/crm_inventory.db') de desarrollo.
+    # Detección de Base de Datos: DATABASE_URL si está en .env o entorno, SQLite local si no existe
     db_url = os.environ.get('DATABASE_URL')
     if not db_url:
-        if os.path.exists('/var/www/ultratech'):
-            db_url = 'postgresql://postgres:admin123@127.0.0.1:5432/ultra'
-        else:
-            instance_path = os.path.join(app.root_path, 'instance')
-            os.makedirs(instance_path, exist_ok=True)
-            db_url = f"sqlite:///{os.path.join(instance_path, 'crm_inventory.db')}"
-    elif db_url.startswith("postgres://"):
-        db_url = db_url.replace("postgres://", "postgresql://", 1)
+        instance_path = os.path.join(app.root_path, 'instance')
+        os.makedirs(instance_path, exist_ok=True)
+        db_url = f"sqlite:///{os.path.join(instance_path, 'crm_inventory.db')}"
+    else:
+        if db_url.startswith("postgres://"):
+            db_url = db_url.replace("postgres://", "postgresql://", 1)
+        # Asegurar conexión IPv4 127.0.0.1 en Linux para evitar fallos por ::1
+        if "@localhost:" in db_url:
+            db_url = db_url.replace("@localhost:", "@127.0.0.1:")
 
     app.config['SQLALCHEMY_DATABASE_URI'] = db_url
     app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
