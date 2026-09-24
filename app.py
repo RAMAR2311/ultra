@@ -21,37 +21,13 @@ def create_app():
     app.config['VALOR_MENSUALIDAD_SERVIDOR'] = os.environ.get('VALOR_MENSUALIDAD_SERVIDOR', '60.000')
     app.config['PIN_CONFIRMACION_SERVIDOR'] = os.environ.get('PIN_CONFIRMACION_SERVIDOR', '9876')
     
-    # Detección inteligente de Base de Datos (PostgreSQL con Fallback automático a SQLite local)
+    # Detección de Base de Datos: DATABASE_URL si está en entorno (VPS / Prod), SQLite local por defecto
     db_url = os.environ.get('DATABASE_URL')
-    instance_path = os.path.join(app.root_path, 'instance')
-    os.makedirs(instance_path, exist_ok=True)
-    sqlite_url = f"sqlite:///{os.path.join(instance_path, 'crm_inventory.db')}"
-
     if not db_url:
-        try:
-            import socket
-            sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            sock.settimeout(1)
-            result = sock.connect_ex(('127.0.0.1', 5432))
-            sock.close()
-            if result == 0:
-                # Probar conexión real a Postgres antes de asignarla
-                try:
-                    from sqlalchemy import create_engine
-                    test_url = 'postgresql://postgres:admin123@localhost:5432/ultra'
-                    test_engine = create_engine(test_url, connect_args={'connect_timeout': 1})
-                    with test_engine.connect() as conn:
-                        pass
-                    test_engine.dispose()
-                    db_url = test_url
-                except Exception:
-                    db_url = sqlite_url
-            else:
-                db_url = sqlite_url
-        except Exception:
-            db_url = sqlite_url
-
-    if db_url.startswith("postgres://"):
+        instance_path = os.path.join(app.root_path, 'instance')
+        os.makedirs(instance_path, exist_ok=True)
+        db_url = f"sqlite:///{os.path.join(instance_path, 'crm_inventory.db')}"
+    elif db_url.startswith("postgres://"):
         db_url = db_url.replace("postgres://", "postgresql://", 1)
 
     app.config['SQLALCHEMY_DATABASE_URI'] = db_url
