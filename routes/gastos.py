@@ -45,37 +45,72 @@ def index():
         is_ajax = request.headers.get('X-Requested-With') == 'XMLHttpRequest' or request.is_json
 
         if request.is_json:
-            data = request.get_json()
+            data = request.get_json() or {}
             tipo_gasto = data.get('tipo_gasto')
-            categoria = data.get('categoria', '').strip()
-            descripcion = data.get('descripcion', '').strip()
-            montos = data.get('montos') or [data.get('monto')]
-            metodos_pago = data.get('metodos_pago') or [data.get('metodo_pago', 'efectivo')]
+            categoria = (data.get('categoria') or '').strip()
+            descripcion = (data.get('descripcion') or '').strip()
+            raw_montos = data.get('montos')
+            if raw_montos is not None and isinstance(raw_montos, list):
+                raw_metodos = data.get('metodos_pago') or []
+                montos = []
+                metodos_pago = []
+                for i, m in enumerate(raw_montos):
+                    if m is not None and str(m).strip() != '':
+                        montos.append(m)
+                        met = raw_metodos[i] if i < len(raw_metodos) else 'efectivo'
+                        metodos_pago.append(met)
+            else:
+                monto_single = data.get('monto')
+                metodo_single = data.get('metodo_pago', 'efectivo')
+                if monto_single is not None and str(monto_single).strip() != '':
+                    montos = [monto_single]
+                    metodos_pago = [metodo_single]
+                else:
+                    montos = []
+                    metodos_pago = []
             fecha_str = data.get('fecha_gasto')
         else:
             tipo_gasto = request.form.get('tipo_gasto')
             categoria = (request.form.get('categoria') or '').strip()
             descripcion = (request.form.get('descripcion') or '').strip()
-            montos = request.form.getlist('monto[]')
-            metodos_pago = request.form.getlist('metodo_pago[]')
-            if not montos:
+            raw_montos = request.form.getlist('monto[]')
+            raw_metodos = request.form.getlist('metodo_pago[]')
+            
+            # Filtrar montos de líneas múltiples con contenido real
+            lineas_validas = []
+            for m, met in zip(raw_montos, raw_metodos):
+                if m is not None and str(m).strip() != '':
+                    lineas_validas.append((m, met))
+            
+            if lineas_validas:
+                montos = [lv[0] for lv in lineas_validas]
+                metodos_pago = [lv[1] for lv in lineas_validas]
+            else:
                 monto_single = request.form.get('monto')
-                if monto_single:
+                metodo_single = request.form.get('metodo_pago', 'efectivo')
+                if monto_single is not None and str(monto_single).strip() != '':
                     montos = [monto_single]
-                    metodos_pago = [request.form.get('metodo_pago', 'efectivo')]
+                    metodos_pago = [metodo_single]
+                else:
+                    montos = []
+                    metodos_pago = []
             fecha_str = request.form.get('fecha_gasto')
 
-        # Restricción: Vendedores sólo registran gastos diarios / operativos
+        # Restricción: Usuarios no administradores registran gastos diarios / operativos de caja
         if current_user.rol != 'admin' or not tipo_gasto:
             tipo_gasto = 'Gasto Diario'
 
         if not categoria:
             categoria = 'Varios'
 
-        # Resolver fecha
+        # Resolver fecha preservando la hora del día en Bogotá
         if fecha_str:
             try:
-                fecha_obj = datetime.strptime(fecha_str, '%Y-%m-%d')
+                fecha_date = datetime.strptime(fecha_str, '%Y-%m-%d').date()
+                if fecha_date == ahora.date():
+                    fecha_obj = ahora
+                else:
+                    fecha_obj = datetime.combine(fecha_date, ahora.time())
             except ValueError:
                 fecha_obj = ahora
         else:
@@ -88,6 +123,13 @@ def index():
             if is_ajax:
                 return jsonify({'success': False, 'error': msg}), 400
             flash(msg, 'danger')
+            return redirect(url_for('gastos_bp.index'))
+
+        if not montos:
+            msg = 'Debes ingresar un monto válido mayor a 0.'
+            if is_ajax:
+                return jsonify({'success': False, 'error': msg}), 400
+            flash(msg, 'warning')
             return redirect(url_for('gastos_bp.index'))
 
         nuevos_gastos = []
@@ -103,11 +145,18 @@ def index():
                         categoria=categoria,
                         descripcion=descripcion,
                         monto=valor_float,
-                        metodo_pago=(metodo or 'efectivo').lower(),
+                        metodo_pago=(metodo or 'efectivo').lower().strip(),
                         fecha_gasto=fecha_obj
                     )
                     db.session.add(nuevo_gasto)
                     nuevos_gastos.append(nuevo_gasto)
+
+            if not nuevos_gastos:
+                msg = 'El monto del gasto debe ser superior a 0.'
+                if is_ajax:
+                    return jsonify({'success': False, 'error': msg}), 400
+                flash(msg, 'warning')
+                return redirect(url_for('gastos_bp.index'))
 
             db.session.commit()
 
@@ -274,23 +323,27 @@ def editar_gasto(id):
     # Validar nueva fecha si cambió
     if fecha_str:
         try:
-            nueva_fecha = datetime.strptime(fecha_str, '%Y-%m-%d')
-            if nueva_fecha.date() != gasto.fecha_gasto.date():
-                caja_nueva_cerrada = ArqueoCaja.query.filter_by(fecha_arqueo=nueva_fecha.date()).first()
+            ahora = obtener_hora_bogota()
+            nueva_fecha_date = datetime.strptime(fecha_str, '%Y-%m-%d').date()
+            if nueva_fecha_date != gasto.fecha_gasto.date():
+                caja_nueva_cerrada = ArqueoCaja.query.filter_by(fecha_arqueo=nueva_fecha_date).first()
                 if caja_nueva_cerrada:
-                    msg = f'No se puede trasladar el gasto a la fecha {nueva_fecha.date().strftime("%Y-%m-%d")} porque esa jornada ya fue cerrada.'
+                    msg = f'No se puede trasladar el gasto a la fecha {nueva_fecha_date.strftime("%Y-%m-%d")} porque esa jornada ya fue cerrada.'
                     if is_ajax:
                         return jsonify({'success': False, 'error': msg}), 400
                     flash(msg, 'danger')
                     return redirect(url_for('gastos_bp.index'))
-                gasto.fecha_gasto = nueva_fecha
+                if nueva_fecha_date == ahora.date():
+                    gasto.fecha_gasto = ahora
+                else:
+                    gasto.fecha_gasto = datetime.combine(nueva_fecha_date, gasto.fecha_gasto.time() or ahora.time())
         except ValueError:
             pass
 
     gasto.categoria = categoria or gasto.categoria
     gasto.descripcion = descripcion
     gasto.monto = nuevo_monto
-    gasto.metodo_pago = metodo_pago
+    gasto.metodo_pago = (metodo_pago or 'efectivo').lower().strip()
 
     if current_user.rol == 'admin' and tipo_gasto in ['Gasto Diario', 'Costo Indirecto']:
         gasto.tipo_gasto = tipo_gasto

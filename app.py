@@ -1,4 +1,9 @@
 import os
+from dotenv import load_dotenv
+
+# Cargar variables de entorno desde .env si existe
+load_dotenv()
+
 from flask import Flask, redirect, url_for
 from flask_sqlalchemy import SQLAlchemy
 from flask_migrate import Migrate
@@ -18,6 +23,10 @@ def create_app():
     
     # Detección inteligente de Base de Datos (PostgreSQL con Fallback automático a SQLite local)
     db_url = os.environ.get('DATABASE_URL')
+    instance_path = os.path.join(app.root_path, 'instance')
+    os.makedirs(instance_path, exist_ok=True)
+    sqlite_url = f"sqlite:///{os.path.join(instance_path, 'crm_inventory.db')}"
+
     if not db_url:
         try:
             import socket
@@ -26,15 +35,21 @@ def create_app():
             result = sock.connect_ex(('127.0.0.1', 5432))
             sock.close()
             if result == 0:
-                db_url = 'postgresql://postgres:admin123@localhost:5432/ultra'
+                # Probar conexión real a Postgres antes de asignarla
+                try:
+                    from sqlalchemy import create_engine
+                    test_url = 'postgresql://postgres:admin123@localhost:5432/ultra'
+                    test_engine = create_engine(test_url, connect_args={'connect_timeout': 1})
+                    with test_engine.connect() as conn:
+                        pass
+                    test_engine.dispose()
+                    db_url = test_url
+                except Exception:
+                    db_url = sqlite_url
             else:
-                instance_path = os.path.join(app.root_path, 'instance')
-                os.makedirs(instance_path, exist_ok=True)
-                db_url = f"sqlite:///{os.path.join(instance_path, 'crm_inventory.db')}"
+                db_url = sqlite_url
         except Exception:
-            instance_path = os.path.join(app.root_path, 'instance')
-            os.makedirs(instance_path, exist_ok=True)
-            db_url = f"sqlite:///{os.path.join(instance_path, 'crm_inventory.db')}"
+            db_url = sqlite_url
 
     if db_url.startswith("postgres://"):
         db_url = db_url.replace("postgres://", "postgresql://", 1)
@@ -337,6 +352,17 @@ if __name__ == '__main__':
             db.session.add(bodega_user)
             db.session.commit()
             print("[INFO] Usuario bodega 'bodega@ultratech.com' fue creado automaticamente.")
+
+        if not User.query.filter_by(email='vendedor@ultratech.com').first():
+            vendedor_user = User(
+                nombre='Vendedor Tienda / Cajero',
+                email='vendedor@ultratech.com',
+                password_hash=generate_password_hash('Vendedor123'),
+                rol='vendedor'
+            )
+            db.session.add(vendedor_user)
+            db.session.commit()
+            print("[INFO] Usuario vendedor 'vendedor@ultratech.com' fue creado automaticamente.")
 
         if not User.query.filter_by(email='vendedor_bodega@ultratech.com').first():
             vb_user = User(

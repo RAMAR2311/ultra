@@ -172,7 +172,7 @@
         </a>
         {% endif %}
 
-        <a href="{{ url_for('admin_bp.dashboard') if current_user.rol == 'admin' else url_for('sales_bp.procesar_venta') }}" class="btn btn-sm btn-outline-secondary rounded-pill px-3 ms-2">
+        <a href="{{ url_for('admin_bp.dashboard') if current_user.rol == 'admin' else (url_for('bodega_bp.dashboard') if current_user.rol in ['bodega', 'vendedor_bodega'] else url_for('sales_bp.procesar_venta')) }}" class="btn btn-sm btn-outline-secondary rounded-pill px-3 ms-2">
             <i class="fa-solid fa-arrow-left me-1"></i> Menú
         </a>
     </div>
@@ -431,11 +431,11 @@
                     <div class="col-6 col-md-6">
                         <div class="input-group input-group-sm">
                             <span class="input-group-text bg-white text-danger fw-bold">$</span>
-                            <input type="number" step="1" min="0" name="monto[]" class="form-control bg-white fw-bold input-monto-split" placeholder="Monto parcial">
+                            <input type="number" step="1" min="0" name="monto[]" class="form-control bg-white fw-bold input-monto-split" placeholder="Monto parcial" disabled>
                         </div>
                     </div>
                     <div class="col-5 col-md-5">
-                        <select name="metodo_pago[]" class="form-select form-select-sm bg-white fw-semibold">
+                        <select name="metodo_pago[]" class="form-select form-select-sm bg-white fw-semibold" disabled>
                             <option value="efectivo" selected>Efectivo (Caja)</option>
                             <option value="nequi">Nequi</option>
                             <option value="bancolombia">Bancolombia</option>
@@ -876,17 +876,27 @@ document.addEventListener('DOMContentLoaded', function() {
     const contenedorLineasMultiples = document.getElementById('contenedorLineasMultiples');
     const lblTotalDividido = document.getElementById('lblTotalDividido');
 
-    toggleModoAvanzado.addEventListener('change', function() {
-        if (this.checked) {
+    function toggleModoInputs(esAvanzado) {
+        if (esAvanzado) {
             seccionModoSimple.classList.add('d-none');
             seccionModoAvanzado.classList.remove('d-none');
             inputMonto.removeAttribute('required');
+            inputMonto.disabled = true;
+            inputMetodoPago.disabled = true;
+            document.querySelectorAll('#contenedorLineasMultiples .input-monto-split, #contenedorLineasMultiples select').forEach(el => el.disabled = false);
             actualizarSumaLineasMultiples();
         } else {
             seccionModoSimple.classList.remove('d-none');
             seccionModoAvanzado.classList.add('d-none');
+            inputMonto.disabled = false;
+            inputMetodoPago.disabled = false;
             inputMonto.setAttribute('required', 'required');
+            document.querySelectorAll('#contenedorLineasMultiples .input-monto-split, #contenedorLineasMultiples select').forEach(el => el.disabled = true);
         }
+    }
+
+    toggleModoAvanzado.addEventListener('change', function() {
+        toggleModoInputs(this.checked);
     });
 
     function actualizarSumaLineasMultiples() {
@@ -945,10 +955,22 @@ document.addEventListener('DOMContentLoaded', function() {
 
         // Validaciones previas
         const esAvanzado = toggleModoAvanzado.checked;
-        if (!esAvanzado && (!parseFloat(inputMonto.value) || parseFloat(inputMonto.value) <= 0)) {
-            mostrarToast('Ingresa un monto válido mayor a 0.', 'warning');
-            inputMonto.focus();
-            return;
+        if (!esAvanzado) {
+            const val = parseFloat(inputMonto.value);
+            if (!val || val <= 0) {
+                mostrarToast('Ingresa un monto válido mayor a 0.', 'warning');
+                inputMonto.focus();
+                return;
+            }
+        } else {
+            let suma = 0;
+            document.querySelectorAll('.input-monto-split').forEach(inp => {
+                suma += parseFloat(inp.value) || 0;
+            });
+            if (suma <= 0) {
+                mostrarToast('Debes ingresar al menos una línea con monto mayor a 0.', 'warning');
+                return;
+            }
         }
 
         btnGuardarGasto.disabled = true;
@@ -981,9 +1003,11 @@ document.addEventListener('DOMContentLoaded', function() {
             const filaSin = document.getElementById('filaSinGastos');
             if (filaSin) filaSin.remove();
 
-            data.gastos.forEach(g => {
-                insertarFilaGasto(g);
-            });
+            if (data.gastos && data.gastos.length > 0) {
+                data.gastos.forEach(g => {
+                    insertarFilaGasto(g);
+                });
+            }
 
             mostrarToast(data.message || 'Gasto registrado correctamente.', 'success');
 
@@ -993,9 +1017,7 @@ document.addEventListener('DOMContentLoaded', function() {
             inputDescripcion.value = '';
             if (esAvanzado) {
                 toggleModoAvanzado.checked = false;
-                seccionModoSimple.classList.remove('d-none');
-                seccionModoAvanzado.classList.add('d-none');
-                inputMonto.setAttribute('required', 'required');
+                toggleModoInputs(false);
             }
 
             // Recalcular contador y filtro actual

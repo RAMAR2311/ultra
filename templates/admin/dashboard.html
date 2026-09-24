@@ -1,5 +1,263 @@
 {% extends "base.html" %}
 
+{% block extra_css %}
+<style>
+    /* =========================================================
+       HERO KPI CARDS ULTRA TECH (MAGENTA & PURPLE TECH IDENTITY)
+       ========================================================= */
+    .kpi-card-hero {
+        background: #FFFFFF;
+        border-radius: 22px;
+        padding: 1.5rem 1.35rem;
+        position: relative;
+        overflow: hidden;
+        border: 1.5px solid #E2E8F0;
+        box-shadow: 0 4px 20px -2px rgba(15, 23, 42, 0.05), 0 2px 8px -1px rgba(139, 92, 246, 0.04);
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        display: flex;
+        flex-direction: column;
+        height: 100%;
+    }
+
+    /* Resplandor sutil de fondo en esquina */
+    .kpi-card-hero::after {
+        content: "";
+        position: absolute;
+        top: -30px;
+        right: -30px;
+        width: 110px;
+        height: 110px;
+        border-radius: 50%;
+        opacity: 0.12;
+        pointer-events: none;
+        transition: transform 0.35s ease, opacity 0.35s ease;
+    }
+
+    .kpi-card-ingresos::after {
+        background: radial-gradient(circle, #FF007F 0%, rgba(255, 0, 127, 0) 70%);
+    }
+    .kpi-card-mercancia::after {
+        background: radial-gradient(circle, #8B5CF6 0%, rgba(139, 92, 246, 0) 70%);
+    }
+    .kpi-card-gastos::after {
+        background: radial-gradient(circle, #EC4899 0%, rgba(236, 72, 153, 0) 70%);
+    }
+    .kpi-card-utilidad::after {
+        background: radial-gradient(circle, #10B981 0%, rgba(16, 185, 129, 0) 70%);
+    }
+
+    .kpi-card-hero::before {
+        content: "";
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 5px;
+        transition: height 0.25s ease;
+    }
+
+    /* Borde superior de acento con gradientes de la marca Ultra Tech */
+    .kpi-card-ingresos::before { background: linear-gradient(90deg, #FF007F 0%, #8B5CF6 100%); }
+    .kpi-card-mercancia::before { background: linear-gradient(90deg, #8B5CF6 0%, #3B82F6 100%); }
+    .kpi-card-gastos::before { background: linear-gradient(90deg, #FF007F 0%, #EF4444 100%); }
+    .kpi-card-utilidad::before { background: linear-gradient(90deg, #10B981 0%, #8B5CF6 100%); }
+
+    .kpi-card-hero:hover {
+        transform: translateY(-6px);
+    }
+    .kpi-card-hero:hover::before {
+        height: 7px;
+    }
+    .kpi-card-hero:hover::after {
+        transform: scale(1.35);
+        opacity: 0.22;
+    }
+
+    .kpi-card-ingresos:hover {
+        box-shadow: 0 20px 35px -5px rgba(255, 0, 127, 0.18), 0 0 20px rgba(255, 0, 127, 0.08);
+        border-color: rgba(255, 0, 127, 0.45);
+    }
+    .kpi-card-mercancia:hover {
+        box-shadow: 0 20px 35px -5px rgba(139, 92, 246, 0.18), 0 0 20px rgba(139, 92, 246, 0.08);
+        border-color: rgba(139, 92, 246, 0.45);
+    }
+    .kpi-card-gastos:hover {
+        box-shadow: 0 20px 35px -5px rgba(255, 0, 127, 0.16), 0 0 20px rgba(239, 68, 68, 0.08);
+        border-color: rgba(255, 0, 127, 0.4);
+    }
+    .kpi-card-utilidad:hover {
+        box-shadow: 0 20px 35px -5px rgba(16, 185, 129, 0.18), 0 0 20px rgba(139, 92, 246, 0.08);
+        border-color: rgba(16, 185, 129, 0.45);
+    }
+
+    /* Caja de Ícono 3D con Gradiente de Marca y Resplandor */
+    .kpi-icon-badge {
+        width: 52px;
+        height: 52px;
+        border-radius: 16px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.45rem;
+        color: #FFFFFF !important;
+        flex-shrink: 0;
+        transition: transform 0.28s ease, box-shadow 0.28s ease;
+    }
+    .kpi-card-hero:hover .kpi-icon-badge {
+        transform: scale(1.1) rotate(4deg);
+    }
+
+    .kpi-badge-ingresos {
+        background: linear-gradient(135deg, #FF007F 0%, #7C3AED 100%);
+        box-shadow: 0 8px 20px rgba(255, 0, 127, 0.38);
+    }
+    .kpi-badge-mercancia {
+        background: linear-gradient(135deg, #8B5CF6 0%, #3B82F6 100%);
+        box-shadow: 0 8px 20px rgba(139, 92, 246, 0.38);
+    }
+    .kpi-badge-gastos {
+        background: linear-gradient(135deg, #FF007F 0%, #EF4444 100%);
+        box-shadow: 0 8px 20px rgba(255, 0, 127, 0.32);
+    }
+    .kpi-badge-utilidad {
+        background: linear-gradient(135deg, #10B981 0%, #8B5CF6 100%);
+        box-shadow: 0 8px 20px rgba(16, 185, 129, 0.38);
+    }
+    .kpi-badge-utilidad-negativa {
+        background: linear-gradient(135deg, #EF4444 0%, #B91C1C 100%);
+        box-shadow: 0 8px 20px rgba(239, 68, 68, 0.38);
+    }
+
+    /* Badges del Periodo */
+    .kpi-period-pill {
+        font-size: 0.72rem;
+        font-weight: 800;
+        padding: 0.3rem 0.75rem;
+        border-radius: 20px;
+        letter-spacing: 0.4px;
+        text-transform: capitalize;
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+    }
+
+    .kpi-period-pill-pink {
+        background: rgba(255, 0, 127, 0.08);
+        color: #D9006C;
+        border: 1px solid rgba(255, 0, 127, 0.25);
+    }
+    .kpi-period-pill-purple {
+        background: rgba(139, 92, 246, 0.09);
+        color: #7C3AED;
+        border: 1px solid rgba(139, 92, 246, 0.25);
+    }
+    .kpi-period-pill-gastos {
+        background: rgba(239, 68, 68, 0.08);
+        color: #DC2626;
+        border: 1px solid rgba(239, 68, 68, 0.25);
+    }
+    .kpi-period-pill-utilidad {
+        background: rgba(16, 185, 129, 0.09);
+        color: #059669;
+        border: 1px solid rgba(16, 185, 129, 0.25);
+    }
+
+    .kpi-title-label {
+        font-size: 0.78rem;
+        font-weight: 750;
+        text-transform: uppercase;
+        letter-spacing: 0.7px;
+        color: #64748B;
+        margin-bottom: 0.3rem;
+    }
+
+    .kpi-hero-number {
+        font-family: 'Orbitron', monospace, sans-serif !important;
+        font-size: 1.95rem;
+        font-weight: 900;
+        letter-spacing: 0.5px;
+        line-height: 1.15;
+        margin-bottom: 0.4rem;
+    }
+
+    /* Micro-cajas de información interna */
+    .kpi-micro-strip {
+        background: #F8FAFC;
+        border: 1px solid #E2E8F0;
+        border-radius: 12px;
+        padding: 0.55rem 0.8rem;
+        font-size: 0.76rem;
+        margin-bottom: 1.1rem;
+    }
+
+    /* Botones de acción inferiores */
+    .btn-kpi-action {
+        border-radius: 13px;
+        padding: 0.6rem 0.75rem;
+        font-size: 0.84rem;
+        font-weight: 750;
+        transition: all 0.25s ease;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 7px;
+        text-decoration: none;
+    }
+
+    .btn-kpi-ingresos {
+        background: linear-gradient(135deg, #0F172A 0%, #1E293B 100%);
+        color: #FFFFFF;
+        border: 1px solid #334155;
+    }
+    .btn-kpi-ingresos:hover {
+        background: linear-gradient(135deg, #FF007F 0%, #7C3AED 100%);
+        color: #FFFFFF;
+        border-color: transparent;
+        box-shadow: 0 6px 18px rgba(255, 0, 127, 0.4);
+        transform: translateY(-2px);
+    }
+
+    .btn-kpi-mercancia {
+        background: linear-gradient(135deg, #0F172A 0%, #1E293B 100%);
+        color: #FFFFFF;
+        border: 1px solid #334155;
+    }
+    .btn-kpi-mercancia:hover {
+        background: linear-gradient(135deg, #8B5CF6 0%, #3B82F6 100%);
+        color: #FFFFFF;
+        border-color: transparent;
+        box-shadow: 0 6px 18px rgba(139, 92, 246, 0.4);
+        transform: translateY(-2px);
+    }
+
+    .btn-kpi-gastos {
+        background: #FFF1F2;
+        color: #E11D48;
+        border: 1.5px solid #FECDD3;
+    }
+    .btn-kpi-gastos:hover {
+        background: linear-gradient(135deg, #FF007F 0%, #E11D48 100%);
+        color: #FFFFFF;
+        border-color: transparent;
+        box-shadow: 0 6px 18px rgba(255, 0, 127, 0.35);
+        transform: translateY(-2px);
+    }
+
+    .btn-kpi-utilidad {
+        background: #F0FDF4;
+        color: #15803D;
+        border: 1.5px solid #BBF7D0;
+    }
+    .btn-kpi-utilidad:hover {
+        background: linear-gradient(135deg, #10B981 0%, #8B5CF6 100%);
+        color: #FFFFFF;
+        border-color: transparent;
+        box-shadow: 0 6px 18px rgba(16, 185, 129, 0.38);
+        transform: translateY(-2px);
+    }
+</style>
+{% endblock %}
+
 {% block content %}
 <!-- Cabecera y Barra de Filtros -->
 <div class="d-flex flex-wrap justify-content-between align-items-center mb-4 gap-3">
@@ -128,102 +386,128 @@
   </div>
 </div>
 
-<!-- FILA 1: Métricas Principales Dinámicas del Periodo (4 Tarjetas) -->
+<!-- FILA 1: Métricas Principales Dinámicas del Periodo (4 Tarjetas Rediseñadas) -->
 <div class="row g-3 mb-4">
     <!-- 1. Tarjeta: Ingresos Totales del Periodo -->
-    <div class="col-md-3">
-        <div class="card card-custom h-100 p-4 border-0 shadow-sm">
-            <div class="d-flex justify-content-between align-items-start mb-2">
-                <i class="fa-solid fa-sack-dollar fs-1" style="color: var(--brand-blue);"></i>
-                <span class="badge bg-brand-blue rounded-pill">{{ badge_periodo }}</span>
+    <div class="col-12 col-sm-6 col-xl-3">
+        <div class="kpi-card-hero kpi-card-ingresos">
+            <div class="d-flex justify-content-between align-items-start mb-3">
+                <div class="kpi-icon-badge kpi-badge-ingresos">
+                    <i class="fa-solid fa-sack-dollar"></i>
+                </div>
+                <span class="kpi-period-pill kpi-period-pill-pink"><i class="fa-solid fa-calendar-day me-1"></i>{{ badge_periodo }}</span>
             </div>
-            <h6 class="text-muted fw-bold mb-1">Ingresos ({{ tipo_periodo_nombre }})</h6>
-            <h2 class="fw-bolder mb-1" style="color: var(--brand-blue);">${{ (total_ventas)|cop }}</h2>
-            <p class="text-muted small mb-2"><i class="fa-solid fa-receipt me-1"></i> {{ conteo_ventas }} ventas realizadas</p>
             
-            <div class="d-flex justify-content-between text-muted small pt-2 border-top mb-3">
+            <div class="kpi-title-label">Ingresos ({{ tipo_periodo_nombre }})</div>
+            <div class="kpi-hero-number text-dark">${{ (total_ventas)|cop }}</div>
+            
+            <div class="text-muted small mb-3">
+                <i class="fa-solid fa-receipt text-primary me-1"></i> <strong>{{ conteo_ventas }}</strong> ventas realizadas
+            </div>
+            
+            <div class="kpi-micro-strip d-flex justify-content-between text-muted mt-auto">
                 <span title="Efectivo en caja"><i class="fa-solid fa-money-bill-wave text-success me-1"></i>${{ (ventas_efectivo)|cop }}</span>
                 <span title="Canales digitales (Nequi, Bancolombia, Daviplata, Bolt)"><i class="fa-solid fa-network-wired text-primary me-1"></i>${{ (ventas_transferencia)|cop }}</span>
             </div>
 
-            <div class="mt-auto">
-                <a href="{{ url_for('sales_bp.historial') }}" class="btn btn-blue w-100 rounded-pill py-2">
-                    <i class="fa-solid fa-file-invoice-dollar me-2"></i>Ver Historial
+            <div>
+                <a href="{{ url_for('sales_bp.historial') }}" class="btn-kpi-action btn-kpi-ingresos w-100">
+                    <i class="fa-solid fa-file-invoice-dollar"></i>
+                    <span>Ver Historial</span>
                 </a>
             </div>
         </div>
     </div>
 
     <!-- 2. Tarjeta: Unidades Vendidas en el Periodo -->
-    <div class="col-md-3">
-        <div class="card card-custom h-100 p-4 border-0 shadow-sm">
-            <div class="d-flex justify-content-between align-items-start mb-2">
-                <i class="fa-solid fa-cubes fs-1" style="color: var(--brand-blue);"></i>
-                <span class="badge bg-brand-blue rounded-pill">{{ badge_periodo }}</span>
+    <div class="col-12 col-sm-6 col-xl-3">
+        <div class="kpi-card-hero kpi-card-mercancia">
+            <div class="d-flex justify-content-between align-items-start mb-3">
+                <div class="kpi-icon-badge kpi-badge-mercancia">
+                    <i class="fa-solid fa-cubes"></i>
+                </div>
+                <span class="kpi-period-pill kpi-period-pill-purple"><i class="fa-solid fa-calendar-day me-1"></i>{{ badge_periodo }}</span>
             </div>
-            <h6 class="text-muted fw-bold mb-1">Mercancía Vendida</h6>
-            <h2 class="fw-bolder mb-1" style="color: var(--brand-blue);">{{ unidades_vendidas }} uds.</h2>
-            <p class="text-muted small mb-2"><i class="fa-solid fa-tag me-1"></i> {{ referencias_vendidas }} referencias vendidas</p>
-
-            <div class="text-muted small pt-2 border-top mb-3">
-                <i class="fa-solid fa-boxes-stacked me-1"></i> Total en catálogo: <strong>{{ total_productos }}</strong> referencias
+            
+            <div class="kpi-title-label">Mercancía Vendida</div>
+            <div class="kpi-hero-number text-dark">{{ unidades_vendidas }} uds.</div>
+            
+            <div class="text-muted small mb-3">
+                <i class="fa-solid fa-tag text-purple me-1" style="color: #8B5CF6;"></i> <strong>{{ referencias_vendidas }}</strong> referencias vendidas
             </div>
 
-            <div class="mt-auto">
-                <a href="/inventory/" class="btn btn-blue w-100 rounded-pill py-2">
-                    <i class="fa-solid fa-sliders me-2"></i>Gestionar Inventario
+            <div class="kpi-micro-strip text-muted mt-auto">
+                <i class="fa-solid fa-boxes-stacked me-1 text-primary"></i> Catálogo: <strong>{{ total_productos }}</strong> referencias
+            </div>
+
+            <div>
+                <a href="/inventory/" class="btn-kpi-action btn-kpi-mercancia w-100">
+                    <i class="fa-solid fa-sliders"></i>
+                    <span>Gestionar Inventario</span>
                 </a>
             </div>
         </div>
     </div>
 
     <!-- 3. Tarjeta: Gastos Operativos del Periodo -->
-    <div class="col-md-3">
-        <div class="card card-custom h-100 p-4 border-0 shadow-sm">
-            <div class="d-flex justify-content-between align-items-start mb-2">
-                <i class="fa-solid fa-file-invoice-dollar fs-1 text-danger"></i>
-                <span class="badge bg-danger bg-opacity-10 text-danger rounded-pill">{{ badge_periodo }}</span>
+    <div class="col-12 col-sm-6 col-xl-3">
+        <div class="kpi-card-hero kpi-card-gastos">
+            <div class="d-flex justify-content-between align-items-start mb-3">
+                <div class="kpi-icon-badge kpi-badge-gastos">
+                    <i class="fa-solid fa-file-invoice-dollar"></i>
+                </div>
+                <span class="kpi-period-pill kpi-period-pill-gastos"><i class="fa-solid fa-calendar-day me-1"></i>{{ badge_periodo }}</span>
             </div>
-            <h6 class="text-muted fw-bold mb-1">Gastos ({{ tipo_periodo_nombre }})</h6>
-            <h2 class="fw-bolder mb-1 text-danger">${{ (total_gastos)|cop }}</h2>
-            <p class="text-muted small mb-2"><i class="fa-solid fa-arrow-trend-down me-1 text-danger"></i> {{ conteo_gastos }} gastos registrados</p>
-
-            <div class="d-flex justify-content-between text-muted small pt-2 border-top mb-3">
-                <span>Diarios: ${{ (gastos_diarios)|cop }}</span>
-                <span>Indirectos: ${{ (costos_indirectos)|cop }}</span>
+            
+            <div class="kpi-title-label">Gastos ({{ tipo_periodo_nombre }})</div>
+            <div class="kpi-hero-number text-danger">${{ (total_gastos)|cop }}</div>
+            
+            <div class="text-muted small mb-3">
+                <i class="fa-solid fa-arrow-trend-down text-danger me-1"></i> <strong>{{ conteo_gastos }}</strong> salidas registradas
             </div>
 
-            <div class="mt-auto">
-                <a href="/gastos/" class="btn btn-outline-danger w-100 rounded-pill py-2">
-                    <i class="fa-solid fa-hand-holding-dollar me-2"></i>Ver Gastos
+            <div class="kpi-micro-strip d-flex justify-content-between text-muted mt-auto">
+                <span>Diarios: <strong>${{ (gastos_diarios)|cop }}</strong></span>
+                <span>Fijos: <strong>${{ (costos_indirectos)|cop }}</strong></span>
+            </div>
+
+            <div>
+                <a href="/gastos/" class="btn-kpi-action btn-kpi-gastos w-100">
+                    <i class="fa-solid fa-hand-holding-dollar"></i>
+                    <span>Ver Gastos</span>
                 </a>
             </div>
         </div>
     </div>
 
     <!-- 4. Tarjeta: Utilidad Estimada del Periodo -->
-    <div class="col-md-3">
-        <div class="card card-custom h-100 p-4 border-0 shadow-sm">
-            <div class="d-flex justify-content-between align-items-start mb-2">
-                <i class="fa-solid fa-chart-line fs-1 {% if utilidad_neta >= 0 %}text-success{% else %}text-danger{% endif %}"></i>
-                <span class="badge {% if utilidad_neta >= 0 %}bg-success bg-opacity-10 text-success{% else %}bg-danger bg-opacity-10 text-danger{% endif %} rounded-pill">
-                    {{ badge_periodo }}
-                </span>
+    <div class="col-12 col-sm-6 col-xl-3">
+        <div class="kpi-card-hero kpi-card-utilidad">
+            <div class="d-flex justify-content-between align-items-start mb-3">
+                <div class="kpi-icon-badge {% if utilidad_neta >= 0 %}kpi-badge-utilidad{% else %}kpi-badge-utilidad-negativa{% endif %}">
+                    <i class="fa-solid fa-chart-line"></i>
+                </div>
+                <span class="kpi-period-pill kpi-period-pill-utilidad"><i class="fa-solid fa-calendar-day me-1"></i>{{ badge_periodo }}</span>
             </div>
-            <h6 class="text-muted fw-bold mb-1">Utilidad Estimada</h6>
-            <h2 class="fw-bolder mb-1 {% if utilidad_neta >= 0 %}text-success{% else %}text-danger{% endif %}">
+            
+            <div class="kpi-title-label">Utilidad Estimada</div>
+            <div class="kpi-hero-number {% if utilidad_neta >= 0 %}text-success{% else %}text-danger{% endif %}">
                 {% if utilidad_neta >= 0 %}${{ (utilidad_neta)|cop }}{% else %}-${{ (-utilidad_neta)|cop }}{% endif %}
-            </h2>
-            <p class="text-muted small mb-2"><i class="fa-solid fa-calculator me-1"></i> Ventas - Costos - Gastos</p>
+            </div>
+            
+            <div class="text-muted small mb-3">
+                <i class="fa-solid fa-calculator text-success me-1"></i> Ventas - Costos - Gastos
+            </div>
 
-            <div class="d-flex justify-content-between text-muted small pt-2 border-top mb-3">
+            <div class="kpi-micro-strip d-flex justify-content-between text-muted mt-auto">
                 <span>Costo Directo (COGS):</span>
                 <strong>${{ (costos_directos)|cop }}</strong>
             </div>
 
-            <div class="mt-auto">
-                <button type="button" class="btn btn-outline-secondary w-100 rounded-pill py-2" data-bs-toggle="modal" data-bs-target="#modalBalance">
-                    <i class="fa-solid fa-scale-balanced me-2"></i>Reporte Detallado
+            <div>
+                <button type="button" class="btn-kpi-action btn-kpi-utilidad w-100" data-bs-toggle="modal" data-bs-target="#modalBalance">
+                    <i class="fa-solid fa-scale-balanced"></i>
+                    <span>Reporte Detallado</span>
                 </button>
             </div>
         </div>
