@@ -21,12 +21,17 @@ def create_app():
     app.config['VALOR_MENSUALIDAD_SERVIDOR'] = os.environ.get('VALOR_MENSUALIDAD_SERVIDOR', '60.000')
     app.config['PIN_CONFIRMACION_SERVIDOR'] = os.environ.get('PIN_CONFIRMACION_SERVIDOR', '9876')
     
-    # Detección de Base de Datos: DATABASE_URL si está en entorno (VPS / Prod), SQLite local por defecto
+    # Detección de Base de Datos: 
+    # - En Servidor (/var/www/ultratech): PostgreSQL 'ultra' para proteger la información real del cliente.
+    # - En Local: SQLite ('instance/crm_inventory.db') de desarrollo.
     db_url = os.environ.get('DATABASE_URL')
     if not db_url:
-        instance_path = os.path.join(app.root_path, 'instance')
-        os.makedirs(instance_path, exist_ok=True)
-        db_url = f"sqlite:///{os.path.join(instance_path, 'crm_inventory.db')}"
+        if os.path.exists('/var/www/ultratech'):
+            db_url = 'postgresql://postgres:admin123@127.0.0.1:5432/ultra'
+        else:
+            instance_path = os.path.join(app.root_path, 'instance')
+            os.makedirs(instance_path, exist_ok=True)
+            db_url = f"sqlite:///{os.path.join(instance_path, 'crm_inventory.db')}"
     elif db_url.startswith("postgres://"):
         db_url = db_url.replace("postgres://", "postgresql://", 1)
 
